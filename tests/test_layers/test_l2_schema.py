@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from typing import Any
@@ -43,7 +46,7 @@ def test_l2_accepts_calldata_at_max_length_boundary() -> None:
     assert SchemaValidator().validate(base) is True
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "patch",
     [
         {"to": _ROUTER.lower()},

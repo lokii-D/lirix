@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI">
-  <img src="https://img.shields.io/badge/Python-3.8+-blue?style=flat-square" alt="Python Version">
+  <img src="https://img.shields.io/badge/Python-3.8--3.14-blue?style=flat-square" alt="Python Version">
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage 100%">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
@@ -221,7 +221,7 @@ Lirix is a security boundary, not a wallet. It validates untrusted LLM output, p
 
 ## 💬 Support / FAQ
 
-- General questions and feature ideas: open a thread in **[GitHub Discussions](https://github.com/)** or file a standard issue in **[GitHub Issues](https://github.com/)**.
+- General questions and feature ideas: open a thread in **[GitHub Discussions](https://github.com/lokii-D/lirix/discussions)** or file a standard issue in **[GitHub Issues](https://github.com/lokii-D/lirix/issues)**.
 - Security vulnerabilities: **do not open an Issue**. Follow the private disclosure flow in **[SECURITY.md](SECURITY.md)**.
 
 ### FAQ
@@ -232,7 +232,7 @@ A: Because Lirix is a gatekeeper, not a signer. It validates intent and simulate
 
 ## Development Requirements
 
-- Python 3.8–3.12
+- Python 3.8–3.14
 - `black`
 - `ruff`
 - `mypy`
@@ -483,7 +483,7 @@ Lirix 是安全边界，不是钱包。它校验不可信的 LLM 输出、解析
 
 ## 💬 支持 / 常见问题
 
-- 常规问题与功能建议：请在 **[GitHub Discussions](https://github.com/)** 发起讨论，或到 **[GitHub Issues](https://github.com/)** 提交标准问题。
+- 常规问题与功能建议：请在 **[GitHub Discussions](https://github.com/lokii-D/lirix/discussions)** 发起讨论，或到 **[GitHub Issues](https://github.com/lokii-D/lirix/issues)** 提交标准问题。
 - 安全漏洞：**严禁提交 Issue**。请直接遵循 **[SECURITY.md](SECURITY.md)** 中的私密披露通道。
 
 ### FAQ
@@ -494,7 +494,7 @@ Lirix 是安全边界，不是钱包。它校验不可信的 LLM 输出、解析
 
 ## 开发环境要求
 
-- Python 3.8–3.12
+- Python 3.8–3.14
 - `black`
 - `ruff`
 - `mypy`

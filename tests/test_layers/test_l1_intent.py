@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from typing import Any, Callable
 
 import pytest
-from eth_abi import encode as abi_encode
+from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import InvalidIntentException
 from lirix.layers.l1_intent_validator import IntentValidator
@@ -55,7 +58,7 @@ def test_l1_wrong_intent_injection() -> None:
         IntentValidator(cfg).validate("prompt_inject_bypass", p)
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "mutator,exc_match",
     [
         (lambda c: c.model_copy(update={"allowed_intents": []}), "allowed_intents"),
@@ -89,7 +92,7 @@ def test_l1_fail_closed_policy(
         IntentValidator(cfg).validate("swap", p)
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "payload",
     [
         {"function_name": "swapExactTokensForTokens"},
@@ -170,7 +173,7 @@ def test_l1_non_string_data_skips_method_reconcile() -> None:
         "to": cfg.allowed_to_addresses[0],
         "function_name": "swapExactTokensForTokens",
         "value": 0,
-        "data": 12345,  # type: ignore[dict-item]
+        "data": 12345,
     }
     assert IntentValidator(cfg).validate("swap", p) is True
 

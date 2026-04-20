@@ -1,12 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import sys
 
-if sys.version_info < (3, 8) or sys.version_info >= (3, 13):  # pragma: no cover
-    raise ImportError(
-        "Lirix requires Python 3.8 through 3.12 (inclusive). "
-        f"Current interpreter: {sys.version.split()[0]}"
-    )
+if sys.version_info < (3, 8) or sys.version_info >= (3, 15):
+    raise ImportError("Lirix requires Python 3.8 through 3.14.")
 
 from typing import Any, Dict, Mapping, Optional, Sequence, cast
 

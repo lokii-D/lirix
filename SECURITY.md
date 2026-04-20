@@ -11,12 +11,8 @@ Security is not a feature; it is physical isolation. Lirix is engineered under a
 - **零埋点追踪**：Lirix 完全在您的私有网络（VPC）内运行。零数据上报，零外部探针。
 
 ### Reporting a Vulnerability | 漏洞报告通道
-Please DO NOT report security vulnerabilities through public GitHub issues. Reach out directly via [Insert Security Email / GitHub Security Advisories link].
-请绝对不要在公开的 GitHub Issue 中报告安全漏洞。请直接通过 [预留安全邮箱 / GitHub Security Advisories] 与我们联系。
-
-### PGP Key
-XXXX XXXX XXXX XXXX
-For high-severity vulnerabilities involving potential fund loss, we strongly recommend encrypting your vulnerability report with this PGP public key.
+Please DO NOT report security vulnerabilities through public GitHub issues. Reach out directly via zp715875634@gmail.com or https://github.com/lokii-D/lirix/security/advisories/new.
+请绝对不要在公开的 GitHub Issue 中报告安全漏洞。请直接通过 zp715875634@gmail.com 或 https://github.com/lokii-D/lirix/security/advisories/new 与我们联系。
 
 ### Response SLA
 The security team will acknowledge receipt of a vulnerability within 48 hours and provide an initial severity assessment and remediation timeline within 7 business days.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 """Encode atomic Multicall3 batch via atomic_multicall (no signing)."""
 
 from __future__ import annotations

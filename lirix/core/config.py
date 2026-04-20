@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from typing import Any, List, Optional, Sequence

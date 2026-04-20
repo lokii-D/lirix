@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import lirix.core.multicall as multicall_mod
@@ -93,7 +96,7 @@ def test_encode_aggregate3_value_selector() -> None:
     assert bytes.fromhex(out["data"][2:10]) == AGGREGATE3_VALUE_SELECTOR
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "transactions,msg",
     [
         ([], "non-empty"),
@@ -105,7 +108,7 @@ def test_encode_aggregate3_value_selector() -> None:
         ([{"to": "0x" + "11" * 20, "data": "abcd"}], "start with"),
         ([{"to": "0x" + "11" * 20, "data": "0x", "value": -1}], "non-negative"),
         ([{"to": "0x" + "11" * 20, "data": "0x", "value": "x"}], "non-negative"),
-        ("bad", "non-empty"),  # type: ignore[list-item]
+        ("bad", "non-empty"),
     ],
 )
 def test_encode_validation_errors(transactions: object, msg: str) -> None:

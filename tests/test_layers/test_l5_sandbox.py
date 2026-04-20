@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import asyncio
@@ -7,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -33,18 +37,18 @@ def _boom_calldata() -> str:
 
 def test_evm_revert_error_string() -> None:
     # Error("hi") style payload fragment (selector + abi tail)
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
-    body = abi_encode(["string"], ["hello"])
+    body: bytes = abi_encode(["string"], ["hello"])
     data = "0x08c379a0" + body.hex()
     msg = evm_revert_to_natural_language(data)
     assert "hello" in msg
 
 
 def test_evm_revert_panic() -> None:
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
-    body = abi_encode(["uint256"], [0x11])
+    body: bytes = abi_encode(["uint256"], [0x11])
     data = "0x4e487b71" + body.hex()
     msg = evm_revert_to_natural_language(data)
     assert "panic" in msg.lower() or "overflow" in msg.lower()
@@ -72,7 +76,7 @@ def test_evm_revert_dict_payload() -> None:
 
 
 def test_evm_revert_dict_non_string_inner() -> None:
-    msg = evm_revert_to_natural_language({"data": 123})  # type: ignore[arg-type]
+    msg = evm_revert_to_natural_language({"data": cast(Any, 123)})
     assert "without" in msg.lower()
 
 
@@ -87,22 +91,22 @@ def test_hex_to_bytes_prepends_0x() -> None:
 
 
 def test_normalize_revert_payload_non_str_non_dict() -> None:
-    assert _normalize_revert_payload(42) is None  # type: ignore[arg-type]  # noqa: SLF001
+    assert _normalize_revert_payload(cast(Any, 42)) is None  # noqa: SLF001
 
 
 def test_decode_error_string_empty_message() -> None:
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
-    body = abi_encode(["string"], [""])
+    body: bytes = abi_encode(["string"], [""])
     data = "0x08c379a0" + body.hex()
     msg = evm_revert_to_natural_language(data)
     assert "empty" in msg.lower()
 
 
 def test_decode_panic_unknown_code() -> None:
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
-    body = abi_encode(["uint256"], [0xABCDEF])
+    body: bytes = abi_encode(["uint256"], [0xABCDEF])
     data = "0x4e487b71" + body.hex()
     msg = evm_revert_to_natural_language(data)
     assert "panic" in msg.lower()
@@ -207,7 +211,7 @@ def test_simulate_web3_rpc_error() -> None:
 
 
 def test_simulate_contract_paused_translation() -> None:
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     w3 = MagicMock()
     data = "0x08c379a0" + abi_encode(["string"], ["Pausable: paused"]).hex()
@@ -295,7 +299,7 @@ def test_simulate_async_wrapped() -> None:
 
 
 def test_simulate_async_contract_paused_translation() -> None:
-    from eth_abi import encode as abi_encode
+    from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     async def _run() -> None:
         aw3 = MagicMock()
@@ -320,7 +324,7 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict:
+def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict[str, object]:
     body = json.dumps({"jsonrpc": "2.0", "method": method, "params": params, "id": 1}).encode()
     req = urllib.request.Request(  # noqa: S310 — 测试仅本地 loopback
         url,
@@ -329,7 +333,7 @@ def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict:
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read().decode())
+            return cast(dict[str, object], json.loads(resp.read().decode()))
     except urllib.error.URLError as exc:
         raise AssertionError(f"anvil unreachable: {exc}") from exc
 
@@ -404,7 +408,7 @@ def test_lirix_validate_and_simulate_pipeline(
         w = MagicMock()
         w.eth = MagicMock()
         w.eth.call = MagicMock(return_value=b"")
-        return w  # type: ignore[return-value]
+        return w
 
     monkeypatch.setattr(RPCManager, "sync_reconcile", fake_reconcile)
     monkeypatch.setattr(RPCManager, "sync_web3", fake_web3)
@@ -440,16 +444,16 @@ def test_lirix_async_validate_and_simulate(monkeypatch: pytest.MonkeyPatch) -> N
     async def fake_reconcile(self: RPCManager) -> int:
         return 2
 
-    def fake_aw3(self: RPCManager):
+    def fake_aw3(self: RPCManager) -> Web3:
         w = MagicMock()
         w.eth.call = AsyncMock(return_value=b"\xab")
         w.to_checksum_address = Web3.to_checksum_address
-        return w
+        return cast(Web3, w)
 
     monkeypatch.setattr(RPCManager, "async_reconcile", fake_reconcile)
     monkeypatch.setattr(RPCManager, "async_web3", fake_aw3)
 
-    async def _run() -> dict:
+    async def _run() -> dict[str, object]:
         return await lix.async_validate_and_simulate(
             "swap",
             {
@@ -511,7 +515,7 @@ def test_state_override_balance_void_mint_passes_through_eth_call() -> None:
     with pytest.raises(SimulationFailedException):
         sim.simulate(payload, web3=w3, block_number=7, state_overrides=None)
 
-    out = sim.simulate(payload, web3=w3, block_number=7, state_overrides=overrides)
+    out = sim.simulate(payload, web3=w3, block_number=7, state_overrides=cast(Any, overrides))
     assert out["simulation_ok"] is True
     assert captured[-1]["state_override"] == overrides
     assert captured[-1]["block_identifier"] == 7
@@ -545,7 +549,7 @@ def test_async_state_override_passed_to_eth_call() -> None:
             },
             async_web3=aw3,
             block_number=9,
-            state_overrides=ov,
+            state_overrides=cast(Any, ov),
         )
         assert seen["state_override"] == ov
 
@@ -577,7 +581,7 @@ def test_lirix_validate_and_simulate_forwards_state_overrides(
         w = MagicMock()
         w.eth = MagicMock()
         w.eth.call = MagicMock(return_value=b"")
-        return w  # type: ignore[return-value]
+        return cast(Web3, w)
 
     def fake_simulate(
         self: object,

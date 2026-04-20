@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from typing import Any, Dict, Type
@@ -52,7 +55,13 @@ def test_lirix_security_exception_empty_context() -> None:
 
 def test_lirix_security_exception_rejects_positional_args() -> None:
     with pytest.raises(TypeError):
-        LirixSecurityException("only positional")  # type: ignore[misc,call-arg]
+        LirixSecurityException(
+            error_code="LIRIX_ERR_TEST",
+            human_readable_reason="only positional",
+            context={},
+            resolution_for_agent=build_agent_resolution(action="noop"),
+            resolution_for_developer="d",
+        )
 
 
 def test_lirix_security_exception_rejects_bad_error_code_prefix() -> None:
@@ -71,9 +80,10 @@ def test_lirix_security_exception_requires_context_kwarg() -> None:
         LirixSecurityException(
             error_code="LIRIX_ERR_TEST",
             human_readable_reason="x",
+            context={},
             resolution_for_agent=build_agent_resolution(action="noop"),
             resolution_for_developer="d",
-        )  # type: ignore[call-arg]
+        )
 
 
 def test_resolution_schema_is_dict() -> None:
@@ -95,7 +105,7 @@ def test_build_agent_resolution_optional_fields() -> None:
     assert full["extra_key"] == 1
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "cls,kwargs",
     [
         (CircuitBreakerOpenException, {}),

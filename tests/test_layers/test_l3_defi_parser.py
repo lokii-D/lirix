@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
-from eth_abi import encode as abi_encode
+from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import DeFiSlippageMissingException, MaliciousPayloadException
 from lirix.core.hook_manager import HookManager
@@ -281,7 +284,7 @@ def test_l3_multicall_decode_failure() -> None:
 def test_l3_to_not_string() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="to must be a string"):
-        DeFiPayloadParser(cfg).validate({"to": 12345, "data": "0x"})  # type: ignore[dict-item]
+        DeFiPayloadParser(cfg).validate({"to": 12345, "data": "0x"})
 
 
 def test_l3_unknown_chain_requires_overrides() -> None:
@@ -315,7 +318,7 @@ def test_l3_unknown_chain_with_explicit_contracts() -> None:
 def test_l3_invalid_data_type() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="data must be a string"):
-        DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": 12345})  # type: ignore[dict-item]
+        DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": 12345})
 
 
 def test_l3_invalid_hex_data() -> None:
@@ -356,7 +359,7 @@ def test_lirix_chain_validate_stops_at_l3() -> None:
         client.chain_validate("swap", payload)
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "_id,payload",
     [
         ("swap_truncated", {"to": mainnet_router(), "data": "0x38ed173900"}),
@@ -398,7 +401,7 @@ def test_lirix_chain_validate_stops_at_l3() -> None:
                 ),
             },
         ),
-        ("data_not_string", {"to": mainnet_router(), "data": None}),  # type: ignore[dict-item]
+        ("data_not_string", {"to": mainnet_router(), "data": None}),
     ],
 )
 def test_l3_malicious_matrix_raises(_id: str, payload: dict[str, Any]) -> None:

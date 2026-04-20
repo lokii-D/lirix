@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 """Pattern: agent builds calldata; Lirix validates before any signing step."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import asyncio
@@ -239,8 +242,8 @@ def test_fetch_block_number_async_success(monkeypatch: pytest.MonkeyPatch) -> No
 
     class _Eth:
         @property
-        def block_number(self) -> asyncio.Future:
-            fut: asyncio.Future = asyncio.Future()
+        def block_number(self) -> asyncio.Future[int]:
+            fut: asyncio.Future[int] = asyncio.Future()
             fut.set_result(55)
             return fut
 
@@ -293,8 +296,8 @@ def test_fetch_block_number_async_quota_raises_from_block_number_access(
 
     class _Eth:
         @property
-        def block_number(self) -> asyncio.Future:
-            fut: asyncio.Future = asyncio.Future()
+        def block_number(self) -> asyncio.Future[int]:
+            fut: asyncio.Future[int] = asyncio.Future()
             fut.set_exception(ConnectionError("Too Many Requests"))
             return fut
 
@@ -318,8 +321,8 @@ def test_fetch_block_number_async_non_quota_re_raises_from_block_number(
 
     class _Eth:
         @property
-        def block_number(self) -> asyncio.Future:
-            fut: asyncio.Future = asyncio.Future()
+        def block_number(self) -> asyncio.Future[int]:
+            fut: asyncio.Future[int] = asyncio.Future()
             fut.set_exception(ConnectionError("transport down"))
             return fut
 

@@ -1,6 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
-from eth_abi import encode as abi_encode
+from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 from lirix.core.signatures import (
     AGGREGATE3_SELECTOR,
     SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,

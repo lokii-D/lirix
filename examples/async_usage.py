@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 """Async simulation path (requires reachable RPC in rpc_urls)."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,7 +21,7 @@ def _local_anvil_web3() -> Web3 | None:
     return w3
 
 
-@pytest.fixture()
+@pytest.fixture()  # type: ignore[misc]
 def deploy_multicall3_locally() -> Web3:
     """纯净 Anvil：若无 Multicall3 字节码则 ``anvil_setCode`` 注入官方 runtime。
 
@@ -27,13 +30,18 @@ def deploy_multicall3_locally() -> Web3:
     w3 = _local_anvil_web3()
     if w3 is None:
         pytest.skip("Start anvil on http://127.0.0.1:8545 for integration tests.")
+    assert w3 is not None
     if len(w3.eth.get_code(_CANONICAL_MULTICALL3)) > 2:
         return w3
     hex_path = Path(__file__).with_name("multicall3_runtime.hex")
     if not hex_path.is_file():
         pytest.skip(f"Missing bytecode file: {hex_path}")
     code = hex_path.read_text(encoding="ascii").strip()
-    raw = w3.provider.make_request("anvil_setCode", [_CANONICAL_MULTICALL3, code])
+    from web3 import types as web3_types
+
+    raw = w3.provider.make_request(
+        web3_types.RPCEndpoint("anvil_setCode"), [_CANONICAL_MULTICALL3, code]
+    )
     if isinstance(raw, dict) and raw.get("error"):
         pytest.skip(f"anvil_setCode unsupported or failed: {raw!r}")
     if len(w3.eth.get_code(_CANONICAL_MULTICALL3)) <= 2:

@@ -1,9 +1,13 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import asyncio
 import json
 import time
 from io import StringIO
+from typing import Any, cast
 
 import pytest
 from lirix import AuditLogger
@@ -22,7 +26,9 @@ def test_register_hook_and_invoke_sync() -> None:
     out: list[int] = []
 
     def cb(*args: object, **kwargs: object) -> None:
-        out.append(int(kwargs.get("x", 0)))
+        x = kwargs.get("x", 0)
+        assert isinstance(x, int)
+        out.append(x)
 
     mgr.register_hook(HOOK_PRE_VALIDATE, cb)
     assert mgr.invoke_hooks(HOOK_PRE_VALIDATE, x=1) == [None]
@@ -61,8 +67,9 @@ def test_register_hook_requires_var_args() -> None:
 
 def test_register_hook_rejects_non_callable() -> None:
     mgr = HookManager()
+    bad: object = object()
     with pytest.raises(RuntimeError, match="Unable"):
-        mgr.register_hook(HOOK_PRE_VALIDATE, object())  # type: ignore[arg-type]
+        mgr.register_hook(HOOK_PRE_VALIDATE, cast(Any, bad))
 
 
 def test_invoke_unknown_hook_point_raises() -> None:
@@ -96,10 +103,14 @@ def test_ainvoke_mixed_sync_and_async() -> None:
     mgr = HookManager()
 
     def s(*args: object, **kwargs: object) -> int:
-        return int(kwargs["x"]) + 1
+        x = kwargs["x"]
+        assert isinstance(x, int)
+        return x + 1
 
     async def a(*args: object, **kwargs: object) -> int:
-        return int(kwargs["x"]) + 2
+        x = kwargs["x"]
+        assert isinstance(x, int)
+        return x + 2
 
     mgr.register_hook(HOOK_PRE_VALIDATE, s)
     mgr.register_hook(HOOK_PRE_VALIDATE, a)

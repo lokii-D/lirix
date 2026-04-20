@@ -4,21 +4,37 @@
 ```text
 lirix/
 ├── lirix/
-│   ├── __init__.py
-│   ├── l1_intent_validator.py      # EN: Blocks prompt-injection attempts by enforcing intent boundaries. / 中文：通过意图边界拦截提示词注入攻击。
-│   ├── schema.py                   # EN: Enforces strict payload schemas and type safety. / 中文：强制严格的负载结构与类型安全。
-│   ├── multicall.py                # EN: Recursively parses nested calldata to expose hidden execution paths. / 中文：递归解析嵌套 calldata，暴露隐藏执行路径。
-│   ├── rpc.py                      # EN: Arbitrates RPC state freshness and fail-closed node selection. / 中文：仲裁 RPC 状态新鲜度并执行失败即关闭的节点选择。
-│   ├── sandbox.py                  # EN: Runs zero-gas simulations to predict EVM reverts safely. / 中文：运行零 Gas 模拟，安全预测 EVM 回滚。
-│   ├── hook_manager.py             # EN: Provides non-invasive extension points for enterprise policy and observability. / 中文：为企业策略与可观测性提供无侵入扩展点。
-│   └── exceptions.py               # EN: Defines security-specific failures with precise operator-facing signals. / 中文：定义面向操作者的精确安全异常信号。
+│   ├── __init__.py                 # EN: Public SDK entrypoint (L1-L5 orchestration). / 中文：SDK 公开入口（编排 L1-L5）。
+│   ├── audit/
+│   │   ├── __init__.py
+│   │   └── logger.py               # EN: Structured audit logs with redaction. / 中文：结构化审计日志与脱敏。
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── compat.py               # EN: Runtime compatibility helpers. / 中文：运行时兼容层。
+│   │   ├── config.py               # EN: Strongly-typed security configuration. / 中文：强类型安全配置。
+│   │   ├── constants.py            # EN: Cross-layer security constants. / 中文：跨层安全常量。
+│   │   ├── exceptions.py           # EN: Security-domain exception hierarchy. / 中文：安全域异常体系。
+│   │   ├── hook_manager.py         # EN: Isolated hook execution and sandboxing. / 中文：隔离式 Hook 执行与沙箱化。
+│   │   ├── multicall.py            # EN: Multicall encoding and selector guards. / 中文：Multicall 编码与选择器防护。
+│   │   └── signatures.py           # EN: ABI/method signature definitions. / 中文：ABI/方法签名定义。
+│   └── layers/
+│       ├── __init__.py
+│       ├── l1_intent_validator.py  # EN: Intent firewall against prompt injection. / 中文：意图防火墙，拦截提示词注入。
+│       ├── l2_schema_validator.py  # EN: Strict payload schema validation. / 中文：严格负载结构校验。
+│       ├── l3_defi_parser.py       # EN: Deep calldata traversal and poison checks. / 中文：深度 calldata 穿透与投毒检测。
+│       ├── l4_rpc_manager.py       # EN: Multi-node reconciliation and circuit breaker. / 中文：多节点对账与断路器。
+│       └── l5_sandbox_simulator.py # EN: EIP-3155 state-override simulation. / 中文：EIP-3155 状态覆写模拟。
 ├── tests/
-│   ├── test_l1_intent_validator.py
-│   ├── test_multicall.py
-│   ├── test_rpc.py
-│   └── test_sandbox.py
+│   ├── test_core/                  # EN: Core primitives and hook/audit behavior. / 中文：核心能力与 Hook/审计行为。
+│   ├── test_layers/                # EN: L1-L5 adversarial and fail-closed suites. / 中文：L1-L5 对抗与 fail-closed 套件。
+│   └── test_integration/           # EN: End-to-end and Anvil-backed integration tests. / 中文：端到端与 Anvil 集成测试。
+├── .github/workflows/
+│   ├── ci.yml                      # EN: Matrix CI (py38-py314 + Foundry/Anvil). / 中文：矩阵 CI（py38-py314 + Foundry/Anvil）。
+│   └── release.yml                 # EN: OIDC-based PyPI + GitHub Release pipeline. / 中文：基于 OIDC 的 PyPI/GitHub Release 流水线。
 ├── docs/
 │   └── STRUCTURE.md
+├── SECURITY.md
+├── CONTRIBUTING.md
 └── pyproject.toml
 ```
 

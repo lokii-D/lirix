@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 lokii
+
 from __future__ import annotations
 
 import pytest
@@ -12,6 +15,7 @@ from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.layers.l4_rpc_manager import RPCManager
 from web3 import Web3
+from web3 import types as web3_types
 from web3.exceptions import ContractLogicError
 
 from tests.test_layers.conftest import (
@@ -221,7 +225,7 @@ def test_anvil_multicall_eth_call_atomic_revert(
     assert raw is not None
 
     revert_addr = Web3.to_checksum_address("0x000000000000000000000000000000000000dEaD")
-    w3.provider.make_request("anvil_setCode", [revert_addr, "0xfe"])
+    w3.provider.make_request(web3_types.RPCEndpoint("anvil_setCode"), [revert_addr, "0xfe"])
     bad = enc.encode_transactions(
         [
             {"to": acct, "data": "0x"},
