@@ -18,7 +18,14 @@ Bridging LLMs to the EVM with deterministic Zero-Gas simulations. Stop AI halluc
 
 ## ⚡ Installation
 
+It is highly recommended to install Lirix inside a virtual environment to avoid OS-level package conflicts (PEP 668).
+
 ```bash
+# 1. Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+
+# 2. Install Lirix
 pip install lirix
 ```
 
@@ -514,3 +521,8 @@ pytest
 ## 许可证
 
 MIT —— 见 `LICENSE`。
+
+### FAQ / Troubleshooting
+
+**Q: I got an `externally-managed-environment` error when running pip install.**
+**A:** This is a modern OS protection feature (PEP 668). Please do not use `--break-system-packages`. Instead, create a virtual environment (`python3 -m venv venv`) and activate it before installing Lirix.
