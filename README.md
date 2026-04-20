@@ -11,7 +11,16 @@
 
 # Lirix: The Definitive Security Gateway for Web3 AI Agents
 
+[![PyPI version](https://img.shields.io/pypi/v/lirix.svg)](https://pypi.org/project/lirix/)
+[![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
+
 Bridging LLMs to the EVM with deterministic Zero-Gas simulations. Stop AI hallucinations and prompt injections *before* they reach your private keys.
+
+## ⚡ Installation
+
+```bash
+pip install lirix
+```
 
 ## ⚡ From Chaos to Determinism in 3 Lines of Code
 
@@ -95,31 +104,6 @@ Use hooks when you need to:
 - Add preflight and postflight controls without forking the core security model
 
 The design principle is simple: the kernel stays deterministic, while the perimeter remains customizable.
-
-## 📦 Installation
-
-### Production
-
-```bash
-pip install lirix
-```
-
-### Development
-
-```bash
-# Install Foundry (required for L5 sandboxed integration tests)
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-
-# Install Lirix with dev dependencies
-pip install -e ".[dev]"
-
-# Run the full local suite
-anvil
-tox
-```
-
-L5 sandbox execution requires Foundry/Anvil locally so the zero-gas test layer can drive a deterministic EVM backend.
 
 ## 🗺️ Project Layout
 
