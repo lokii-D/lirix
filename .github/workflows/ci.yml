@@ -99,3 +99,4 @@ jobs:
         run: tox -e ${{ matrix.tox-env }}
         env:
           PYTHONIOENCODING: "utf-8"
+          PYTHONLEGACYWINDOWSSTDIO: "0"
