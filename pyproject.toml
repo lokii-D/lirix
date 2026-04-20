@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lirix"
+version = "0.1.0-beta"
+description = "Security-focused DeFi payload validation SDK (zero private keys in-library; explicit dependencies)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Lirix" }]
+keywords = ["ethereum", "web3", "defi", "security", "multicall", "validation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "web3>=6.0.0",
+    "eth-abi>=4.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/lirix/"
+Repository = "https://github.com/lirix/lirix"
+"Bug Tracker" = "https://github.com/lirix/lirix/issues"
+Documentation = "https://pypi.org/project/lirix/"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "ruff",
+    "black",
+    "mypy",
+    "tox>=4.0.0",
+    "build",
+    "twine",
+]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lirix*"]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-v --strict-markers --doctest-modules --import-mode=importlib tests --pyargs lirix"
+
+[tool.coverage.run]
+branch = true
+source = ["lirix"]
+
+[tool.coverage.report]
+fail_under = 100
+omit = ["tests/*"]

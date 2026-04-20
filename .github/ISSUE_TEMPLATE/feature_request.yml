@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a new capability or workflow improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the real-world problem you want Lirix to solve.
+  - type: textarea
+    id: pain_point
+    attributes:
+      label: What real-world security/business pain point does this solve? (解决了什么真实的安全/业务痛点？)
+      description: Explain the concrete problem, risk, or workflow bottleneck.
+      placeholder: "This would reduce false positives during transaction screening for high-volume desks."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature you want.
+      placeholder: "Add an allowlist for deterministic contract bytecode signatures."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Share any alternatives or workarounds you considered.
+      placeholder: "Manual review, external risk engine, or custom wrapper logic."
+    validations:
+      required: false

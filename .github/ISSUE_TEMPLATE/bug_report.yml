@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible bug or security-related issue.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: checkboxes
+    id: security_confirmation
+    attributes:
+      label: Security confirmation
+      description: Confirm this is not a security vulnerability.
+      options:
+        - label: "I confirm this is NOT a security vulnerability. If it is, I will close this issue immediately and report it via the SECURITY.md channels."
+          required: true
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve Lirix. Please provide a precise, reproducible report.
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      description: The exact Python version used to reproduce the issue.
+      placeholder: "3.12.4"
+    validations:
+      required: true
+  - type: input
+    id: web3py_version
+    attributes:
+      label: Web3.py version
+      description: The exact Web3.py version used to reproduce the issue.
+      placeholder: "7.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: minimal_reproducible_code
+    attributes:
+      label: Minimal Reproducible Code
+      description: Provide the smallest possible code sample that reproduces the issue.
+      placeholder: |
+        from lirix import ...
+
+        # Minimal reproducible example here
+    validations:
+      required: true
+  - type: textarea
+    id: error_traceback
+    attributes:
+      label: Error Traceback
+      description: Paste the full traceback or error output.
+      placeholder: |
+        Traceback (most recent call last):
+          ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: "The request should be blocked with a clear validation error."
+    validations:
+      required: true
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+      placeholder: "The request proceeded with stale RPC data."
+    validations:
+      required: true
