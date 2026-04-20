@@ -55,10 +55,10 @@ def test_lirix_security_exception_empty_context() -> None:
 
 def test_lirix_security_exception_rejects_positional_args() -> None:
     with pytest.raises(TypeError):
-        LirixSecurityException(
-            error_code="LIRIX_ERR_TEST",
-            human_readable_reason="only positional",
-            context={},
+        LirixSecurityException(  # type: ignore[misc]
+            "LIRIX_ERR_TEST",
+            "only positional",
+            context={"test": "mock"},
             resolution_for_agent=build_agent_resolution(action="noop"),
             resolution_for_developer="d",
         )
@@ -77,10 +77,9 @@ def test_lirix_security_exception_rejects_bad_error_code_prefix() -> None:
 
 def test_lirix_security_exception_requires_context_kwarg() -> None:
     with pytest.raises(TypeError):
-        LirixSecurityException(
+        LirixSecurityException(  # type: ignore[call-arg]
             error_code="LIRIX_ERR_TEST",
             human_readable_reason="x",
-            context={},
             resolution_for_agent=build_agent_resolution(action="noop"),
             resolution_for_developer="d",
         )

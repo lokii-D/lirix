@@ -52,6 +52,7 @@ from lirix.layers import (
 )
 
 __all__ = [
+    "Guardian",
     "AddressChecksumException",
     "AuditLogger",
     "CircuitBreakerOpenException",
@@ -140,8 +141,18 @@ def atomic_multicall(
 class Lirix:
     """三行接入示例：配置 / 调度 / 审计。"""
 
-    def __init__(self, config: LirixConfig) -> None:
-        self.config = config
+    def __init__(
+        self,
+        config: Optional[LirixConfig] = None,
+        *,
+        rpc_urls: Optional[Sequence[str]] = None,
+    ) -> None:
+        if config is None:
+            self.config = LirixConfig(chain_id=1, rpc_urls=list(rpc_urls or []))
+        elif rpc_urls is not None:
+            self.config = config.model_copy(update={"rpc_urls": list(rpc_urls)})
+        else:
+            self.config = config
         self.hooks = HookManager()
         self.audit = AuditLogger(hook_manager=self.hooks)
         self.hooks.bind_audit_logger(self.audit)
@@ -270,3 +281,7 @@ class Lirix:
             timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
         )
         return {"validated": True, **out}
+
+
+# Backward-compatible facade alias used in docs/integration examples.
+Guardian = Lirix

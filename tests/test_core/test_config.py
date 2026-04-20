@@ -125,12 +125,12 @@ def test_lirix_config_strict_mode_no_overlap_ok(
 
 def test_lirix_config_invalid_address_type() -> None:
     with pytest.raises(ConfigurationGuardException):
-        LirixConfig(chain_id=1, strict_mode=False, rpc_urls=["123"])
+        LirixConfig(chain_id=1, strict_mode=False, multicall3_address=123)  # type: ignore[arg-type]
 
 
 def test_lirix_config_rpc_urls_not_sequence() -> None:
     with pytest.raises(ConfigurationGuardException):
-        LirixConfig(chain_id=1, strict_mode=False, rpc_urls=["x"])
+        LirixConfig(chain_id=1, strict_mode=False, rpc_urls="x")  # type: ignore[arg-type]
 
 
 def test_lirix_config_empty_rpc_entry() -> None:
@@ -140,7 +140,7 @@ def test_lirix_config_empty_rpc_entry() -> None:
 
 def test_lirix_config_intents_not_sequence() -> None:
     with pytest.raises(ConfigurationGuardException):
-        LirixConfig(chain_id=1, strict_mode=False, allowed_intents=["x"])
+        LirixConfig(chain_id=1, strict_mode=False, allowed_intents="x")  # type: ignore[arg-type]
 
 
 def test_lirix_config_empty_intent_entry() -> None:
