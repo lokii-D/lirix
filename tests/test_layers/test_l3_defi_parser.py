@@ -13,8 +13,6 @@ from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.core.signatures import AGGREGATE3_SELECTOR, AGGREGATE3_VALUE_SELECTOR
 from lirix.layers.l3_defi_parser import DeFiPayloadParser
-from web3 import Web3
-
 from tests.test_layers.conftest import (
     SWAP_SELECTOR,
     addr_recipient,
@@ -27,6 +25,7 @@ from tests.test_layers.conftest import (
     token_usdc,
     token_weth,
 )
+from web3 import Web3
 
 
 def _full_whitelist() -> list[str]:
