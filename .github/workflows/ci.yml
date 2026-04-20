@@ -100,3 +100,4 @@ jobs:
         env:
           PYTHONIOENCODING: "utf-8"
           PYTHONLEGACYWINDOWSSTDIO: "0"
+          PYTHONUTF8: "1"
