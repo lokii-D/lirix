@@ -10,7 +10,6 @@ from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import InvalidIntentException
 from lirix.layers.l1_intent_validator import IntentValidator
-
 from tests.test_layers.conftest import mainnet_router, token_usdc
 from web3 import Web3
 

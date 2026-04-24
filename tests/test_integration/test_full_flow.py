@@ -14,7 +14,6 @@ from lirix.core.exceptions import (
 from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.layers.l4_rpc_manager import RPCManager
-
 from tests.test_layers.conftest import (
     addr_recipient,
     build_swap_calldata,

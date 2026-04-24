@@ -13,7 +13,6 @@ from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.core.signatures import AGGREGATE3_SELECTOR, AGGREGATE3_VALUE_SELECTOR
 from lirix.layers.l3_defi_parser import DeFiPayloadParser
-
 from tests.test_layers.conftest import (
     SWAP_SELECTOR,
     addr_recipient,
