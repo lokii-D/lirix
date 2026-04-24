@@ -12,3 +12,12 @@ htmlcov/
 .venv/
 venv/
 .env
+
+# Virtual Environments
+.lirix_audit_venv/
+venv/
+.venv/
+env/
+
+# Final Preflight Venv
+.lirix_final_preflight_venv/

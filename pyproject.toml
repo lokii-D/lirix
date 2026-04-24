@@ -27,20 +27,19 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "web3>=6.0.0,<8.0.0",
-    "eth-abi>=4.0.0,<6.0.0",
     "pydantic>=2.0.0,<3.0.0",
+    "web3>=6.0.0,<8.0.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/lokii-D/lirix"
-Repository = "https://github.com/lokii-D/lirix"
-"Bug Tracker" = "https://github.com/lokii-D/lirix/issues"
-Documentation = "https://pypi.org/project/lirix/"
-
 [project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov",
+]
 dev = [
     "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
     "pytest-cov",
     "ruff",
     "black",
@@ -49,6 +48,16 @@ dev = [
     "build",
     "twine",
 ]
+simulation = [
+    "web3>=6.0.0,<8.0.0",
+    "eth-abi>=4.0.0,<6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lokii-D/lirix"
+Repository = "https://github.com/lokii-D/lirix"
+"Bug Tracker" = "https://github.com/lokii-D/lirix/issues"
+Documentation = "https://pypi.org/project/lirix/"
 
 [tool.setuptools]
 include-package-data = false

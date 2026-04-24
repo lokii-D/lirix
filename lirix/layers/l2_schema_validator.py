@@ -24,6 +24,7 @@ class _TxDraftSchema(BaseModel):
     function_name: str = Field(..., min_length=1)
     value: int = Field(default=0, ge=0, le=UINT256_MAX)
     data: str = Field(default="0x", max_length=MAX_L2_CALLDATA_HEX_CHARS)
+    assertions: list[dict[str, Any]] | None = None
 
     @field_validator("to", mode="after")
     @classmethod

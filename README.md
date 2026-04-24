@@ -32,13 +32,13 @@ pip install lirix
 ## ⚡ From Chaos to Determinism in 3 Lines of Code
 
 ```python
-from lirix import Lirix
+from lirix.core.builder import LirixTxBuilder
 
-guardian = Lirix(rpc_urls=["https://eth-mainnet..."])
-
-# 100% Zero-Key. Lirix validates, simulates, and returns a safe payload.
-# You keep full control of signing and broadcast responsibilities.
-safe_payload = guardian.validate_and_simulate(raw_llm_output, intent="swap")
+draft = (
+    LirixTxBuilder("transfer(address,uint256)", ["0x000000000000000000000000000000000000dEaD", 1])
+    .assert_erc20_balance_increase("0x0000000000000000000000000000000000000001", 25)
+    .build()
+)
 ```
 
 ## ⚡ Quickstart
@@ -71,7 +71,7 @@ Lirix is not just another policy wrapper. It is a deterministic security boundar
 - **Physical Isolation vs Soft Policy Guards** — Lirix enforces a hard boundary between intent and chain action, instead of hoping policies are followed.
 - **Edge Privacy vs Cloud-based Telemetry** — Lirix keeps validation local, with no analytics stream leaking your operational surface area.
 
-## 🛡️ The 5-Layer Defense Architecture
+## 🛡️ The 5-Layer Security Shield
 
 ```mermaid
 flowchart LR
@@ -97,7 +97,7 @@ Lirix acts as an uncompromising physical firewall between AI intent and on-chain
 2. **L2 Schema Boundaries**: Pydantic v2 strict typing eliminates mathematical hallucinations and non-checksummed black holes.
 3. **L3 DeFi Deep Parsing**: Penetrates nested Router calldata (e.g., Uniswap/Multicall) to kill supply-chain poisoning.
 4. **L4 Stateful RPC Arbitration**: Multi-node state diffing and Circuit Breakers ruthlessly block stale MEV-vulnerable data.
-5. **L5 Zero-Gas Sandbox**: State-overridden `eth_call` simulations predict EVM reverts without spending a dime.
+5. **L5: State-Aware Executive (智能沙盒执行层)**: Executes the transaction in a Zero-Gas local EVM sandbox. *Revert Interception* blocks any transaction that fails on-chain, and *State Delta Assertions (v1.2.0)* automatically audit post-execution state to defend against DeFi Honeypots, 100% tax tokens, and extreme MEV slippage by reverting when expected token balances are not met.
 
 ## 🔌 Extensible Hook System
 

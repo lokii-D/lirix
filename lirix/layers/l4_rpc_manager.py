@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from web3 import AsyncWeb3, Web3
 from web3.providers import HTTPProvider
@@ -16,6 +17,7 @@ from lirix.core.config import LirixConfig
 from lirix.core.constants import HOOK_ISOLATED_TIMEOUT_SEC, HOOK_LAYER_L4
 from lirix.core.exceptions import (
     CircuitBreakerOpenException,
+    LirixRPCError,
     RPCQuotaExhaustedException,
     RPCUnavailableException,
 )
@@ -300,3 +302,95 @@ class RPCManager:
                     context={"layer": "L4", "reason": "async_web3_not_ready"},
                 )
             return self._async_web3
+
+
+class AsyncQuorumProvider:
+    """L4: Multi-source RPC quorum with anti-staleness routing."""
+
+    def __init__(
+        self,
+        rpc_urls: List[str],
+        *,
+        staleness_threshold: int = 2,
+        request_timeout: float = 8.0,
+    ) -> None:
+        self._rpc_urls = list(rpc_urls)
+        self._staleness_threshold = staleness_threshold
+        self._timeout = request_timeout
+        self._best_url: Optional[str] = None
+        self._best_height: Optional[int] = None
+
+    async def refresh_quorum(self) -> int:
+        if not self._rpc_urls:
+            self._raise_quorum_failed("rpc_urls is empty")
+        outcomes = await asyncio.gather(
+            *(self._fetch_block_number(url) for url in self._rpc_urls),
+            return_exceptions=True,
+        )
+        ok_nodes: List[Tuple[str, int, float]] = []
+        failures: Dict[str, str] = {}
+        for url, outcome in zip(self._rpc_urls, outcomes):
+            if isinstance(outcome, BaseException):
+                failures[url] = str(outcome)
+                continue
+            ok_nodes.append(outcome)
+        if not ok_nodes:
+            self._raise_quorum_failed("all endpoints failed blockNumber", failures=failures)
+        head = max(height for _, height, _ in ok_nodes)
+        healthy = [
+            (url, height, latency)
+            for url, height, latency in ok_nodes
+            if (head - height) <= self._staleness_threshold
+        ]
+        if not healthy:
+            self._raise_quorum_failed("all endpoints stale", failures=failures)
+        self._best_url = min(healthy, key=lambda item: item[2])[0]
+        self._best_height = head
+        return head
+
+    async def eth_call(self, tx: Dict[str, Any], block: str = "latest") -> Any:
+        if self._best_url is None:
+            await self.refresh_quorum()
+        if self._best_url is None:
+            self._raise_quorum_failed("no healthy endpoint selected")
+        try:
+            provider = AsyncHTTPProvider(self._best_url, request_kwargs={"timeout": self._timeout})
+            aw3 = AsyncWeb3(provider)
+            return await aw3.eth.call(cast(Any, tx), block_identifier=cast(Any, block))
+        except BaseException as exc:  # noqa: BLE001
+            best_url = cast(str, self._best_url)
+            self._raise_quorum_failed(
+                "selected endpoint eth_call failed", failures={best_url: str(exc)}
+            )
+
+    @property
+    def best_url(self) -> Optional[str]:
+        return self._best_url
+
+    async def _fetch_block_number(self, url: str) -> Tuple[str, int, float]:
+        start = time.perf_counter()
+        provider = AsyncHTTPProvider(url, request_kwargs={"timeout": self._timeout})
+        aw3 = AsyncWeb3(provider)
+        if not await aw3.is_connected():
+            raise ConnectionError(f"not connected: {url}")
+        height = int(await aw3.eth.block_number)
+        latency = time.perf_counter() - start
+        return url, height, latency
+
+    def _raise_quorum_failed(
+        self,
+        reason: str,
+        *,
+        failures: Optional[Dict[str, str]] = None,
+    ) -> None:
+        raise LirixRPCError(
+            error_code="LRX_RPC_QUORUM_FAILED",
+            value_protected="RPC Availability",
+            resolution_agent="Switch RPC quorum source or retry when healthy nodes recover.",
+            resolution_dev="Inspect endpoint health, latency, and staleness threshold for quorum.",
+            context={
+                "layer": "L4",
+                "reason": reason,
+                "failures": failures or {},
+            },
+        )
