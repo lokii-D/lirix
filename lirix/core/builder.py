@@ -6,6 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
+from web3 import Web3
+
 from lirix.core.exceptions import LirixHallucinationError, ValidationFailedException
 
 
@@ -93,7 +95,6 @@ class CalldataBuilder:
     def _load_deps(self) -> tuple[Any, Any]:
         try:
             from eth_abi import encode as eth_abi_encode  # type: ignore[attr-defined]
-            from web3 import Web3
         except ImportError as exc:
             raise ValidationFailedException(
                 error_code="LRX_DEP_SIMULATION_MISSING",

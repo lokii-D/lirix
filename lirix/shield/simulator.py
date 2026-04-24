@@ -12,6 +12,7 @@ from lirix.core.exceptions import (
     LirixSimulationError,
     LirixStateAssertionError,
 )
+from web3 import Web3
 
 _ERROR_SELECTOR = bytes.fromhex("08c379a0")
 _PANIC_SELECTOR = bytes.fromhex("4e487b71")
@@ -65,7 +66,6 @@ class SimulationEngine:
     def _load_web3(self) -> tuple[Any, Any, Any, Any]:
         try:
             from eth_abi import decode as decode_fn  # type: ignore[attr-defined]
-            from web3 import Web3 as Web3Cls
             from web3.exceptions import ContractLogicError, Web3Exception
         except ImportError as exc:
             raise LirixDependencyError(
@@ -74,8 +74,8 @@ class SimulationEngine:
                 resolution_dev="Run: pip install lirix[simulation]",
                 value_protected="Unknown Asset Value",
             ) from exc
-        self._w3 = Web3Cls(Web3Cls.HTTPProvider(self.rpc_url))
-        return decode_fn, Web3Cls, ContractLogicError, Web3Exception
+        self._w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        return decode_fn, Web3, ContractLogicError, Web3Exception
 
     def run_simulation(
         self,
