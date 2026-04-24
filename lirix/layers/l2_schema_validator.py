@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
@@ -24,7 +24,7 @@ class _TxDraftSchema(BaseModel):
     function_name: str = Field(..., min_length=1)
     value: int = Field(default=0, ge=0, le=UINT256_MAX)
     data: str = Field(default="0x", max_length=MAX_L2_CALLDATA_HEX_CHARS)
-    assertions: list[dict[str, Any]] | None = None
+    assertions: Union[list[dict[str, Any]], None] = None  # noqa: UP007
 
     @field_validator("to", mode="after")
     @classmethod
