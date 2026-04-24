@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI">
+  <a href="https://pypi.org/project/lirix/"><img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/Python-3.8--3.14-blue?style=flat-square" alt="Python Version">
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage 100%">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
@@ -11,7 +11,7 @@
 
 # Lirix: The Definitive Security Gateway for Web3 AI Agents
 
-[![PyPI version](https://img.shields.io/pypi/v/lirix.svg)](https://pypi.org/project/lirix/)
+[![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
 [![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
 
 Lirix is a deterministic security boundary between untrusted AI output and on-chain execution. It blocks prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can touch private keys, signing authority, or capital.
@@ -274,6 +274,13 @@ If your environment exercises the L5 path, ensure Anvil is running and reachable
 MIT — see `LICENSE`.
 
 ---
+
+<div align="center">
+  <a href="https://pypi.org/project/lirix/"><img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI"></a>
+  <img src="https://img.shields.io/badge/Python-3.8--3.14-blue?style=flat-square" alt="Python Version">
+  <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage 100%">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+</div>
 
 <h1 id="-简体中文-chinese-version">🇨🇳 Lirix：Web3 AI Agent 的终极安全前置网关</h1>
 
