@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Type, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -96,15 +96,15 @@ class LirixSecurityValidator(BaseTool):
     ```
     """
 
-    name = "LirixSecurityValidator"
-    description = (
+    name: str = "LirixSecurityValidator"
+    description: str = (
         "Official LangChain tool for Lirix's Triple-Zero Standard. You MUST use "
         "this tool before executing any on-chain swap, transfer, multicall, or "
         "contract call. Pass the raw intent/calldata verbatim. The tool will "
         "validate the payload, simulate execution, and return either a safe "
         "result or a remediation string that lets the agent self-correct."
     )
-    args_schema = LirixSecurityValidatorInput
+    args_schema: Type[BaseModel] = LirixSecurityValidatorInput
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(
