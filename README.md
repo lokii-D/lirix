@@ -6,15 +6,15 @@
 </div>
 
 <p align="center">
-  <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="#-quickstart">⚡ Quickstart</a> | <a href="#-installation">📦 Installation</a> | <a href="#-why-lirix">🎯 Why Lirix?</a> | <a href="#-project-layout">🗺️ Project Layout</a> | <a href="#-security-model">🛡️ Security Model</a> | <a href="#-support--faq">💬 Support / FAQ</a>
+  <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="#-quickstart">⚡ Quickstart</a> | <a href="#-installation">📦 Installation</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Ecosystem Integrations</a> | <a href="#-why-lirix">🎯 Why Lirix?</a> | <a href="#-project-layout">🗺️ Project Layout</a> | <a href="#-security-model">🛡️ Security Model</a> | <a href="#-support--faq">💬 Support / FAQ</a>
 </p>
 
-# Lirix: The Definitive Security Gateway for Web3 AI Agents
+# Lirix v1.4.0: The Monopolistic Ecosystem Infrastructure for Web3 AI Agents
 
 [![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
 [![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
 
-Lirix is a deterministic security boundary between untrusted AI output and on-chain execution. It blocks prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can touch private keys, signing authority, or capital.
+Lirix v1.4.0 is the deterministic security boundary between untrusted AI output and on-chain execution, now elevated from a security gateway into ecosystem infrastructure. It blocks prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can touch private keys, signing authority, or capital.
 
 ## ⚡ From Chaos to Determinism in 3 Lines of Code
 
@@ -54,6 +54,81 @@ except LirixSecurityException as exc:
     print(exc.resolution_for_agent)
 ```
 
+## 🌐 Ecosystem Integrations (LangChain & AutoGen)
+
+Lirix v1.4.0 is built to sit underneath the orchestration layer, not beside it. LangChain and AutoGen can drive agents, tools, planners, and memory—while Lirix remains the hard, fail-closed boundary that stops rekt-grade prompts, honeypot routes, and silent slippage bombs before they become signatures.
+
+### LangChain One-Line Integration
+
+```python
+from __future__ import annotations
+
+from typing import Any
+
+from langchain_core.tools import tool
+from pydantic import BaseModel, ConfigDict, Field
+
+from lirix import Lirix, LirixSecurityException
+
+class LirixValidationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    raw_llm_output: str = Field(..., min_length=1)
+    intent: str = Field(..., min_length=1)
+
+class LirixSecurityValidator:
+    def __init__(self, guardian: Lirix) -> None:
+        self._guardian = guardian
+
+    def validate(self, raw_llm_output: str, intent: str) -> str:
+        try:
+            safe_payload = self._guardian.validate_and_simulate(raw_llm_output, intent=intent)
+            return safe_payload.model_dump_json()
+        except LirixSecurityException as exc:
+            raise RuntimeError(exc.resolution_for_agent) from exc
+
+guardian = Lirix(rpc_urls=["https://eth-mainnet..."])
+validator = LirixSecurityValidator(guardian=guardian)
+
+@tool("lirix_validate_and_simulate")
+def lirix_validate_and_simulate(raw_llm_output: str, intent: str) -> str:
+    """Fail-closed validation for Web3 agent output before any broadcast path."""
+    return validator.validate(raw_llm_output=raw_llm_output, intent=intent)
+```
+
+### AutoGen One-Line Integration
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict
+
+from lirix import Lirix, LirixSecurityException
+
+@dataclass(frozen=True)
+class AutoGenLirixBridge:
+    guardian: Lirix
+
+    def __call__(self, raw_llm_output: str, intent: str) -> Dict[str, Any]:
+        try:
+            safe_payload = self.guardian.validate_and_simulate(raw_llm_output, intent=intent)
+            return {
+                "status": "approved",
+                "payload": safe_payload.model_dump(mode="json"),
+            }
+        except LirixSecurityException as exc:
+            return {
+                "status": "blocked",
+                "resolution_for_agent": exc.resolution_for_agent,
+            }
+
+# Drop this bridge into an AutoGen tool or reply hook.
+autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet..."]))
+```
+
+Lirix is the official fail-closed control plane for Web3-capable agents: wrap it once, and every downstream planner, tool, and autonomous workflow inherits the same security boundary. That is the peace of mind developers reach for when they want zero drama, zero key exposure, and zero tolerance for rekt outcomes.
+
 ## ⚡ Installation
 
 It is strongly recommended to install Lirix inside a virtual environment to avoid OS-level package conflicts (PEP 668).
@@ -73,8 +148,8 @@ AI agents fail in predictable ways: they invent addresses, trust stale state, ov
 
 - **Deterministic intent arbitration** — Lirix converts raw model text into explicit, validated execution intent instead of trusting language that merely sounds plausible.
 - **Fail-closed execution boundary** — unsafe output is blocked before signing, not “warned about” after the fact.
-- **Quorum-grade state validation** — v1.3.0 introduces **L4 Multi-RPC Quorum**, which diffs state across nodes to reject stale, inconsistent, or MEV-vulnerable reads.
-- **Post-execution state proofs** — v1.3.0 introduces **L5 State Delta Assertions**, including fluent checks like `.assert_erc20_balance_increase()`, so you can prove the outcome mathematically rather than infer it from calldata alone.
+- **Quorum-grade state validation** — v1.4.0 introduces **L4 Multi-RPC Quorum**, which diffs state across nodes to reject stale, inconsistent, or MEV-vulnerable reads.
+- **Post-execution state proofs** — v1.4.0 introduces **L5 State Delta Assertions**, including fluent checks like `.assert_erc20_balance_increase()`, so you can prove the outcome mathematically rather than infer it from calldata alone.
 - **Omnichain readiness** — the built-in Intent Registry prepares Lirix for cross-chain routing paths, including Wormhole and LayerZero style flows, without weakening the local trust boundary.
 - **No private-key exposure** — Lirix validates and simulates; your application signs. That separation is not a convenience feature. It is the security model.
 
@@ -104,7 +179,7 @@ Lirix enforces a ruthless boundary between AI intent and chain execution:
 2. **L2 Schema Boundaries**: Pydantic v2 strict typing eliminates malformed payloads and impossible values before execution begins.
 3. **L3 DeFi Deep Parsing**: Penetrates nested router calldata, multicalls, and aggregator payloads to stop supply-chain poisoning at the ABI layer.
 4. **L4 Multi-RPC Quorum**: Async multi-node state diffing and circuit-breaker logic block stale, inconsistent, or MEV-sensitive reads before they influence execution.
-5. **L5 State-Aware Execution Layer**: Runs the transaction in a zero-gas local EVM sandbox, intercepts reverts, and uses **State Delta Assertions** to verify post-execution state mathematically. In v1.3.0, fluent checks like `.assert_erc20_balance_increase()` let you encode the expected outcome directly into the transaction plan, killing DeFi honeypots, 100% tax tokens, and extreme slippage by default when the asserted balance delta is not met.
+5. **L5 State-Aware Execution Layer**: Runs the transaction in a zero-gas local EVM sandbox, intercepts reverts, and uses **State Delta Assertions** to verify post-execution state mathematically. In v1.4.0, fluent checks like `.assert_erc20_balance_increase()` let you encode the expected outcome directly into the transaction plan, killing DeFi honeypots, 100% tax tokens, and extreme slippage by default when the asserted balance delta is not met.
 
 ## 🔌 Extensible Hook System
 
@@ -282,9 +357,9 @@ MIT — see `LICENSE`.
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
 
-<h1 id="-简体中文-chinese-version">🇨🇳 Lirix：Web3 AI Agent 的终极安全前置网关</h1>
+<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.4.0：面向 Web3 AI Agent 的垄断级生态基础设施</h1>
 
-Lirix 是不可信 AI 输出与链上执行之间的确定性安全边界。它会在提示词越狱注入、陈旧 RPC 读取、幻觉式合约路径与有毒 DeFi 负载触达私钥、签名权或资金之前，先行拦截。
+Lirix v1.4.0 已从“安全网关”升级为“生态基础设施”。它是“不可信 AI 输出”与“链上执行”之间的确定性安全边界：在提示词越狱注入、陈旧 RPC 读取、幻觉式合约路径与有毒 DeFi 负载触达私钥、签名权或资金之前，先行拦截，默认熔断阻断。
 
 ## ⚡ 三行代码，将混沌转化为确定性
 
@@ -314,7 +389,7 @@ guardian: Lirix = Lirix(rpc_urls=["https://eth-mainnet..."])
 raw_llm_output: str = '在 Uniswap V3 上将 1 ETH 兑换为 USDC'
 
 try:
-    # 触发 L1-L5 全栈防御：校验 -> 解析 -> 模拟 -> 断言。
+    # 触发 L1-L5 全栈防线：校验 -> 解析 -> 模拟 -> 断言。
     # Lirix 会校验意图、解析 calldata，并执行模拟试爆。
     # 返回的 safe_payload 与签名权严格分离，表示“可安全签名”，而不是“自动签名”。
     safe_payload = guardian.validate_and_simulate(raw_llm_output, intent="swap")
@@ -323,6 +398,81 @@ except LirixSecurityException as exc:
     # 默认熔断阻断：把精确的修正建议返回给 Agent，而不是放行危险执行。
     print(exc.resolution_for_agent)
 ```
+
+## 🌐 生态集成（LangChain & AutoGen）
+
+Lirix v1.4.0 专为“编排层在上、熔断边界在下”的架构而生。LangChain 与 AutoGen 负责 Agent、工具、规划器和记忆；Lirix 负责把那些会把用户带进貔貅盘、honeypot、隐形高税或滑点黑洞的输出，统统挡在签名前——这就是给开发者的“零翻车、零私钥暴露、零被 rekt 焦虑”的终极心安。
+
+### LangChain 一行接入
+
+```python
+from __future__ import annotations
+
+from typing import Any
+
+from langchain_core.tools import tool
+from pydantic import BaseModel, ConfigDict, Field
+
+from lirix import Lirix, LirixSecurityException
+
+class LirixValidationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    raw_llm_output: str = Field(..., min_length=1)
+    intent: str = Field(..., min_length=1)
+
+class LirixSecurityValidator:
+    def __init__(self, guardian: Lirix) -> None:
+        self._guardian = guardian
+
+    def validate(self, raw_llm_output: str, intent: str) -> str:
+        try:
+            safe_payload = self._guardian.validate_and_simulate(raw_llm_output, intent=intent)
+            return safe_payload.model_dump_json()
+        except LirixSecurityException as exc:
+            raise RuntimeError(exc.resolution_for_agent) from exc
+
+guardian = Lirix(rpc_urls=["https://eth-mainnet..."])
+validator = LirixSecurityValidator(guardian=guardian)
+
+@tool("lirix_validate_and_simulate")
+def lirix_validate_and_simulate(raw_llm_output: str, intent: str) -> str:
+    """在任何链上动作之前，先由 Lirix 完成熔断式校验。"""
+    return validator.validate(raw_llm_output=raw_llm_output, intent=intent)
+```
+
+### AutoGen 一行接入
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict
+
+from lirix import Lirix, LirixSecurityException
+
+@dataclass(frozen=True)
+class AutoGenLirixBridge:
+    guardian: Lirix
+
+    def __call__(self, raw_llm_output: str, intent: str) -> Dict[str, Any]:
+        try:
+            safe_payload = self.guardian.validate_and_simulate(raw_llm_output, intent=intent)
+            return {
+                "status": "approved",
+                "payload": safe_payload.model_dump(mode="json"),
+            }
+        except LirixSecurityException as exc:
+            return {
+                "status": "blocked",
+                "resolution_for_agent": exc.resolution_for_agent,
+            }
+
+# 将这个桥接器直接挂到 AutoGen 的 tool 或 reply hook 上即可。
+autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet..."]))
+```
+
+Lirix 是 Web3 AI Agent 进入生产环境时的官方熔断控制平面：封装一次，后续所有规划器、工具与自治工作流都会继承同一条安全边界。这就是开发者追求的“确定性回滚”级别安心感。
 
 ## ⚡ 安装
 
@@ -343,8 +493,8 @@ AI Agent 的失效方式是可预测的：它会编造地址、相信陈旧状�
 
 - **确定性意图仲裁** — Lirix 把原始模型文本转化为显式、可验证的执行意图，而不是相信那些“看起来像对的”语言。
 - **默认熔断阻断的执行边界** — 危险输出会在签名前被拦截，而不是事后才“提示风险”。
-- **共识级状态校验** — v1.3.0 引入 **L4 多源 RPC 共识仲裁**，通过跨节点状态差分，拒绝陈旧、不一致或易遭 MEV 夹击的读数。
-- **执行后状态证明** — v1.3.0 引入 **L5 状态差值断言**，包括 `.assert_erc20_balance_increase()` 这类流式 API，让你用数学方式证明结果，而不是只从 calldata 推测。
+- **共识级状态校验** — v1.4.0 引入 **L4 多源 RPC 共识仲裁**，通过跨节点状态差分，拒绝陈旧、不一致或易遭 MEV 夹击的读数。
+- **执行后状态证明** — v1.4.0 引入 **L5 状态差值断言**，包括 `.assert_erc20_balance_increase()` 这类流式 API，让你用数学方式证明结果，而不是只从 calldata 推测。
 - **全链路由就绪（Omnichain Readiness）** — 内置的 Intent Registry 为跨链路由做准备，兼容 Wormhole、LayerZero 风格流程，同时不削弱本地信任边界。
 - **不暴露私钥** — Lirix 负责校验与试爆；你的应用负责签名。这个分工不是便利性设计，而是安全模型本身。
 
@@ -374,7 +524,7 @@ Lirix 在 AI 意图与链上执行之间，构建了毫不妥协的边界：
 2. **L2 结构边界**：Pydantic v2 强类型校验，在执行前消除格式错误的 payload 与不可能值。
 3. **L3 DeFi 深度解析**：穿透嵌套路由、multicall 与聚合器负载，在 ABI 层截断供应链投毒。
 4. **L4 多源 RPC 共识仲裁**：异步多节点状态差分与断路器逻辑，在执行前阻断陈旧、不一致或易遭 MEV 夹击的脏数据。
-5. **L5 状态感知执行层**：在零 Gas 的本地 EVM 沙盒中执行交易，拦截回滚，并通过**状态差值断言**对执行后的状态进行数学化验证。v1.3.0 中，诸如 `.assert_erc20_balance_increase()` 这样的流式 API，可以把预期结果直接写进交易计划；当断言的余额差值未被满足时，系统会默认熔断阻断，从而击穿 DeFi 貔貅盘与杀猪税代币，以及极端滑点路径。
+5. **L5 状态感知执行层**：在零 Gas 的本地 EVM 沙盒中执行交易，拦截回滚，并通过**状态差值断言**对执行后的状态进行数学化验证。v1.4.0 中，诸如 `.assert_erc20_balance_increase()` 这样的流式 API，可以把预期结果直接写进交易计划；当断言的余额差值未被满足时，系统会默认熔断阻断，从而击穿 DeFi 貔貅盘与杀猪税代币，以及极端滑点路径。
 
 ## 🔌 可扩展 Hook 系统
 
@@ -541,4 +691,4 @@ pytest
 
 ## 许可证
 
-MIT —— 见 `LICENSE`。
+MIT —— 见 `LICENSE`.
