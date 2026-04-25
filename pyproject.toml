@@ -48,6 +48,13 @@ dev = [
     "build",
     "twine",
 ]
+langchain = [
+    "langchain>=0.1.0,<1.0.0",
+    "langchain-core>=0.1.0,<1.0.0",
+]
+autogen = [
+    "autogen-agentchat>=0.4.0,<1.0.0",
+]
 simulation = [
     "web3>=6.0.0,<8.0.0",
     "eth-abi>=4.0.0,<6.0.0",
@@ -74,6 +81,7 @@ target-version = ["py38"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = "-v --strict-markers --doctest-modules --import-mode=importlib tests --pyargs lirix"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 branch = true
@@ -87,3 +95,7 @@ omit = ["tests/*"]
 strict = true
 warn_unused_ignores = true
 disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+module = ["langchain_core.*"]
+ignore_missing_imports = true
