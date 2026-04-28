@@ -35,10 +35,9 @@ jobs:
       - name: Twine check
         run: twine check --strict dist/*
 
-      - name: Publish to PyPI with OIDC
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
           skip-existing: true
 
       - name: Create GitHub Release
