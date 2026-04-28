@@ -27,7 +27,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2 # MANDATORY: Prevents Thundering Herd DDoS
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
@@ -51,7 +51,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: '906020fe46757137e7ee23cec976a12e9dfacd1a'
+          version: nightly # RESTORED: The only tag guaranteed to have binary assets
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: true
 
