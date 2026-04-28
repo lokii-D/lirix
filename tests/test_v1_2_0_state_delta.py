@@ -43,9 +43,10 @@ def test_honeypot_detected_reverts() -> None:
         )
         web3 = AsyncMock()
         validator = StateDeltaValidator(web3)
-        with patch.object(
-            validator, "get_balance", AsyncMock(side_effect=[100, 50])
-        ), pytest.raises(LirixStateAssertionError) as exc_info:
+        with (
+            patch.object(validator, "get_balance", AsyncMock(side_effect=[100, 50])),
+            pytest.raises(LirixStateAssertionError) as exc_info,
+        ):
             await validator.validate(payload)
 
         assert exc_info.value.error_code == "LRX_HONEYPOT_DETECTED"

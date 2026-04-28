@@ -1,10 +1,10 @@
-target-version = "py38"
+target-version = "py39"
 line-length = 100
 src = ["lirix"]
 
 [lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-# 保持 Python 3.8 语法可用的注解形态（list[str] / X | Y / PEP585 内置泛型在 3.8 不可用）
+# Keep conservative annotation transforms across supported versions.
 ignore = ["UP006", "UP007", "UP035", "UP045"]
 
 [lint.per-file-ignores]
