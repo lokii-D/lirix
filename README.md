@@ -9,12 +9,12 @@
   <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="#-installation">📦 Installation</a> | <a href="#-zero-friction-initialization">⚡ Zero-Friction Initialization</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Ecosystem Integrations</a> | <a href="#-deep-dive-the-5-layer-security-shield">🎯 Deep Dive</a> | <a href="#-architecture--hooks">🗺️ Architecture & Hooks</a> | <a href="#-support--faq">💬 Support / FAQ</a>
 </p>
 
-# Lirix v1.5.0: The Omniscience Update for Web3 AI Agents
+# Lirix v1.5.1: The Omniscience Update for Web3 AI Agents
 
 [![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
 [![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
 
-Lirix v1.5.0 is the responsible operating layer for Web3 AI agents: the deterministic boundary between untrusted model output and on-chain execution. It neutralizes prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can ever touch private keys, signing authority, or capital.
+Lirix v1.5.1 is the responsible operating layer for Web3 AI agents: the deterministic boundary between untrusted model output and on-chain execution. It neutralizes prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can ever touch private keys, signing authority, or capital.
 
 ## ☠️ Before Lirix (Vulnerable)
 
@@ -245,9 +245,9 @@ A: This is PEP 668 at work. Create and activate a virtual environment first, the
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
 
-<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.5.0：面向 Web3 AI Agent 的全知更新</h1>
+<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.5.1：面向 Web3 AI Agent 的全知更新</h1>
 
-Lirix v1.5.0 不是“工具箱”，而是 Web3 AI Agent 的责任操作层。它以确定性安全边界，夹在不可信模型输出与链上执行之间：在提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载触达私钥、签名权或资金之前，先行拦截，直接默认熔断。
+Lirix v1.5.1 不是“工具箱”，而是 Web3 AI Agent 的责任操作层。它以确定性安全边界，夹在不可信模型输出与链上执行之间：在提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载触达私钥、签名权或资金之前，先行拦截，直接默认熔断。
 
 ## ☠️ Lirix 之前（存在风险）
 
