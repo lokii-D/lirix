@@ -1,10 +1,23 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from web3 import Web3
+
+warnings.filterwarnings(
+    "ignore",
+    message=(
+        "websockets\\.legacy is deprecated; see "
+        "https://websockets\\.readthedocs\\.io/en/stable/howto/upgrade\\.html "
+        "for upgrade instructions"
+    ),
+    category=DeprecationWarning,
+    module="websockets\\.legacy",
+)
+
+from web3 import Web3  # noqa: E402
 
 
 @pytest.fixture  # type: ignore[misc]

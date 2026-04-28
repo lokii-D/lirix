@@ -4,7 +4,8 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional, Sequence, cast
 
 from lirix import Lirix
-from lirix.core.exceptions import LirixSecurityException
+from lirix.core.exceptions import LirixBaseException
+from lirix.integrations.langchain.tool import _format_security_exception
 
 
 def lirix_validate_intent(
@@ -12,6 +13,7 @@ def lirix_validate_intent(
     rpc_urls: Sequence[str],
     intent: Optional[str] = None,
     state_delta_assertions: Optional[Mapping[str, Any]] = None,
+    security_policy: Optional[Mapping[str, Any]] = None,
 ) -> str:
     """Validate untrusted agent output through Lirix for AutoGen function calling.
 
@@ -37,9 +39,13 @@ def lirix_validate_intent(
         merged_payload.update(dict(state_delta_assertions))
     resolved_intent = intent or "unknown"
     try:
-        result = guardian.validate_and_simulate(resolved_intent, merged_payload)
-    except LirixSecurityException as exc:
-        return str(exc.resolution_for_agent)
+        result = guardian.validate_and_simulate(
+            resolved_intent,
+            merged_payload,
+            security_policy=dict(security_policy) if security_policy is not None else None,
+        )
+    except LirixBaseException as exc:
+        return _format_security_exception(exc)
     if hasattr(result, "model_dump_json"):
         return str(cast(Any, result).model_dump_json())
     return str(result)

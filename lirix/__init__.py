@@ -44,11 +44,15 @@ from lirix.core.hook_manager import HookCallback
 from lirix.core.multicall import MulticallEncoder
 from lirix.core.signatures import AGGREGATE3_SELECTOR, AGGREGATE3_VALUE_SELECTOR
 from lirix.layers import (
+    AbiLRUCache,
     DeFiPayloadParser,
     IntentValidator,
+    ProxyPiercer,
     RPCManager,
     SandboxSimulator,
     SchemaValidator,
+    ShadowAuditor,
+    ShadowPolicySchema,
 )
 
 __all__ = [
@@ -74,6 +78,10 @@ __all__ = [
     "ValidationFailedException",
     "RPCManager",
     "SandboxSimulator",
+    "ProxyPiercer",
+    "AbiLRUCache",
+    "ShadowAuditor",
+    "ShadowPolicySchema",
     "atomic_multicall",
     "register_hook",
 ]
@@ -183,6 +191,7 @@ class Lirix:
         payload: Mapping[str, Any],
         *,
         state_overrides: Optional[Dict[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         """L1→L2→L3→L4→L5：校验后做零 Gas eth_call 沙盒模拟（同步）。
 
@@ -215,6 +224,11 @@ class Lirix:
             block_number=block_number,
             state_overrides=so,
         )
+        ShadowAuditor().audit(
+            payload=draft,
+            simulation_result=out,
+            security_policy=security_policy,
+        )
         self.hooks.invoke_hooks_isolated(
             HOOK_POST_SIMULATION,
             intent=intent,
@@ -237,6 +251,7 @@ class Lirix:
         payload: Mapping[str, Any],
         *,
         state_overrides: Optional[Dict[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         """L1→L2→L3→L4→L5：异步路径（AsyncWeb3 + asyncio）。"""
         draft = dict(payload)
@@ -265,6 +280,11 @@ class Lirix:
             async_web3=aw3,
             block_number=block_number,
             state_overrides=so,
+        )
+        ShadowAuditor().audit(
+            payload=draft,
+            simulation_result=out,
+            security_policy=security_policy,
         )
         await self.hooks.ainvoke_hooks_isolated(
             HOOK_POST_SIMULATION,

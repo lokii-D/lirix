@@ -116,3 +116,4 @@ RPCQuotaExhaustedException = LirixBaseException
 InsufficientFeeException = LirixBaseException
 NonceDesyncException = LirixBaseException
 ContractPausedException = LirixBaseException
+LirixPolicyViolationException = LirixBaseException

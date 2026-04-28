@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lirix import Lirix
-from lirix.core.exceptions import LirixSecurityException
+from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.autogen.tool import lirix_validate_intent
 
 
@@ -47,3 +47,32 @@ def test_autogen_function_serializes_success(monkeypatch: Any) -> None:
     )
 
     assert output == '{"validated": true}'
+
+
+def test_autogen_function_formats_policy_violation_with_context(monkeypatch: Any) -> None:
+    def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
+        raise LirixPolicyViolationException(
+            error_code="LRX_SHADOW_POLICY_BLOCKED",
+            resolution_agent=(
+                "Simulation result violates mandatory security policy. Abort execution."
+            ),
+            context={
+                "policy_key": "max_slippage_bps",
+                "expected": 50,
+                "observed": 250,
+            },
+        )
+
+    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+
+    output = lirix_validate_intent(
+        "swap 1 ETH for USDC",
+        rpc_urls=["https://example-rpc.invalid"],
+        intent="swap",
+    )
+
+    assert output == (
+        "Transaction Blocked by Lirix Policy: max_slippage_bps violated "
+        "(expected=50, observed=250). "
+        "Simulation result violates mandatory security policy. Abort execution."
+    )

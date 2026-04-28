@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 from lirix import Lirix
-from lirix.core.exceptions import LirixSecurityException
+from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.langchain.tool import LirixSecurityValidator
 
 
@@ -58,3 +58,31 @@ def test_langchain_tool_serializes_success_result(monkeypatch: pytest.MonkeyPatc
     output = tool._run("swap 1 ETH for USDC")
 
     assert output == '{"validated": true}'
+
+
+def test_langchain_tool_formats_policy_violation_with_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
+        raise LirixPolicyViolationException(
+            error_code="LRX_SHADOW_POLICY_BLOCKED",
+            resolution_agent=(
+                "Simulation result violates mandatory security policy. Abort execution."
+            ),
+            context={
+                "policy_key": "max_slippage_bps",
+                "expected": 50,
+                "observed": 250,
+            },
+        )
+
+    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+
+    tool = LirixSecurityValidator(rpc_urls=["https://example-rpc.invalid"], default_intent="swap")
+    output = tool._run("swap 1 ETH for USDC")
+
+    assert output == (
+        "Transaction Blocked by Lirix Policy: max_slippage_bps violated "
+        "(expected=50, observed=250). "
+        "Simulation result violates mandatory security policy. Abort execution."
+    )

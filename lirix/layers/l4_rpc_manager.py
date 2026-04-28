@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import math
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,6 +25,19 @@ from lirix.core.exceptions import (
     RPCUnavailableException,
 )
 from lirix.core.hook_manager import HookManager
+
+
+class LirixRPCTimeoutException(LirixRPCError):
+    """Raised when quorum retries exceed a hard wall-clock budget."""
+
+    pass
+
+
+class LirixConsensusFailureException(LirixRPCError):
+    """Raised when quorum hashing fails to reach a 2/3 consensus."""
+
+    pass
+
 
 # 多节点高度差超过该阈值视为污染（Fail-Closed，禁止用旧缓存冒充最新）
 BLOCK_HEIGHT_SPREAD_THRESHOLD: int = 2
@@ -307,16 +323,24 @@ class RPCManager:
 class AsyncQuorumProvider:
     """L4: Multi-source RPC quorum with anti-staleness routing."""
 
+    _RETRYABLE_ERRORS = (ConnectionError, TimeoutError)
+    _MAX_RETRIES = 3
+    _MAX_BACKOFF_TIME_SEC = 5.0
+
     def __init__(
         self,
         rpc_urls: List[str],
         *,
         staleness_threshold: int = 2,
         request_timeout: float = 8.0,
+        retry_attempts: int = 3,
+        retry_base_delay: float = 0.1,
     ) -> None:
         self._rpc_urls = list(rpc_urls)
         self._staleness_threshold = staleness_threshold
         self._timeout = request_timeout
+        self._retry_attempts = retry_attempts
+        self._retry_base_delay = retry_base_delay
         self._best_url: Optional[str] = None
         self._best_height: Optional[int] = None
 
@@ -376,6 +400,154 @@ class AsyncQuorumProvider:
         height = int(await aw3.eth.block_number)
         latency = time.perf_counter() - start
         return url, height, latency
+
+    @staticmethod
+    def _is_quota_exhausted(exc: BaseException) -> bool:
+        text = str(exc)
+        return "429" in text or "Too Many Requests" in text
+
+    @staticmethod
+    def _normalize_value(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: AsyncQuorumProvider._normalize_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [AsyncQuorumProvider._normalize_value(v) for v in value]
+        if isinstance(value, tuple):
+            return [AsyncQuorumProvider._normalize_value(v) for v in value]
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("0x"):
+                hex_body = raw[2:]
+                if hex_body == "":
+                    return 0
+                try:
+                    return int(raw, 16)
+                except ValueError:
+                    return raw.lower()
+            return raw
+        return value
+
+    @classmethod
+    def _serialize_deterministic(cls, result: Any) -> bytes:
+        normalized = cls._normalize_value(result)
+        return json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+    @classmethod
+    def _hash_result(cls, result: Any) -> str:
+        payload = cls._serialize_deterministic(result)
+        return hashlib.sha256(payload).hexdigest()
+
+    async def _retry_call(self, url: str, coro_factory: Any) -> Any:
+        delay = self._retry_base_delay
+        last_exc: Optional[BaseException] = None
+        start = time.perf_counter()
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                return await coro_factory()
+            except BaseException as exc:  # noqa: BLE001
+                last_exc = exc
+                retryable = self._is_quota_exhausted(exc) or isinstance(exc, self._RETRYABLE_ERRORS)
+                elapsed = time.perf_counter() - start
+                if (
+                    (not retryable)
+                    or attempt + 1 >= self._MAX_RETRIES
+                    or (elapsed + delay) > self._MAX_BACKOFF_TIME_SEC
+                ):
+                    if isinstance(exc, TimeoutError) or elapsed >= self._MAX_BACKOFF_TIME_SEC:
+                        raise LirixRPCTimeoutException(
+                            human_readable_reason=(
+                                "RPC call timed out while waiting for quorum retries to complete."
+                            ),
+                            context={"layer": "L4", "url": url, "elapsed_sec": elapsed},
+                        ) from exc
+                    raise
+                await asyncio.sleep(delay)
+                delay *= 2
+        if last_exc is not None:
+            if isinstance(last_exc, TimeoutError):
+                raise LirixRPCTimeoutException(
+                    human_readable_reason=(
+                        "RPC call timed out while waiting for quorum retries to complete."
+                    ),
+                    context={"layer": "L4", "url": url},
+                ) from last_exc
+            raise last_exc
+        raise RuntimeError(f"unreachable retry state for {url}")
+
+    async def quorum_eth_call(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._rpc_urls:
+            raise LirixConsensusFailureException(
+                error_code="LRX_L4_CONSENSUS_FAILED",
+                value_protected="RPC Simulation Consistency",
+                resolution_agent="No RPC endpoints are configured for quorum simulation.",
+                resolution_dev=(
+                    "Provide at least one healthy RPC endpoint before invoking quorum_eth_call."
+                ),
+                context={"layer": "L4", "reason": "rpc_urls_empty"},
+            )
+        head = await self.refresh_quorum()
+        target_block = head - 1
+        if target_block < 0:
+            self._raise_quorum_failed("latest block height is below 1; cannot pin to N-1")
+
+        async def _call(url: str) -> Tuple[str, Any]:
+            async def _do() -> Any:
+                provider = AsyncHTTPProvider(url, request_kwargs={"timeout": self._timeout})
+                aw3 = AsyncWeb3(provider)
+                if not await aw3.is_connected():
+                    raise ConnectionError(f"not connected: {url}")
+                return await aw3.eth.call(cast(Any, tx), block_identifier=cast(Any, target_block))
+
+            result = await self._retry_call(url, _do)
+            return url, result
+
+        results = await asyncio.gather(*(_call(url) for url in self._rpc_urls))
+        hashes: Dict[str, List[str]] = {}
+        raw: Dict[str, Any] = {}
+        for url, result in results:
+            raw[url] = result
+            digest = self._hash_result(result)
+            hashes.setdefault(digest, []).append(url)
+
+        best_hash, nodes = max(hashes.items(), key=lambda item: len(item[1]))
+        required_votes = math.ceil(len(self._rpc_urls) * (2 / 3))
+        if len(nodes) < required_votes:
+            raise LirixConsensusFailureException(
+                error_code="LRX_L4_CONSENSUS_FAILED",
+                value_protected="RPC Simulation Consistency",
+                resolution_agent=(
+                    "No dynamic 2/3 quorum was reached across RPC simulation "
+                    "results; retry with healthy nodes."
+                ),
+                resolution_dev=(
+                    "Inspect state divergence, endpoint integrity, and latest-block pinning."
+                ),
+                context={
+                    "layer": "L4",
+                    "block_number": target_block,
+                    "required_votes": required_votes,
+                    "observed_votes": len(nodes),
+                    "hashes": {u: self._hash_result(v) for u, v in raw.items()},
+                },
+            )
+        primary_block_hash = None
+        if self._best_url is not None:
+            primary_provider = AsyncHTTPProvider(
+                self._best_url, request_kwargs={"timeout": self._timeout}
+            )
+            primary_w3 = AsyncWeb3(primary_provider)
+            block_obj = await primary_w3.eth.get_block(target_block)
+            primary_block_hash = getattr(block_obj, "hash", None)
+        return {
+            "block_number": target_block,
+            "block_hash": primary_block_hash,
+            "hash": best_hash,
+            "result": raw[nodes[0]],
+            "quorum": nodes,
+        }
+
+    def quorum_eth_call_sync(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return asyncio.run(self.quorum_eth_call(tx))
 
     def _raise_quorum_failed(
         self,

@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Type, cast
 from pydantic import BaseModel, ConfigDict, Field
 
 from lirix import Lirix
-from lirix.core.exceptions import LirixSecurityException
+from lirix.core.exceptions import (
+    LirixBaseException,
+    LirixPolicyViolationException,
+)
 
 if TYPE_CHECKING:
 
@@ -29,6 +32,23 @@ else:
             def __init__(self, **kwargs: Any) -> None:
                 for key, value in kwargs.items():
                     setattr(self, key, value)
+
+
+def _format_security_exception(exc: LirixBaseException) -> str:
+    if (
+        isinstance(exc, LirixPolicyViolationException)
+        and getattr(exc, "error_code", None) == "LRX_SHADOW_POLICY_BLOCKED"
+    ):
+        context = exc.context if isinstance(exc.context, dict) else {}
+        policy_key = context.get("policy_key", "unknown_policy")
+        expected = context.get("expected")
+        observed = context.get("observed")
+        return (
+            "Transaction Blocked by Lirix Policy: "
+            f"{policy_key} violated (expected={expected}, observed={observed}). "
+            f"{exc.resolution_for_agent}"
+        )
+    return str(exc.resolution_for_agent)
 
 
 class LirixSecurityValidatorInput(BaseModel):
@@ -57,6 +77,13 @@ class LirixSecurityValidatorInput(BaseModel):
         description=(
             "Optional assertion map for L5 state-delta expectations, such as "
             "assert_erc20_balance_increase."
+        ),
+    )
+    security_policy: Optional[Mapping[str, Any]] = Field(
+        default=None,
+        description=(
+            "Optional human-defined hard policy. When present, Lirix overrides weak model "
+            "assertions and blocks policy violations."
         ),
     )
 
@@ -113,18 +140,34 @@ class LirixSecurityValidator(BaseTool):
         rpc_urls: Sequence[str],
         default_intent: Optional[str] = None,
         state_delta_assertions: Optional[Mapping[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
+        policy: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.rpc_urls = list(rpc_urls)
         self.default_intent = default_intent
         self.state_delta_assertions = dict(state_delta_assertions or {})
+        self.security_policy = self._coerce_policy(security_policy)
+        if policy is not None:
+            self.security_policy.update(self._coerce_policy(policy))
+
+    @staticmethod
+    def _coerce_policy(policy: Optional[Any]) -> dict[str, Any]:
+        if policy is None:
+            return {}
+        if isinstance(policy, Mapping):
+            return dict(policy)
+        if hasattr(policy, "model_dump"):
+            return dict(cast(Any, policy).model_dump(mode="python"))
+        raise TypeError("policy must be a mapping or Pydantic model.")
 
     def _invoke_guardian(
         self,
         raw_intent_or_calldata: str,
         intent: Optional[str] = None,
         state_delta_assertions: Optional[Mapping[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
         guardian = Lirix(rpc_urls=self.rpc_urls)
@@ -132,13 +175,45 @@ class LirixSecurityValidator(BaseTool):
         merged_assertions = dict(self.state_delta_assertions)
         if state_delta_assertions is not None:
             merged_assertions.update(dict(state_delta_assertions))
+        merged_security_policy = dict(self.security_policy)
+        if security_policy is not None:
+            merged_security_policy.update(self._coerce_policy(security_policy))
         try:
             result = guardian.validate_and_simulate(
                 resolved_intent,
                 {"raw_intent_or_calldata": raw_intent_or_calldata, **merged_assertions, **kwargs},
+                security_policy=merged_security_policy or None,
             )
-        except LirixSecurityException as exc:
-            return str(exc.resolution_for_agent)
+        except LirixBaseException as exc:
+            return _format_security_exception(exc)
+        if hasattr(result, "model_dump_json"):
+            return str(cast(Any, result).model_dump_json())
+        return str(result)
+
+    async def _ainvoke_guardian(
+        self,
+        raw_intent_or_calldata: str,
+        intent: Optional[str] = None,
+        state_delta_assertions: Optional[Mapping[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
+    ) -> str:
+        guardian = Lirix(rpc_urls=self.rpc_urls)
+        resolved_intent = intent or self.default_intent or "unknown"
+        merged_assertions = dict(self.state_delta_assertions)
+        if state_delta_assertions is not None:
+            merged_assertions.update(dict(state_delta_assertions))
+        merged_security_policy = dict(self.security_policy)
+        if security_policy is not None:
+            merged_security_policy.update(self._coerce_policy(security_policy))
+        try:
+            result = await guardian.async_validate_and_simulate(
+                resolved_intent,
+                {"raw_intent_or_calldata": raw_intent_or_calldata, **merged_assertions, **kwargs},
+                security_policy=merged_security_policy or None,
+            )
+        except LirixBaseException as exc:
+            return _format_security_exception(exc)
         if hasattr(result, "model_dump_json"):
             return str(cast(Any, result).model_dump_json())
         return str(result)
@@ -148,12 +223,14 @@ class LirixSecurityValidator(BaseTool):
         raw_intent_or_calldata: str,
         intent: Optional[str] = None,
         state_delta_assertions: Optional[Mapping[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
         return self._invoke_guardian(
             raw_intent_or_calldata,
             intent=intent,
             state_delta_assertions=state_delta_assertions,
+            security_policy=security_policy,
             **kwargs,
         )
 
@@ -162,6 +239,7 @@ class LirixSecurityValidator(BaseTool):
         raw_intent_or_calldata: str,
         intent: Optional[str] = None,
         state_delta_assertions: Optional[Mapping[str, Any]] = None,
+        security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
         result = await asyncio.to_thread(
@@ -169,6 +247,7 @@ class LirixSecurityValidator(BaseTool):
             raw_intent_or_calldata,
             intent,
             state_delta_assertions,
+            security_policy,
             **kwargs,
         )
         return result

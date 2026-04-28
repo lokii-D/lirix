@@ -21,3 +21,4 @@ env/
 
 # Final Preflight Venv
 .lirix_final_preflight_venv/
+_lirix_launch_sandbox/
