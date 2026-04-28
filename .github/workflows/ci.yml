@@ -51,7 +51,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 'nightly-5b14d3f35033c4613c2331557999d3e8e2b85584'
+          version: '906020fe46757137e7ee23cec976a12e9dfacd1a'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: true
 
