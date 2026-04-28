@@ -48,7 +48,9 @@ class AbiLRUCache:
         self._memory: OrderedDict[str, Dict[str, Any]] = OrderedDict()
         db_path = sqlite_path or ":memory:"
         if db_path != ":memory:":
-            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            normalized_db_path = Path(db_path).expanduser().resolve()
+            normalized_db_path.parent.mkdir(parents=True, exist_ok=True)
+            db_path = str(normalized_db_path)
         self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.execute(
             """

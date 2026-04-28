@@ -51,7 +51,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly # RESTORED: The only tag guaranteed to have binary assets
+          version: 'v1.6.0-rc1'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: true
 

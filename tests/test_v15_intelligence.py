@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import tempfile
 from typing import Any, Dict, Optional
 
 import pytest
@@ -113,72 +112,70 @@ def test_l3_proxy_piercer_surfaces_admin_slot_for_fallback_verification() -> Non
     assert inspection["proxy_kind"] == "admin_only_proxy"
 
 
-def test_l3_abi_cache_hits_memory_without_refetch() -> None:
+def test_l3_abi_cache_hits_memory_without_refetch(tmp_path: Any) -> None:
     clock = {"now": 1_000_000}
-    with tempfile.NamedTemporaryFile(suffix=".sqlite3") as tmp:
-        cache = AbiLRUCache(
-            sqlite_path=tmp.name,
-            ttl_seconds=60,
-            invalidation_interval_seconds=60,
-            time_fn=lambda: clock["now"],
-        )
-        try:
-            piercer = ProxyPiercer(abi_cache=cache)
-            target = Web3.to_checksum_address("0x0000000000000000000000000000000000001010")
-            web3 = _FakeWeb3()
-            calls = {"count": 0}
+    cache = AbiLRUCache(
+        sqlite_path=str(tmp_path / "abi-cache-hits.sqlite3"),
+        ttl_seconds=60,
+        invalidation_interval_seconds=60,
+        time_fn=lambda: clock["now"],
+    )
+    try:
+        piercer = ProxyPiercer(abi_cache=cache)
+        target = Web3.to_checksum_address("0x0000000000000000000000000000000000001010")
+        web3 = _FakeWeb3()
+        calls = {"count": 0}
 
-            def fetcher(address: str) -> list[dict[str, str]]:
-                calls["count"] += 1
-                return [{"type": "function", "name": "foo", "target": address}]
+        def fetcher(address: str) -> list[dict[str, str]]:
+            calls["count"] += 1
+            return [{"type": "function", "name": "foo", "target": address}]
 
-            first = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
-            second = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
+        first = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
+        second = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
 
-            assert first["cache_hit"] is False
-            assert second["cache_hit"] is True
-            assert calls["count"] == 1
-        finally:
-            cache.close()
+        assert first["cache_hit"] is False
+        assert second["cache_hit"] is True
+        assert calls["count"] == 1
+    finally:
+        cache.close()
 
 
-def test_l3_abi_cache_ttl_expiration_purges_and_refetches() -> None:
+def test_l3_abi_cache_ttl_expiration_purges_and_refetches(tmp_path: Any) -> None:
     clock = {"now": 2_000_000}
-    with tempfile.NamedTemporaryFile(suffix=".sqlite3") as tmp:
-        cache = AbiLRUCache(
-            sqlite_path=tmp.name,
-            ttl_seconds=5,
-            invalidation_interval_seconds=1,
-            time_fn=lambda: clock["now"],
-        )
-        try:
-            piercer = ProxyPiercer(abi_cache=cache)
-            target = Web3.to_checksum_address("0x0000000000000000000000000000000000002020")
-            web3 = _FakeWeb3()
-            calls = {"count": 0}
+    cache = AbiLRUCache(
+        sqlite_path=str(tmp_path / "abi-cache-ttl.sqlite3"),
+        ttl_seconds=5,
+        invalidation_interval_seconds=1,
+        time_fn=lambda: clock["now"],
+    )
+    try:
+        piercer = ProxyPiercer(abi_cache=cache)
+        target = Web3.to_checksum_address("0x0000000000000000000000000000000000002020")
+        web3 = _FakeWeb3()
+        calls = {"count": 0}
 
-            def fetcher(address: str) -> list[dict[str, Any]]:
-                calls["count"] += 1
-                return [
-                    {
-                        "type": "function",
-                        "name": "version",
-                        "round": calls["count"],
-                        "target": address,
-                    }
-                ]
+        def fetcher(address: str) -> list[dict[str, Any]]:
+            calls["count"] += 1
+            return [
+                {
+                    "type": "function",
+                    "name": "version",
+                    "round": calls["count"],
+                    "target": address,
+                }
+            ]
 
-            first = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
-            clock["now"] += 10
-            cache.invalidate_stale()
-            second = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
+        first = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
+        clock["now"] += 10
+        cache.invalidate_stale()
+        second = piercer.fetch_abi(web3, target, abi_fetcher=fetcher)  # type: ignore[arg-type]
 
-            assert first["cache_hit"] is False
-            assert second["cache_hit"] is False
-            assert calls["count"] == 2
-            assert second["abi"][0]["round"] == 2
-        finally:
-            cache.close()
+        assert first["cache_hit"] is False
+        assert second["cache_hit"] is False
+        assert calls["count"] == 2
+        assert second["abi"][0]["round"] == 2
+    finally:
+        cache.close()
 
 
 def test_l5_shadow_policy_rejects_forbidden_method_even_on_allowed_target() -> None:
