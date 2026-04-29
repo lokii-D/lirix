@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Union
+from typing import Any, List, Literal, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
@@ -15,6 +15,15 @@ from lirix.core.hook_manager import HookManager
 from lirix.core.signatures import MAX_L2_CALLDATA_HEX_CHARS, UINT256_MAX
 
 
+class AssertionSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=False, frozen=True)
+
+    assertion_type: Literal["return_data_int_ge", "return_data_exact"] = Field(
+        ..., description="The mathematical assertion mode."
+    )
+    expected_value: int = Field(..., description="The expected integer value to compare against.")
+
+
 class _TxDraftSchema(BaseModel):
     """L2：Pydantic v2 强 schema，阻断幻觉地址、uint256 越界与超长 calldata。"""
 
@@ -24,7 +33,7 @@ class _TxDraftSchema(BaseModel):
     function_name: str = Field(..., min_length=1)
     value: int = Field(default=0, ge=0, le=UINT256_MAX)
     data: str = Field(default="0x", max_length=MAX_L2_CALLDATA_HEX_CHARS)
-    assertions: Union[list[dict[str, Any]], None] = None  # noqa: UP007
+    assertions: Optional[List[AssertionSchema]] = Field(default=None)
 
     @field_validator("to", mode="after")
     @classmethod

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from lirix.core.builder import LirixTxBuilder
@@ -16,16 +16,15 @@ def test_state_assertion_passes() -> None:
         payload = build_valid_l2_payload(
             assertions=[
                 {
-                    "type": "balance_change",
-                    "token": "0x0000000000000000000000000000000000000001",
-                    "min_delta": 0,
+                    "assertion_type": "return_data_int_ge",
+                    "expected_value": 150,
                 }
-            ]
+            ],
+            return_data="0x96",
         )
         web3 = AsyncMock()
         validator = StateDeltaValidator(web3)
-        with patch.object(validator, "get_balance", AsyncMock(side_effect=[100, 150])):
-            assert await validator.validate(payload) is True
+        assert await validator.validate(payload) is True
 
     asyncio.run(_run())
 
@@ -35,28 +34,23 @@ def test_honeypot_detected_reverts() -> None:
         payload = build_valid_l2_payload(
             assertions=[
                 {
-                    "type": "balance_change",
-                    "token": "0x0000000000000000000000000000000000000001",
-                    "min_delta": 0,
+                    "assertion_type": "return_data_int_ge",
+                    "expected_value": 150,
                 }
-            ]
+            ],
+            return_data="0x64",
         )
         web3 = AsyncMock()
         validator = StateDeltaValidator(web3)
-        with (
-            patch.object(validator, "get_balance", AsyncMock(side_effect=[100, 50])),
-            pytest.raises(LirixStateAssertionError) as exc_info,
-        ):
+        with pytest.raises(LirixStateAssertionError) as exc_info:
             await validator.validate(payload)
 
         assert exc_info.value.error_code == "LRX_HONEYPOT_DETECTED"
         assert exc_info.value.to_dict() == {
             "error_code": "LRX_HONEYPOT_DETECTED",
-            "resolution_for_agent": (
-                "Asset delta assertion failed. Potential honeypot or massive slippage."
-            ),
-            "resolution_for_developer": "Check min_delta configurations and contract logic.",
-            "value_protected": "Token Balance",
+            "resolution_for_agent": ("Return data 100 is less than expected 150."),
+            "resolution_for_developer": "Check slippage or state override configurations.",
+            "value_protected": "State Integrity",
         }
 
     asyncio.run(_run())
@@ -73,8 +67,7 @@ def test_fluent_builder_populates_assertions() -> None:
 
     assert draft["assertions"] == [
         {
-            "type": "balance_change",
-            "token": "0x0000000000000000000000000000000000000001",
-            "min_delta": 25,
+            "assertion_type": "return_data_int_ge",
+            "expected_value": 25,
         }
     ]

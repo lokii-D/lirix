@@ -30,32 +30,95 @@ class StateDeltaValidator:
     def __init__(self, web3: Any) -> None:
         self._web3 = web3
 
-    async def validate(self, payload: Mapping[str, Any]) -> bool:
+    async def validate(
+        self,
+        payload: Mapping[str, Any],
+        simulation_result: Mapping[str, Any] | None = None,
+    ) -> bool:
         assertions = payload.get("assertions")
         if not assertions:
             return True
-        for assertion in assertions:
-            if not isinstance(assertion, Mapping):
-                continue
-            if assertion.get("type") != "balance_change":
-                continue
-            token = assertion.get("token")
-            min_delta = int(assertion.get("min_delta", 0))
-            pre_balance = await self.get_balance(token)
-            post_balance = await self.get_balance(token)
-            if (post_balance - pre_balance) < min_delta:
-                raise LirixStateAssertionError(
-                    error_code="LRX_HONEYPOT_DETECTED",
-                    resolution_agent=(
-                        "Asset delta assertion failed. Potential honeypot or massive slippage."
-                    ),
-                    resolution_dev="Check min_delta configurations and contract logic.",
-                    value_protected="Token Balance",
-                )
-        return True
 
-    async def get_balance(self, token: Any) -> int:
-        return int(getattr(self._web3.eth, "balance", 0))
+        # Extract simulated return_data (prefer explicit simulation_result).
+        source_data = simulation_result or payload
+        raw_return_data = source_data.get("return_data", "0x")
+
+        # Convert hex return_data into int.
+        try:
+            actual_int_val = int(raw_return_data, 16) if raw_return_data != "0x" else 0
+        except ValueError:
+            actual_int_val = 0
+
+        for assertion in assertions:
+            # Compatible with Pydantic v2 models or native dicts.
+            a_type = getattr(
+                assertion,
+                "assertion_type",
+                assertion.get("assertion_type") if isinstance(assertion, dict) else None,
+            )
+            e_val = getattr(
+                assertion,
+                "expected_value",
+                assertion.get("expected_value") if isinstance(assertion, dict) else None,
+            )
+
+            if a_type == "return_data_int_ge":
+                if e_val is None:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion missing expected_value.",
+                        resolution_dev="Set expected_value for return_data_int_ge.",
+                        value_protected="State Integrity",
+                    )
+                try:
+                    expected_int_val = int(e_val)
+                except (TypeError, ValueError) as exc:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion expected_value is not an integer.",
+                        resolution_dev='Ensure expected_value is int-like (e.g., 123 or "123").',
+                        value_protected="State Integrity",
+                    ) from exc
+
+                if actual_int_val < expected_int_val:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_HONEYPOT_DETECTED",
+                        resolution_agent=(
+                            f"Return data {actual_int_val} is less than expected "
+                            f"{expected_int_val}."
+                        ),
+                        resolution_dev="Check slippage or state override configurations.",
+                        value_protected="State Integrity",
+                    )
+            elif a_type == "return_data_exact":
+                if e_val is None:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion missing expected_value.",
+                        resolution_dev="Set expected_value for return_data_exact.",
+                        value_protected="State Integrity",
+                    )
+                try:
+                    expected_int_val = int(e_val)
+                except (TypeError, ValueError) as exc:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion expected_value is not an integer.",
+                        resolution_dev='Ensure expected_value is int-like (e.g., 123 or "123").',
+                        value_protected="State Integrity",
+                    ) from exc
+
+                if actual_int_val != expected_int_val:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_STATE_MISMATCH",
+                        resolution_agent=(
+                            f"Return data {actual_int_val} does not exactly match "
+                            f"{expected_int_val}."
+                        ),
+                        resolution_dev="Ensure exact payload parameters.",
+                        value_protected="State Integrity",
+                    )
+        return True
 
 
 class SimulationEngine:

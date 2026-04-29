@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Mapping, Optional, Sequence, cast
 
 from lirix import Lirix
@@ -49,3 +50,25 @@ def lirix_validate_intent(
     if hasattr(result, "model_dump_json"):
         return str(cast(Any, result).model_dump_json())
     return str(result)
+
+
+async def alirix_validate_intent(
+    raw_intent_or_calldata: str,
+    rpc_urls: Sequence[str],
+    intent: Optional[str] = None,
+    state_delta_assertions: Optional[Mapping[str, Any]] = None,
+    security_policy: Optional[Mapping[str, Any]] = None,
+) -> str:
+    """
+    [Lirix Omni-Async Gateway]
+    异步入口：将同步的 AutoGen 校验强行下放到系统线程池。
+    防止在多 Agent Swarm 矩阵并发交互时阻塞主事件循环 (GIL)。
+    """
+    return await asyncio.to_thread(
+        lirix_validate_intent,
+        raw_intent_or_calldata,
+        rpc_urls,
+        intent,
+        state_delta_assertions,
+        security_policy,
+    )

@@ -502,11 +502,24 @@ class AsyncQuorumProvider:
             return url, result
 
         results = await asyncio.gather(*(_call(url) for url in self._rpc_urls))
+
+        async def _compute_hash(url: str, res: Any) -> Tuple[str, str]:
+            # Force CPU-intensive deterministic serialization + SHA256 offloaded
+            # to the system thread pool to avoid blocking the event loop/GIL.
+            digest = await asyncio.to_thread(self._hash_result, res)
+            return url, digest
+
+        # Keep raw results for later selection.
+        raw: Dict[str, Any] = {url: res for url, res in results}
+
+        # Compute all hashes concurrently in the thread pool.
+        hash_tasks = [_compute_hash(url, res) for url, res in results]
+        hash_results = await asyncio.gather(*hash_tasks)
+
         hashes: Dict[str, List[str]] = {}
-        raw: Dict[str, Any] = {}
-        for url, result in results:
-            raw[url] = result
-            digest = self._hash_result(result)
+        url_to_digest: Dict[str, str] = {}
+        for url, digest in hash_results:
+            url_to_digest[url] = digest
             hashes.setdefault(digest, []).append(url)
 
         best_hash, nodes = max(hashes.items(), key=lambda item: len(item[1]))
@@ -527,7 +540,7 @@ class AsyncQuorumProvider:
                     "block_number": target_block,
                     "required_votes": required_votes,
                     "observed_votes": len(nodes),
-                    "hashes": {u: self._hash_result(v) for u, v in raw.items()},
+                    "hashes": url_to_digest,
                 },
             )
         primary_block_hash = None

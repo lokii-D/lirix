@@ -9,18 +9,18 @@
   <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="#-installation">📦 Installation</a> | <a href="#-zero-friction-initialization">⚡ Zero-Friction Initialization</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Ecosystem Integrations</a> | <a href="#-deep-dive-the-5-layer-security-shield">🎯 Deep Dive</a> | <a href="#-architecture--hooks">🗺️ Architecture & Hooks</a> | <a href="#-support--faq">💬 Support / FAQ</a>
 </p>
 
-# Lirix v1.5.1: The Omniscience Update for Web3 AI Agents
+# Lirix v1.5.2: The Omniscience Update for Web3 AI Agents
 
 [![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
 [![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
 
-Lirix v1.5.1 is the responsible operating layer for Web3 AI agents: the deterministic boundary between untrusted model output and on-chain execution. It neutralizes prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can ever touch private keys, signing authority, or capital.
+Lirix v1.5.2 is the deterministic security boundary for Web3 AI agents. It stands between untrusted model output and on-chain execution, neutralizing prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can reach private keys, signing authority, or capital.
 
 ## ☠️ Before Lirix (Vulnerable)
 
 ```python
-# AI agent blindly trusts the model output.
-# Funds get drained. Rekt.
+# The agent trusts raw model output and broadcasts it anyway.
+# One bad prompt, one drained wallet, one irreversible mistake.
 multicall = ai_agent.generate("swap and stake everything")
 sign_and_broadcast(multicall)  # malicious payload slips through
 ```
@@ -41,7 +41,7 @@ except LirixSecurityException as exc:
     ai_agent.rewrite_intent(agent_message)
 ```
 
-Lirix turns that gap into a boundary: the model can propose, but only verified execution can proceed.
+Lirix turns the gap into a deterministic boundary. The model can propose. Only verified execution can proceed.
 
 ## 📦 Installation
 
@@ -58,13 +58,13 @@ pip install lirix
 
 ## ⚡ Zero-Friction Initialization
 
-Now that it’s installed, let Lirix scaffold your security boundary in one second.
+Once installed, let Lirix scaffold your security boundary in one command.
 
 ```bash
 lirix init
 ```
 
-That single command gives your team a clean, production-minded starting point: boundary, structure, and defaults without hand-built ceremony.
+That single command gives your team a production-minded starting point: boundary, structure, and defaults without hand-built ceremony.
 
 ### From bootstrap to broadcast in 3 lines
 
@@ -83,7 +83,7 @@ L5 state assertions let you encode the expected post-trade delta directly into t
 
 ## 🌐 Ecosystem Integrations (LangChain & AutoGen)
 
-Lirix sits underneath the orchestration layer, not beside it. LangChain and AutoGen can drive agents, tools, planners, and memory while Lirix remains the hard boundary that keeps execution **fail-closed** and enables **native tool injection** without sacrificing the trust model.
+Lirix sits beneath the orchestration layer, not beside it. LangChain and AutoGen can keep driving agents, tools, planners, and memory while Lirix remains the ruthless boundary that keeps execution **fail-closed** and enables **native tool injection** without compromising the trust model.
 
 ### LangChain One-Line Integration
 
@@ -154,7 +154,7 @@ class AutoGenLirixBridge:
 autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet..."]))
 ```
 
-Lirix is the official fail-closed control plane for Web3-capable agents: wrap it once, and every downstream planner, tool, and autonomous workflow inherits the same security boundary. That is the calm, repeatable posture developers want when the stakes are keys, capital, and execution integrity.
+Lirix is the official fail-closed control plane for Web3-capable agents. Wrap it once, and every downstream planner, tool, and autonomous workflow inherits the same security boundary. That is the calm, repeatable posture developers want when the stakes are keys, capital, and execution integrity.
 
 ## 🎯 Deep Dive: The 5-Layer Security Shield
 
@@ -245,15 +245,15 @@ A: This is PEP 668 at work. Create and activate a virtual environment first, the
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
 
-<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.5.1：面向 Web3 AI Agent 的全知更新</h1>
+<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.5.2：面向 Web3 AI Agent 的全知更新</h1>
 
-Lirix v1.5.1 不是“工具箱”，而是 Web3 AI Agent 的责任操作层。它以确定性安全边界，夹在不可信模型输出与链上执行之间：在提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载触达私钥、签名权或资金之前，先行拦截，直接默认熔断。
+Lirix v1.5.2 不是“工具箱”，而是 Web3 AI Agent 的确定性安全边界。它横亘在不可信模型输出与链上执行之间。提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载，必须先经过它的审判，才能接近私钥、签名权或资金。
 
 ## ☠️ Lirix 之前（存在风险）
 
 ```python
 # AI Agent 盲目信任模型输出。
-# 资金被盗（Rekt）。
+# 资金会被直接拖进深坑。
 multicall = ai_agent.generate("swap and stake everything")
 sign_and_broadcast(multicall)  # 恶意 payload 直接穿透
 ```
@@ -274,11 +274,11 @@ except LirixSecurityException as exc:
     ai_agent.rewrite_intent(agent_message)
 ```
 
-Lirix 把原本的风险缝隙，直接收拢成一条可验证、可熔断、可审计的安全边界。
+Lirix 把原本裸露的风险缝隙，收拢成一条可验证、可熔断、可审计的确定性边界。
 
 ## 📦 安装
 
-建议始终在虚拟环境中安装 Lirix，以规避 PEP 668 带来的系统级包冲突与 `externally-managed-environment` 阻断。
+建议始终在虚拟环境中安装 Lirix。这样能与现代操作系统保护机制保持一致，也能绕开 PEP 668 带来的 `externally-managed-environment` 阻断。
 
 ```bash
 # 1. 创建并激活虚拟环境
@@ -291,13 +291,13 @@ pip install lirix
 
 ## ⚡ 零摩擦初始化
 
-安装完成后，让 Lirix 在 1 秒内为你生成安全边界。
+安装完成后，只需一条命令，Lirix 就能为你搭出安全边界。
 
 ```bash
 lirix init
 ```
 
-这一条命令会把安全基座、目录骨架与默认配置一次性落地，让团队从“我要搭环境”瞬间切换到“我已经有受控执行边界”。
+这条命令会一次性落地安全基座、目录骨架与默认配置。团队会立刻从“我要搭环境”切换到“我已经拥有受控执行边界”。
 
 ### 从初始化到广播，只要 3 行
 
@@ -306,7 +306,7 @@ from lirix.core.builder import LirixTxBuilder
 
 draft = (
     LirixTxBuilder("transfer(address,uint256)", ["0x000000000000000000000000000000000000dEaD", 1])
-    # Reverts mathematically if post-trade delta < 25 USDC.
+    # 若交易后差值 < 25 USDC，数学级回滚。
     .assert_erc20_balance_increase("0x0000000000000000000000000000000000000001", 25)
     .build()
 )
@@ -316,7 +316,7 @@ L5 状态断言允许你把预期的交易后差值直接写进执行计划。�
 
 ## 🌐 生态集成（LangChain & AutoGen）
 
-Lirix 位于编排层下方，而不是和编排层平行。LangChain 与 AutoGen 继续负责 Agent、工具、规划器与记忆；Lirix 负责把那些会把用户拖进貔貅盘、honeypot、隐形高税或滑点黑洞的输出，全部拦在签名前——这就是 **fail-closed**，也是 **native tool injection** 的正确打开方式。
+Lirix 位于编排层之下，而不是和编排层并排。LangChain 与 AutoGen 继续负责 Agent、工具、规划器与记忆；Lirix 负责把那些会把用户拖进貔貅盘、honeypot、隐形高税或滑点黑洞的输出，全部拦在签名前。它让 **fail-closed** 成为默认，把 **native tool injection** 变成可控能力，而不是信任漏洞。
 
 ### LangChain 一行接入
 
@@ -352,7 +352,7 @@ validator = LirixSecurityValidator(guardian=guardian)
 
 @tool("lirix_validate_and_simulate")
 def lirix_validate_and_simulate(raw_llm_output: str, intent: str) -> str:
-    """在任何链上动作之前，先由 Lirix 完成熔断式校验。"""
+    """在任何链上动作之前，先由 Lirix 完成物理级熔断校验。"""
     return validator.validate(raw_llm_output=raw_llm_output, intent=intent)
 ```
 
@@ -387,7 +387,7 @@ class AutoGenLirixBridge:
 autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet..."]))
 ```
 
-Lirix 是 Web3 AI Agent 进入生产环境时的官方熔断控制平面：封装一次，后续所有规划器、工具与自治工作流都会继承同一条安全边界。这就是开发者想要的“确定性、可回滚、可审计”的终局体验。
+Lirix 是 Web3 AI Agent 进入生产环境时的官方熔断控制平面。封装一次，后续所有规划器、工具与自治工作流都会继承同一条安全边界。这就是开发者真正需要的：确定性。可回滚。可审计。
 
 ## 🎯 深入解析：五层安全防线
 
@@ -415,7 +415,7 @@ Lirix 在 AI 意图与链上执行之间，立起一条毫不妥协的隔离带�
 2. **L2 结构边界** 🧱：Pydantic v2 严格类型校验，在执行前清除畸形 payload 和不可能值。
 3. **L3 代理穿透 + ABI 解码** 🛰️：穿透 EIP-1967、Beacon、UUPS 代理层，再解码嵌套路由、multicall 与聚合器负载，让供应链投毒在 ABI 边界就被掐断。
 4. **L4 动态 BFT RPC Quorum** ⚖️：按 `math.ceil(N * 2/3)` 动态计算共识门槛，跨节点做状态差分；一旦读数分叉、陈旧或带有 MEV 风险，立刻触发确定性熔断。
-5. **L5 ShadowPolicy 执行层** 🕶️：在零 Gas 的本地 EVM 沙盒里跑交易，拦截回滚，并用 `ShadowPolicySchema` 覆盖幻觉式结论，把结果锚定在数学可证的断言上。该说不通过时就说不通过，没有“差不多”、“应该可以”、“模型觉得行”。
+5. **L5 Shadow Policy 执行层** 🕶️：在零 Gas 的本地 EVM 沙盒里跑交易，拦截回滚，并用 `ShadowPolicySchema` 覆盖幻觉式结论，把结果锚定在数学可证的断言上。该说不通过时就说不通过，没有“差不多”、“应该可以”、“模型觉得行”。
 
 ## 🗺️ 架构与 Hook
 

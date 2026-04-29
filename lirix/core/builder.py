@@ -25,7 +25,10 @@ class LirixTxBuilder:
         self._draft_payload: Optional[dict[str, Any]] = None
 
     def assert_erc20_balance_increase(self, token: str, min_delta: int) -> LirixTxBuilder:
-        self._assertions.append({"type": "balance_change", "token": token, "min_delta": min_delta})
+        # L5 validates math against simulated `return_data`, so token is currently not used.
+        self._assertions.append(
+            {"assertion_type": "return_data_int_ge", "expected_value": min_delta}
+        )
         return self
 
     def build(self) -> dict[str, Any]:

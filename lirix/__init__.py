@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+__version__ = "1.5.2"
+
 import sys
 
 if sys.version_info < (3, 8) or sys.version_info >= (3, 15):
