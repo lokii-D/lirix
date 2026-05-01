@@ -90,6 +90,36 @@ class StateDeltaValidator:
                         resolution_dev="Check slippage or state override configurations.",
                         value_protected="State Integrity",
                     )
+            elif a_type == "return_data_int_le":
+                if e_val is None:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion missing expected_value.",
+                        resolution_dev="Set expected_value for return_data_int_le.",
+                        value_protected="State Integrity",
+                    )
+                try:
+                    expected_int_val = int(e_val)
+                except (TypeError, ValueError) as exc:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_ASSERTION_CONFIG_INVALID",
+                        resolution_agent="Return-data assertion expected_value is not an integer.",
+                        resolution_dev='Ensure expected_value is int-like (e.g., 123 or "123").',
+                        value_protected="State Integrity",
+                    ) from exc
+
+                if actual_int_val > expected_int_val:
+                    raise LirixStateAssertionError(
+                        error_code="LRX_STATE_MISMATCH",
+                        resolution_agent=(
+                            f"Return data {actual_int_val} is greater than expected "
+                            f"{expected_int_val}."
+                        ),
+                        resolution_dev=(
+                            "Check payout cap assumptions and state override configurations."
+                        ),
+                        value_protected="State Integrity",
+                    )
             elif a_type == "return_data_exact":
                 if e_val is None:
                     raise LirixStateAssertionError(

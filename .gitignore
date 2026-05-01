@@ -22,3 +22,31 @@ env/
 # Final Preflight Venv
 .lirix_final_preflight_venv/
 _lirix_launch_sandbox/
+
+# OS files
+.DS_Store
+
+# Local research/checklist artifacts (keep private)
+checklists/
+prompts/
+paper.aux
+paper.bbl
+paper.blg
+paper.fdb_latexmk
+paper.fls
+paper.log
+paper.out
+paper.pdf
+paper.synctex.gz
+paper.tex
+references.bib
+
+# Benchmark outputs and reports: ignore all by default
+tests/benchmark/**
+
+# Public benchmark scripts to keep trackable
+!tests/benchmark/plot_rq4_master_panel.py
+!tests/benchmark/test_rq1_async_gateway.py
+!tests/benchmark/test_rq2_assertions.py
+!tests/benchmark/test_rq3_quorum.py
+!tests/benchmark/test_rq4_tdsc_convergence.py

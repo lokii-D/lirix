@@ -18,8 +18,8 @@ from lirix.core.signatures import MAX_L2_CALLDATA_HEX_CHARS, UINT256_MAX
 class AssertionSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=False, frozen=True)
 
-    assertion_type: Literal["return_data_int_ge", "return_data_exact"] = Field(
-        ..., description="The mathematical assertion mode."
+    assertion_type: Literal["return_data_int_ge", "return_data_int_le", "return_data_exact"] = (
+        Field(..., description="The mathematical assertion mode.")
     )
     expected_value: int = Field(..., description="The expected integer value to compare against.")
 
