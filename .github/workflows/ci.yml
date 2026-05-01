@@ -52,7 +52,6 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: 'v1.6.0-rc1'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: true
 
       - name: Set up Python
@@ -70,6 +69,11 @@ jobs:
       - name: Start Anvil and Verify
         shell: bash
         run: |
+          # Ubuntu runner hardening: ensure anvil binary is executable.
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            chmod +x "$(command -v anvil)"
+          fi
+
           # 1. Ensure anvil command exists
           command -v anvil >/dev/null 2>&1 || { echo "FATAL: anvil command not found"; exit 1; }
 
@@ -100,8 +104,10 @@ jobs:
           cat anvil.log
           exit 1
 
-      - name: Run tox
-        run: tox -e ${{ matrix.tox-env }}
+      - name: Run tests
+        run: |
+          # Explicitly scope collection to tests only.
+          python -m pytest tests/
         env:
           PYTHONIOENCODING: "utf-8"
           PYTHONLEGACYWINDOWSSTDIO: "0"

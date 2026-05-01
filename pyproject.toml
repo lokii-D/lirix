@@ -76,7 +76,7 @@ include-package-data = false
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["lirix*"]
-exclude = ["tests*", "examples*", "docs*"]
+exclude = ["tests*", "examples*", "docs*", "benchmarks*"]
 
 [tool.black]
 line-length = 100
