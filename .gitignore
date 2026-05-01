@@ -42,11 +42,14 @@ paper.tex
 references.bib
 
 # Benchmark outputs and reports: ignore all by default
-tests/benchmark/**
+benchmarks/**
 
 # Public benchmark scripts to keep trackable
-!tests/benchmark/plot_rq4_master_panel.py
-!tests/benchmark/test_rq1_async_gateway.py
-!tests/benchmark/test_rq2_assertions.py
-!tests/benchmark/test_rq3_quorum.py
-!tests/benchmark/test_rq4_tdsc_convergence.py
+!benchmarks/plot_rq4_master_panel.py
+!benchmarks/test_rq1_async_gateway.py
+!benchmarks/test_rq2_assertions.py
+!benchmarks/test_rq3_quorum.py
+!benchmarks/test_rq4_tdsc_convergence.py
+benchmarks/rq3_tests/rq3_montecarlo_convergence.csv
+.gitignore
+benchmarks/rq2_tests/rq2_micro_redteam.csv
