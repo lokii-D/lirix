@@ -30,17 +30,3 @@ _lirix_launch_sandbox/
 checklists/
 prompts/
 tdsc/
-paper.aux
-paper.bbl
-paper.blg
-paper.fdb_latexmk
-paper.fls
-paper.log
-paper.out
-paper.pdf
-paper.synctex.gz
-paper.tex
-references.bib
-
-# Benchmark outputs and reports: ignore all by default
-benchmarks/
