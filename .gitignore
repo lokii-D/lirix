@@ -29,6 +29,7 @@ _lirix_launch_sandbox/
 # Local research/checklist artifacts (keep private)
 checklists/
 prompts/
+tdsc/
 paper.aux
 paper.bbl
 paper.blg
@@ -42,14 +43,4 @@ paper.tex
 references.bib
 
 # Benchmark outputs and reports: ignore all by default
-benchmarks/**
-
-# Public benchmark scripts to keep trackable
-!benchmarks/plot_rq4_master_panel.py
-!benchmarks/test_rq1_async_gateway.py
-!benchmarks/test_rq2_assertions.py
-!benchmarks/test_rq3_quorum.py
-!benchmarks/test_rq4_tdsc_convergence.py
-benchmarks/rq3_tests/rq3_montecarlo_convergence.csv
-.gitignore
-benchmarks/rq2_tests/rq2_micro_redteam.csv
+benchmarks/
