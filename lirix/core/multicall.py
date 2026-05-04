@@ -33,57 +33,62 @@ class MulticallEncoder:
         if not isinstance(transactions, list) or not transactions:
             raise MulticallEncodingException(
                 human_readable_reason="transactions must be a non-empty list.",
-                context={"layer": "multicall"},
+                context={"layer": "multicall", "reason": "transactions_empty"},
             )
         parsed: List[Tuple[str, bytes, int]] = []
         for i, raw in enumerate(transactions):
             if not isinstance(raw, dict):
                 raise MulticallEncodingException(
                     human_readable_reason="Each transaction must be a dict.",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "transaction_not_dict"},
                 )
             try:
                 to_raw = raw["to"]
             except KeyError as exc:
                 raise MulticallEncodingException(
                     human_readable_reason="Each transaction must include key 'to'.",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "missing_to"},
                 ) from exc
             if not isinstance(to_raw, str) or not Web3.is_address(to_raw.strip()):
                 raise MulticallEncodingException(
                     human_readable_reason="transaction.to must be a valid hex address.",
-                    context={"layer": "multicall", "index": i, "to": to_raw},
+                    context={
+                        "layer": "multicall",
+                        "index": i,
+                        "to": to_raw,
+                        "reason": "invalid_to",
+                    },
                 )
             to_cs = Web3.to_checksum_address(to_raw.strip())
             data_raw = raw.get("data", "0x")
             if not isinstance(data_raw, str):
                 raise MulticallEncodingException(
                     human_readable_reason="transaction.data must be a hex string.",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "data_not_string"},
                 )
             if not data_raw.startswith("0x"):
                 raise MulticallEncodingException(
                     human_readable_reason='transaction.data must start with "0x".',
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "data_missing_0x"},
                 )
             body_hex = data_raw[2:]
             if len(body_hex) % 2 != 0:
                 raise MulticallEncodingException(
                     human_readable_reason="transaction.data hex length must be even.",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "data_odd_length"},
                 )
             try:
                 data_b = bytes.fromhex(body_hex) if body_hex else b""
             except ValueError as exc:
                 raise MulticallEncodingException(
                     human_readable_reason="transaction.data is not valid hex.",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "data_invalid_hex"},
                 ) from exc
             val = raw.get("value", 0)
             if not isinstance(val, int) or val < 0:
                 raise MulticallEncodingException(
                     human_readable_reason="transaction.value must be a non-negative int (wei).",
-                    context={"layer": "multicall", "index": i},
+                    context={"layer": "multicall", "index": i, "reason": "value_invalid"},
                 )
             parsed.append((to_cs, data_b, val))
 
@@ -96,6 +101,7 @@ class MulticallEncoder:
                 ),
                 context={
                     "layer": "multicall",
+                    "reason": "outer_value_mismatch",
                     "sum_subcall_values_wei": total_value,
                     "outer_value_wei": outer_value_wei,
                 },

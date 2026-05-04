@@ -8,7 +8,7 @@ import inspect
 import re
 from dataclasses import asdict, dataclass
 from time import perf_counter
-from typing import Any, Mapping
+from typing import Any, Mapping, NoReturn
 
 from lirix.core.builder import CalldataBuilder
 from lirix.core.exceptions import LirixCircuitBreakerError, LirixSimulationError
@@ -33,13 +33,25 @@ class LirixGuard:
         self._schema_validator = SchemaValidator()
         self.last_trace: dict[str, Any] | None = None
 
+    @staticmethod
+    def _raise_simulation_error(
+        error_code: str,
+        agent_msg: str,
+        dev_msg: str,
+    ) -> NoReturn:
+        raise LirixSimulationError(
+            error_code=error_code,
+            resolution_agent=agent_msg,
+            resolution_dev=dev_msg,
+            value_protected="Unknown Asset Value",
+        )
+
     def parse(self, payload: Mapping[str, Any]) -> bool:
         if inspect.isawaitable(payload):
-            raise LirixSimulationError(
-                error_code="LRX_SIM_ASYNC_PAYLOAD",
-                resolution_agent="Use async_parse for awaitable payload handling.",
-                resolution_dev="Pass a concrete mapping payload into parse or async_parse.",
-                value_protected="Unknown Asset Value",
+            self._raise_simulation_error(
+                "LRX_SIM_ASYNC_PAYLOAD",
+                "Use async_parse for awaitable payload handling.",
+                "Pass a concrete mapping payload into parse or async_parse.",
             )
         return asyncio.run(self._parse_impl(payload))
 
@@ -62,35 +74,31 @@ class LirixGuard:
             function_signature = draft.get("function_signature")
             args = draft.get("args", [])
             if not isinstance(target, str):
-                raise LirixSimulationError(
-                    error_code="LRX_SIM_TARGET_REQUIRED",
-                    resolution_agent="Provide a target address for simulation.",
-                    resolution_dev="Ensure the payload includes a valid target address.",
-                    value_protected="Unknown Asset Value",
+                self._raise_simulation_error(
+                    "LRX_SIM_TARGET_REQUIRED",
+                    "Provide a target address for simulation.",
+                    "Ensure the payload includes a valid target address.",
                 )
             if isinstance(function_signature, str):
                 if not isinstance(args, list):
-                    raise LirixSimulationError(
-                        error_code="LRX_SIM_ARGS_TYPE",
-                        resolution_agent="Simulation args must be a list.",
-                        resolution_dev="Pass ABI arguments as a list.",
-                        value_protected="Unknown Asset Value",
+                    self._raise_simulation_error(
+                        "LRX_SIM_ARGS_TYPE",
+                        "Simulation args must be a list.",
+                        "Pass ABI arguments as a list.",
                     )
                 calldata = self._builder.build(function_signature, args)
             else:
                 data = draft.get("data")
                 if not isinstance(data, str):
-                    raise LirixSimulationError(
-                        error_code="LRX_SIM_SIGNATURE_REQUIRED",
-                        resolution_agent=(
-                            "Provide function_signature+args or a prebuilt calldata data field."
-                        ),
-                        resolution_dev="Ensure payload includes either function_signature or data.",
-                        value_protected="Unknown Asset Value",
+                    self._raise_simulation_error(
+                        "LRX_SIM_SIGNATURE_REQUIRED",
+                        "Provide function_signature+args or a prebuilt calldata data field.",
+                        "Ensure payload includes either function_signature or data.",
                     )
                 calldata = data
             simulator = self._simulator or SimulationEngine(self.rpc_url)
             started = perf_counter()
+            rpc_response: Any = None
             try:
                 rpc_response = await asyncio.wait_for(
                     simulator.async_run_simulation(
@@ -128,15 +136,15 @@ class LirixGuard:
         return True
 
     def sanitize_trace(self, trace_dict: Mapping[str, Any]) -> dict[str, Any]:
-        sanitized: dict[str, Any] = {}
-        for key, value in trace_dict.items():
+        def _sanitize(value: Any) -> Any:
             if isinstance(value, str):
-                sanitized[key] = re.sub(r"0x[a-fA-F0-9]{40}", "0x[SANITIZED]", value)
-            elif isinstance(value, dict):
-                sanitized[key] = {
-                    k: re.sub(r"0x[a-fA-F0-9]{40}", "0x[SANITIZED]", v) if isinstance(v, str) else v
-                    for k, v in value.items()
-                }
-            else:
-                sanitized[key] = value
-        return sanitized
+                return re.sub(r"0x[a-fA-F0-9]{40}", "0x[SANITIZED]", value)
+            if isinstance(value, dict):
+                return {k: _sanitize(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_sanitize(v) for v in value]
+            if isinstance(value, tuple):
+                return [_sanitize(v) for v in value]
+            return value
+
+        return {key: _sanitize(value) for key, value in trace_dict.items()}

@@ -24,6 +24,16 @@ class LirixTxBuilder:
         self._assertions: list[dict[str, Any]] = []
         self._draft_payload: Optional[dict[str, Any]] = None
 
+    @staticmethod
+    def _normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
+        if (
+            "data" in payload
+            and isinstance(payload["data"], str)
+            and payload["data"].startswith("0X")
+        ):
+            payload["data"] = "0x" + payload["data"][2:]
+        return payload
+
     def assert_erc20_balance_increase(self, token: str, min_delta: int) -> LirixTxBuilder:
         # L5 validates math against simulated `return_data`, so token is currently not used.
         self._assertions.append(
@@ -33,15 +43,15 @@ class LirixTxBuilder:
 
     def build(self) -> dict[str, Any]:
         if self._draft_payload is not None:
-            payload = dict(self._draft_payload)
+            payload = self._normalize_payload(dict(self._draft_payload))
             if self._assertions:
-                payload["assertions"] = list(self._assertions)
+                payload["assertions"] = [dict(item) for item in self._assertions]
             return payload
         calldata = CalldataBuilder().build(self.func_sig, self.args)
         built_payload: dict[str, Any] = {"data": calldata}
         if self._assertions:
-            built_payload["assertions"] = list(self._assertions)
-        return built_payload
+            built_payload["assertions"] = [dict(item) for item in self._assertions]
+        return self._normalize_payload(built_payload)
 
     def bridge(
         self,
@@ -111,12 +121,21 @@ class CalldataBuilder:
 
     def _validate_arg(self, typ: str, arg: Any, Web3: Any) -> Any:
         base = typ.rstrip("[]")
-        if base == "address" and (not isinstance(arg, str) or not Web3.is_checksum_address(arg)):
-            raise LirixHallucinationError(
-                error_code="LRX_HALLUCINATION_ADDRESS",
-                resolution_agent="Use a valid EIP-55 checksum address.",
-                resolution_dev="Reject malformed address arguments before encoding.",
-                value_protected="Asset Value",
+        if base == "address":
+            if not isinstance(arg, str) or not Web3.is_address(arg):
+                raise LirixHallucinationError(
+                    error_code="LRX_HALLUCINATION_ADDRESS",
+                    resolution_agent="Use a valid EIP-55 address.",
+                    resolution_dev="Reject malformed address arguments before encoding.",
+                    value_protected="Asset Value",
+                )
+            return Web3.to_checksum_address(arg)
+        if (base.startswith("uint") or base.startswith("int")) and not isinstance(arg, int):
+            raise ValidationFailedException(
+                error_code="LRX_VALIDATION_NUMERIC_TYPE",
+                resolution_agent="Use integer values for numeric ABI arguments.",
+                resolution_dev="Ensure numeric calldata arguments are ints before encoding.",
+                value_protected="Unknown Asset Value",
             )
         return arg
 

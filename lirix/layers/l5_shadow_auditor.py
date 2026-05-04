@@ -161,6 +161,7 @@ class ShadowAuditor:
             context={
                 "layer": "L5",
                 "policy_key": key,
+                "reason": "policy_violation",
                 "expected": expected,
                 "observed": observed,
             },
@@ -173,5 +174,7 @@ class ShadowAuditor:
             return direct
         nested = metrics.get("metrics")
         if isinstance(nested, Mapping):
-            return nested.get(key)
+            value = nested.get(key)
+            if value is not None:
+                return value
         return None

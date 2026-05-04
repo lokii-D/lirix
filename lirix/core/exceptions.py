@@ -28,10 +28,10 @@ class LirixBaseException(Exception):
         if context is not None:
             kwargs.setdefault("context", context)
         adapter_state = self._adapt_legacy_kwargs(**kwargs)
-        self.error_code = adapter_state["error_code"]
-        self.value_protected = adapter_state["value_protected"]
-        self.resolution_for_agent = adapter_state["resolution_for_agent"]
-        self.resolution_for_developer = adapter_state["resolution_for_developer"]
+        self.error_code = str(adapter_state["error_code"])
+        self.value_protected = str(adapter_state["value_protected"])
+        self.resolution_for_agent = str(adapter_state["resolution_for_agent"])
+        self.resolution_for_developer = str(adapter_state["resolution_for_developer"])
         self.context = adapter_state["context"]
         self.human_readable_reason = self.resolution_for_agent
         self.hook_point = adapter_state["hook_point"]
@@ -41,26 +41,29 @@ class LirixBaseException(Exception):
     def _adapt_legacy_kwargs(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
         # Facade/Adapter layer: normalize legacy construction patterns into the
         # current JSON error contract without forcing callers to update at once.
-        error_code = kwargs.get("error_code", "LRX_LEGACY_ERROR")
-        value_protected = kwargs.get("value_protected", "Unknown Asset Value")
-        legacy_reason = kwargs.get(
-            "human_readable_reason", "An internal validation error occurred."
+        error_code = str(kwargs.get("error_code", "LRX_LEGACY_ERROR"))
+        value_protected = str(kwargs.get("value_protected", "Unknown Asset Value"))
+        legacy_reason = str(
+            kwargs.get("human_readable_reason", "An internal validation error occurred.")
         )
-        resolution_for_agent = kwargs.get("resolution_agent", legacy_reason)
-        legacy_hook = kwargs.get("hook_point", "Check internal logs.")
-        resolution_for_developer = kwargs.get("resolution_dev", str(legacy_hook))
+        resolution_for_agent = str(kwargs.get("resolution_agent", legacy_reason))
+        legacy_hook = str(kwargs.get("hook_point", "Check internal logs."))
+        resolution_for_developer = str(kwargs.get("resolution_dev", legacy_hook))
         if args:
             resolution_for_agent = str(args[0])
+        context = kwargs.get("context", {})
+        if not isinstance(context, dict):
+            context = {"raw_context": context}
         return {
             "error_code": error_code,
             "value_protected": value_protected,
             "resolution_for_agent": resolution_for_agent,
             "resolution_for_developer": resolution_for_developer,
-            "context": kwargs.get("context", {}),
+            "context": context,
             "hook_point": kwargs.get("hook_point"),
         }
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error_code": self.error_code,
             "resolution_for_agent": self.resolution_for_agent,
@@ -69,7 +72,7 @@ class LirixBaseException(Exception):
         }
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict())
+        return json.dumps(self.to_dict(), ensure_ascii=False, default=str)
 
 
 class LirixSimulationError(LirixBaseException):

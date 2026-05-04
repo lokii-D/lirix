@@ -140,19 +140,15 @@ class SandboxSimulator:
                     "layer": "L5",
                     "revert_semantics": reason,
                     "block_number": block_number,
+                    "reason": "simulation_reverted",
                 },
             ) from exc
         except Web3Exception as exc:
             raise RPCUnavailableException(
                 human_readable_reason=f"RPC error during eth_call simulation: {exc!s}",
-                context={"layer": "L5", "block_number": block_number},
+                context={"layer": "L5", "block_number": block_number, "reason": "rpc_error"},
             ) from exc
-        out = {
-            "layer": "L5",
-            "simulation_ok": True,
-            "block_number": block_number,
-            "return_data": "0x" + result.hex() if result else "0x",
-        }
+        out = self._build_result(block_number=block_number, result=result)
         h = self._hooks
         if h is not None:
             h.invoke_hooks_isolated(
@@ -193,12 +189,13 @@ class SandboxSimulator:
                     "layer": "L5",
                     "revert_semantics": reason,
                     "block_number": block_number,
+                    "reason": "simulation_reverted",
                 },
             ) from exc
         except Web3Exception as exc:
             raise RPCUnavailableException(
                 human_readable_reason=f"RPC error during eth_call simulation: {exc!s}",
-                context={"layer": "L5", "block_number": block_number},
+                context={"layer": "L5", "block_number": block_number, "reason": "rpc_error"},
             ) from exc
         out = {
             "layer": "L5",
@@ -218,24 +215,33 @@ class SandboxSimulator:
         return out
 
     @staticmethod
+    def _build_result(*, block_number: int, result: Any) -> Dict[str, Any]:
+        return {
+            "layer": "L5",
+            "simulation_ok": True,
+            "block_number": block_number,
+            "return_data": "0x" + result.hex() if result else "0x",
+        }
+
+    @staticmethod
     def _build_call_tx(payload: Mapping[str, Any]) -> Dict[str, Any]:
         to_raw = payload.get("to")
         if not isinstance(to_raw, str):
             raise SimulationFailedException(
                 human_readable_reason="payload.to is required for simulation.",
-                context={"layer": "L5"},
+                context={"layer": "L5", "reason": "to_missing"},
             )
         data_raw = payload.get("data", "0x")
         if not isinstance(data_raw, str):
             raise SimulationFailedException(
                 human_readable_reason="payload.data must be a hex string.",
-                context={"layer": "L5"},
+                context={"layer": "L5", "reason": "data_invalid"},
             )
         value = payload.get("value", 0)
         if not isinstance(value, int):
             raise SimulationFailedException(
                 human_readable_reason="payload.value must be an integer wei amount.",
-                context={"layer": "L5"},
+                context={"layer": "L5", "reason": "value_invalid"},
             )
         tx: Dict[str, Any] = {
             "to": Web3.to_checksum_address(to_raw.strip()),

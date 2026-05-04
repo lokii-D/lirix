@@ -22,31 +22,35 @@ import pytest
 httpx = pytest.importorskip("httpx")
 sns = pytest.importorskip("seaborn")
 
+from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
+from benchmarks.rq_tests_py.artifact_paths import resolve_artifact_layout
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import LirixBaseException
 
-OUTPUT_DIR = Path(__file__).resolve().parent
-CASES_DIR = OUTPUT_DIR / "rq4_cases"
-CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_convergence.csv"
-DETAIL_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_case_details.csv"
-CURVE_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_cumulative_curve.csv"
-PNG_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_convergence.png"
-TRACES_DIR = OUTPUT_DIR / "rq4_traces"
-PARTIAL_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_convergence.partial.csv"
-PARTIAL_DETAIL_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_case_details.partial.csv"
-PARTIAL_CURVE_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_cumulative_curve.partial.csv"
-EXTENDED_METRICS_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_extended_metrics.csv"
-BY_KIND_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_by_kind.csv"
-K_DIST_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_k_distribution.csv"
-FAILURE_CODE_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_failure_code_breakdown.csv"
-EXTENDED_PNG_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_extended_analysis.png"
-KM_SURVIVAL_PNG_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_km_unconverged_survival.png"
-K_BOX_BY_KIND_PNG_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_k_boxplot_by_kind.png"
-CONTEXT_DECAY_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_self_healing_context_decay.csv"
-RQ4_RAW_CSV_PATH = OUTPUT_DIR / "rq4_cognitive_convergence_boundary_raw.csv"
-RMST_ABORT_PDF_PATH = OUTPUT_DIR / "rmst_and_abort_decomposition.pdf"
-CONTEXT_SATURATION_PDF_PATH = OUTPUT_DIR / "context_saturation_decay.pdf"
-RQ4_IEEE_REPORT_MD_PATH = OUTPUT_DIR / "rq4_ieee_report.md"
+OUTPUT_LAYOUT = resolve_artifact_layout(Path(__file__).resolve().parent.parent)
+RUN_ROOT = OUTPUT_LAYOUT.output_dir / "rq4"
+CASES_DIR = RUN_ROOT / "rq4_cases"
+CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.csv"
+DETAIL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_case_details.csv"
+CURVE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_cumulative_curve.csv"
+PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.png"
+TRACES_DIR = RUN_ROOT / "rq4_traces"
+PARTIAL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.partial.csv"
+PARTIAL_DETAIL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_case_details.partial.csv"
+PARTIAL_CURVE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_cumulative_curve.partial.csv"
+EXTENDED_METRICS_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_extended_metrics.csv"
+BY_KIND_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_by_kind.csv"
+K_DIST_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_k_distribution.csv"
+FAILURE_CODE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_failure_code_breakdown.csv"
+EXTENDED_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_extended_analysis.png"
+KM_SURVIVAL_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_km_unconverged_survival.png"
+K_BOX_BY_KIND_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_k_boxplot_by_kind.png"
+CONTEXT_DECAY_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_context_decay.csv"
+RQ4_RAW_CSV_PATH = RUN_ROOT / "rq4_cognitive_convergence_boundary_raw.csv"
+RMST_ABORT_PDF_PATH = RUN_ROOT / "rmst_and_abort_decomposition.pdf"
+CONTEXT_SATURATION_PDF_PATH = RUN_ROOT / "context_saturation_decay.pdf"
+RQ4_IEEE_REPORT_MD_PATH = RUN_ROOT / "rq4_ieee_report.md"
+MANIFEST_JSON_PATH = RUN_ROOT / "rq4_run_manifest.json"
 
 SEED = 20260430
 TOTAL_CASES = 100
@@ -252,7 +256,7 @@ def _build_cases(total_cases: int) -> list[RQ4Case]:
         hint = "依据反馈修复 payload，保持字段契约。"
         cases.append(
             RQ4Case(
-                case_id=f"rq4-A-{i:02d}",
+                case_id=f"rq4-A-{i + 1:03d}",
                 kind="A_L2_schema",
                 initial_payload=payload,
                 repair_hint=hint,
@@ -264,7 +268,7 @@ def _build_cases(total_cases: int) -> list[RQ4Case]:
         hint = "依据反馈修复 payload，保持字段契约。"
         cases.append(
             RQ4Case(
-                case_id=f"rq4-B-{i:02d}",
+                case_id=f"rq4-B-{i + 1:03d}",
                 kind="B_L5_state",
                 initial_payload=payload,
                 repair_hint=hint,
@@ -293,6 +297,10 @@ class _RealLLMModel:
 
     def route_fingerprint(self) -> str:
         return f"{self.name}|{self.base_url.rstrip('/')}|{self.model}"
+
+    @staticmethod
+    def _schema_version() -> int:
+        return 1
 
     async def _chat(
         self,
@@ -703,34 +711,31 @@ def _write_outputs(
     *,
     partial: bool = False,
 ) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_ROOT.mkdir(parents=True, exist_ok=True)
     CASES_DIR.mkdir(parents=True, exist_ok=True)
     TRACES_DIR.mkdir(parents=True, exist_ok=True)
     for old_json in CASES_DIR.glob("*.json"):
         old_json.unlink()
 
     for r in results:
+        case_payload = {
+            "schema_version": 1,
+            "case_id": r.case_id,
+            "kind": r.kind,
+            "model": r.model,
+            "converged": r.converged,
+            "k": r.k,
+            "hard_abort": r.hard_abort,
+            "last_error_code": r.last_error_code,
+            "last_policy_key": r.last_policy_key,
+            "prompt_tokens": r.prompt_tokens,
+            "completion_tokens": r.completion_tokens,
+            "total_tokens": r.prompt_tokens + r.completion_tokens,
+            "max_prompt_tokens_per_attempt": r.max_prompt_tokens_per_attempt,
+            "max_prompt_chars_per_attempt": r.max_prompt_chars_per_attempt,
+        }
         (CASES_DIR / f"{r.model}-{r.case_id}.json").write_text(
-            json.dumps(
-                {
-                    "case_id": r.case_id,
-                    "kind": r.kind,
-                    "model": r.model,
-                    "converged": r.converged,
-                    "k": r.k,
-                    "hard_abort": r.hard_abort,
-                    "last_error_code": r.last_error_code,
-                    "last_policy_key": r.last_policy_key,
-                    "prompt_tokens": r.prompt_tokens,
-                    "completion_tokens": r.completion_tokens,
-                    "total_tokens": r.prompt_tokens + r.completion_tokens,
-                    "max_prompt_tokens_per_attempt": r.max_prompt_tokens_per_attempt,
-                    "max_prompt_chars_per_attempt": r.max_prompt_chars_per_attempt,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
+            json.dumps(case_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
 
@@ -742,6 +747,7 @@ def _write_outputs(
         writer = csv.DictWriter(
             fp,
             fieldnames=[
+                "schema_version",
                 "model",
                 "total_cases",
                 "converged_cases",
@@ -763,6 +769,7 @@ def _write_outputs(
         for row in summary_rows:
             writer.writerow(
                 {
+                    "schema_version": 1,
                     "model": row["model"],
                     "total_cases": row["total_cases"],
                     "converged_cases": row["converged_cases"],
@@ -785,6 +792,7 @@ def _write_outputs(
         writer = csv.DictWriter(
             fp,
             fieldnames=[
+                "schema_version",
                 "model",
                 "case_id",
                 "kind",
@@ -804,6 +812,7 @@ def _write_outputs(
         for r in results:
             writer.writerow(
                 {
+                    "schema_version": 1,
                     "model": r.model,
                     "case_id": r.case_id,
                     "kind": r.kind,
@@ -821,11 +830,14 @@ def _write_outputs(
             )
 
     with curve_path.open("w", newline="", encoding="utf-8") as fp:
-        writer = csv.DictWriter(fp, fieldnames=["model", "k", "cumulative_success_rate"])
+        writer = csv.DictWriter(
+            fp, fieldnames=["schema_version", "model", "k", "cumulative_success_rate"]
+        )
         writer.writeheader()
         for row in curve_rows:
             writer.writerow(
                 {
+                    "schema_version": 1,
                     "model": row["model"],
                     "k": row["k"],
                     "cumulative_success_rate": f"{row['cumulative_success_rate']:.6f}",
@@ -908,6 +920,7 @@ def _write_rq4_raw_csv(results: list[CaseResult]) -> None:
         writer = csv.DictWriter(
             fp,
             fieldnames=[
+                "schema_version",
                 "model_name",
                 "case_id",
                 "converged_at_k",
@@ -920,6 +933,7 @@ def _write_rq4_raw_csv(results: list[CaseResult]) -> None:
         for r in results:
             writer.writerow(
                 {
+                    "schema_version": 1,
                     "model_name": r.model,
                     "case_id": r.case_id,
                     "converged_at_k": r.k if r.converged else -1,
@@ -1009,52 +1023,57 @@ def _write_ieee_rq4_artifacts(
     plt.savefig(CONTEXT_SATURATION_PDF_PATH)
     plt.close(sat_fig)
 
-    # IEEE report.
-    lines: list[str] = []
-    lines.append("# RQ4: Cognitive Convergence Boundary (IEEE-style Report)")
-    lines.append("")
-    lines.append("## Experimental Scope")
-    lines.append("- Defense focus: censored bias and cognitive/network timeout disentanglement.")
-    lines.append(f"- Total evaluated samples: {len(results)} across models {', '.join(models)}.")
-    lines.append(f"- K upper bound: {K_MAX}.")
-    lines.append("")
-    lines.append("## Mandatory Raw Data")
-    lines.append(f"- Raw CSV: `{RQ4_RAW_CSV_PATH.name}`")
-    lines.append(
-        "- Fields: `model_name`, `case_id`, `converged_at_k`, `hard_abort_reason`, `max_prompt_tokens_per_attempt`, `cumulative_completion_tokens`."
-    )
-    lines.append("")
-    lines.append("## Figure Artifacts")
-    lines.append(f"- Figure 1: `{RMST_ABORT_PDF_PATH.name}`")
-    lines.append(f"- Figure 2: `{CONTEXT_SATURATION_PDF_PATH.name}`")
-    lines.append("")
-    lines.append("## Core Results")
+    report_lines: list[str] = [
+        "# RQ4: Cognitive Convergence Boundary",
+        "",
+        "## 1. Experimental Scope",
+        f"- Total evaluated samples: {len(results)} across models {', '.join(models)}.",
+        f"- K upper bound: {K_MAX}.",
+        f"- Seed: {SEED}.",
+        f"- Timeouts: API={API_TIMEOUT_SEC}s, Lirix={LIRIX_TIMEOUT_SEC}s, case={CASE_TIMEOUT_SEC}s.",
+        f"- Archive root: `{OUTPUT_LAYOUT.base_dir / OUTPUT_LAYOUT.branch_slug / 'runs' / OUTPUT_LAYOUT.run_slug}`",
+        "",
+        "## 2. Artifact Inventory",
+        f"- Raw CSV: `{RQ4_RAW_CSV_PATH.name}`",
+        f"- Detail CSV: `{DETAIL_CSV_PATH.name}`",
+        f"- Curve CSV: `{CURVE_CSV_PATH.name}`",
+        f"- Plot: `{PNG_PATH.name}`",
+        f"- Extended metrics: `{EXTENDED_METRICS_CSV_PATH.name}`",
+        f"- By-kind CSV: `{BY_KIND_CSV_PATH.name}`",
+        f"- K distribution CSV: `{K_DIST_CSV_PATH.name}`",
+        f"- Failure breakdown CSV: `{FAILURE_CODE_CSV_PATH.name}`",
+        f"- Report: `{RQ4_IEEE_REPORT_MD_PATH.name}`",
+        "",
+        "## 3. Figures",
+        f"- Figure 1: `{RMST_ABORT_PDF_PATH.name}`",
+        f"- Figure 2: `{CONTEXT_SATURATION_PDF_PATH.name}`",
+        f"- Supplemental Figure 1: `{KM_SURVIVAL_PNG_PATH.name}`",
+        f"- Supplemental Figure 2: `{K_BOX_BY_KIND_PNG_PATH.name}`",
+        f"- Extended analysis: `{EXTENDED_PNG_PATH.name}`",
+        "",
+        "## 4. Core Results",
+    ]
     for row in summary_rows:
-        lines.append(
-            "- "
-            f"{row['model']}: convergence={row['convergence_rate']:.3f}, "
+        report_lines.append(
+            f"- {row['model']}: convergence={row['convergence_rate']:.3f}, "
             f"conditional_mean_k={row['conditional_mean_cycles_to_converge']:.3f}, "
             f"rmst={row['rmst_cycles_truncated_kmax_plus1']:.3f}, "
             f"hard_abort_rate={row['hard_abort_rate']:.3f}."
         )
-    lines.append("")
-    lines.append("## Discussion")
-    lines.append(
-        "- The upper panel in Figure 1 isolates pure cognitive convergence speed by conditioning on successful samples only."
+    report_lines.extend(
+        [
+            "",
+            "## 5. Interpretation",
+            "- The upper panel in Figure 1 isolates pure cognitive convergence speed by conditioning on successful samples only.",
+            "- The lower panel separates cognitive collapse (schema loops) from infrastructure failures (timeouts), reducing censored-bias interpretation risk.",
+            "- Figure 2 exposes the context saturation boundary where additional prompt-token load correlates with a sharp success-rate decline.",
+            "",
+            "## 6. Reproducibility",
+            "- Output ordering and archive layout are intentionally stable to support direct diff-based regression review.",
+            "- Schema version markers are embedded in CSV/JSON outputs for forward-compatible parsing.",
+        ]
     )
-    lines.append(
-        "- The lower panel separates cognitive collapse (schema loops) from infrastructure failures (timeouts), reducing censored-bias interpretation risk."
-    )
-    lines.append(
-        "- Figure 2 exposes the context saturation boundary where additional prompt-token load correlates with a sharp success-rate decline."
-    )
-    lines.append("")
-    lines.append("## Reproducibility")
-    lines.append(f"- Seed: {SEED}.")
-    lines.append(
-        f"- Timeouts: API={API_TIMEOUT_SEC}s, Lirix={LIRIX_TIMEOUT_SEC}s, case={CASE_TIMEOUT_SEC}s."
-    )
-    RQ4_IEEE_REPORT_MD_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    RQ4_IEEE_REPORT_MD_PATH.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
 
 
 def _write_extended_outputs(results: list[CaseResult]) -> None:
@@ -1185,7 +1204,7 @@ def _write_extended_outputs(results: list[CaseResult]) -> None:
         )
         writer.writeheader()
         for row in extended_rows:
-            writer.writerow(row)
+            writer.writerow({"schema_version": 1, **row})
 
     with BY_KIND_CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
@@ -1202,7 +1221,7 @@ def _write_extended_outputs(results: list[CaseResult]) -> None:
         )
         writer.writeheader()
         for row in by_kind_rows:
-            writer.writerow(row)
+            writer.writerow({"schema_version": 1, **row})
 
     with K_DIST_CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
@@ -1211,7 +1230,7 @@ def _write_extended_outputs(results: list[CaseResult]) -> None:
         )
         writer.writeheader()
         for row in k_dist_rows:
-            writer.writerow(row)
+            writer.writerow({"schema_version": 1, **row})
 
     with FAILURE_CODE_CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
@@ -1219,7 +1238,7 @@ def _write_extended_outputs(results: list[CaseResult]) -> None:
         )
         writer.writeheader()
         for row in failure_rows:
-            writer.writerow(row)
+            writer.writerow({"schema_version": 1, **row})
 
     context_rows: list[dict[str, Any]] = []
     bins = [0, 500, 1000, 2000, 4000, 8000]
@@ -1246,6 +1265,7 @@ def _write_extended_outputs(results: list[CaseResult]) -> None:
         for row in context_rows:
             writer.writerow(
                 {
+                    "schema_version": 1,
                     "model": row["model"],
                     "token_bin": row["token_bin"],
                     "cases": row["cases"],
@@ -1469,7 +1489,27 @@ async def _run_async() -> dict[str, Any]:
     _write_extended_outputs(all_results)
     _write_rq4_raw_csv(all_results)
     _write_ieee_rq4_artifacts(all_results, summary_rows)
-
+    archive_artifacts(
+        ArtifactFamily(name="rq4", output_dir=RUN_ROOT),
+        [
+            CSV_PATH.name,
+            DETAIL_CSV_PATH.name,
+            CURVE_CSV_PATH.name,
+            PNG_PATH.name,
+            EXTENDED_METRICS_CSV_PATH.name,
+            BY_KIND_CSV_PATH.name,
+            K_DIST_CSV_PATH.name,
+            FAILURE_CODE_CSV_PATH.name,
+            EXTENDED_PNG_PATH.name,
+            KM_SURVIVAL_PNG_PATH.name,
+            K_BOX_BY_KIND_PNG_PATH.name,
+            CONTEXT_DECAY_CSV_PATH.name,
+            RQ4_RAW_CSV_PATH.name,
+            RMST_ABORT_PDF_PATH.name,
+            CONTEXT_SATURATION_PDF_PATH.name,
+            RQ4_IEEE_REPORT_MD_PATH.name,
+        ],
+    )
     narrative: dict[str, str] = {}
     for row in summary_rows:
         if row["hard_abort_rate"] > 0:
@@ -1482,7 +1522,7 @@ async def _run_async() -> dict[str, Any]:
                 "情况 A：低均值 K 与低方差说明 resolution_for_agent 的差分反馈高效稳定，"
                 "模型可快速收敛到可验证交易。"
             )
-    return {"summary": summary_rows, "narrative": narrative}
+    return {"schema_version": 1, "summary": summary_rows, "narrative": narrative}
 
 
 def run_rq4_cognitive_self_healing_benchmark() -> dict[str, Any]:
@@ -1501,7 +1541,7 @@ def run_rq4_tdsc_convergence_benchmark() -> dict[str, Any]:
 
 def regenerate_extended_analysis_from_detail_csv() -> None:
     detail_path = DETAIL_CSV_PATH
-    legacy_detail_path = OUTPUT_DIR / "rq4_tdsc_case_details.csv"
+    legacy_detail_path = RUN_ROOT / "rq4_tdsc_case_details.csv"
     if not detail_path.exists() and legacy_detail_path.exists():
         detail_path = legacy_detail_path
     if not detail_path.exists():

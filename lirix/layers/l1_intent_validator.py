@@ -35,7 +35,7 @@ class IntentValidator:
                 human_readable_reason=(
                     "data is not valid hex; cannot reconcile intent with method id."
                 ),
-                context={"layer": "L1"},
+                context={"layer": "L1", "reason": "data_invalid_hex"},
             ) from exc
         return blob[:4]
 
@@ -53,6 +53,7 @@ class IntentValidator:
                 ),
                 context={
                     "layer": "L1",
+                    "reason": "intent_selector_mismatch",
                     "intent": intent,
                     "selector": f"0x{sel.hex()}",
                 },
@@ -62,22 +63,30 @@ class IntentValidator:
         if not self._config.allowed_intents:
             raise InvalidIntentException(
                 human_readable_reason="allowed_intents is empty; fail-closed.",
-                context={"layer": "L1", "field": "allowed_intents"},
+                context={"layer": "L1", "field": "allowed_intents", "reason": "config_empty"},
             )
         if intent not in self._config.allowed_intents:
             raise InvalidIntentException(
                 human_readable_reason="Intent is not in allowed_intents.",
-                context={"layer": "L1", "intent": intent},
+                context={"layer": "L1", "intent": intent, "reason": "intent_not_allowed"},
             )
         if not self._config.allowed_function_names:
             raise InvalidIntentException(
                 human_readable_reason="allowed_function_names is empty; fail-closed.",
-                context={"layer": "L1", "field": "allowed_function_names"},
+                context={
+                    "layer": "L1",
+                    "field": "allowed_function_names",
+                    "reason": "config_empty",
+                },
             )
         if not self._config.allowed_to_addresses:
             raise InvalidIntentException(
                 human_readable_reason="allowed_to_addresses is empty; fail-closed.",
-                context={"layer": "L1", "field": "allowed_to_addresses"},
+                context={
+                    "layer": "L1",
+                    "field": "allowed_to_addresses",
+                    "reason": "config_empty",
+                },
             )
         try:
             fn = payload["function_name"]
@@ -85,28 +94,32 @@ class IntentValidator:
         except KeyError as exc:
             raise InvalidIntentException(
                 human_readable_reason="Payload missing function_name or to.",
-                context={"layer": "L1", "missing": exc.args[0]},
+                context={"layer": "L1", "missing": exc.args[0], "reason": "missing_field"},
             ) from exc
         if not isinstance(fn, str) or not fn.strip():
             raise InvalidIntentException(
                 human_readable_reason="function_name must be a non-empty string.",
-                context={"layer": "L1", "function_name": fn},
+                context={"layer": "L1", "function_name": fn, "reason": "function_name_invalid"},
             )
         if fn.strip() not in self._config.allowed_function_names:
             raise InvalidIntentException(
                 human_readable_reason="function_name is not allow-listed.",
-                context={"layer": "L1", "function_name": fn},
+                context={
+                    "layer": "L1",
+                    "function_name": fn,
+                    "reason": "function_name_not_allowed",
+                },
             )
         if not isinstance(raw_to, str) or not Web3.is_address(raw_to.strip()):
             raise InvalidIntentException(
                 human_readable_reason="to must be a valid hex address.",
-                context={"layer": "L1", "to": raw_to},
+                context={"layer": "L1", "to": raw_to, "reason": "to_invalid"},
             )
         to_cs = Web3.to_checksum_address(raw_to.strip())
         if to_cs not in self._config.allowed_to_addresses:
             raise InvalidIntentException(
                 human_readable_reason="to is not in allowed_to_addresses.",
-                context={"layer": "L1", "to": to_cs},
+                context={"layer": "L1", "to": to_cs, "reason": "to_not_allowed"},
             )
         self._reconcile_intent_with_method_id(intent, payload)
         h = self._hooks

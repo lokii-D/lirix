@@ -16,6 +16,7 @@ from typing import Any
 from unittest.mock import patch
 
 import matplotlib
+from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -669,6 +670,17 @@ def run_rq3_quorum_benchmark() -> list[dict[str, Any]]:
     _write_liveness_csv(rows)
     _write_surface_plot(rows)
     _write_report(rows, raw_rows)
+    archive_artifacts(
+        ArtifactFamily(name="rq3", output_dir=OUTPUT_DIR),
+        [
+            CSV_PATH.name,
+            RAW_CSV_PATH.name,
+            BOX_PNG_PATH.name,
+            LIVENESS_CSV_PATH.name,
+            SURFACE_PNG_PATH.name,
+            REPORT_MD_PATH.name,
+        ],
+    )
     return rows
 
 

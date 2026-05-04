@@ -38,12 +38,11 @@ class _TxDraftSchema(BaseModel):
     @field_validator("to", mode="after")
     @classmethod
     def _checksum_to(cls, v: str) -> str:
-        if not Web3.is_address(v):
+        if not isinstance(v, str) or not Web3.is_address(v):
             raise ValueError("to is not a valid address")
-        cs = Web3.to_checksum_address(v)
-        if cs != v:
-            raise ValueError("to must be EIP-55 checksum format")
-        return cs
+        if not Web3.is_checksum_address(v):
+            raise ValueError("to must be EIP-55 checksummed")
+        return Web3.to_checksum_address(v)
 
     @field_validator("data", mode="after")
     @classmethod
@@ -55,7 +54,7 @@ class _TxDraftSchema(BaseModel):
             raise ValueError("data hex length must be even")
         if body:
             bytes.fromhex(body)
-        return v
+        return "0x" + body.lower()
 
 
 class SchemaValidator:
@@ -70,7 +69,7 @@ class SchemaValidator:
         except PydanticValidationError as exc:
             raise SchemaValidationException(
                 human_readable_reason="Payload failed schema validation.",
-                context={"layer": "L2", "errors": exc.errors()},
+                context={"layer": "L2", "errors": exc.errors(), "reason": "schema_invalid"},
             ) from exc
         h = self._hooks
         if h is not None:

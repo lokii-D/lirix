@@ -48,6 +48,9 @@ CIRCUIT_FAILURE_THRESHOLD: int = 3
 class RPCManager:
     """L4：多 RPC 并发对账 + 断路器；无链上状态缓存，失败即阻断。"""
 
+    CIRCUIT_COOLDOWN_SECONDS: int = 60
+    HEALTH_SPREAD_THRESHOLD: int = BLOCK_HEIGHT_SPREAD_THRESHOLD
+
     def __init__(
         self,
         config: LirixConfig,
@@ -61,18 +64,24 @@ class RPCManager:
         self._lock = threading.Lock()
         self._failures: Dict[str, int] = {}
         self._open: Dict[str, bool] = {}
+        self._cooldown_until: Dict[str, float] = {}
         self._sync_web3: Optional[Web3] = None
         self._async_web3: Optional[AsyncWeb3[Any]] = None
         self._last_url: Optional[str] = None
+        self._last_selected_latency: Optional[float] = None
+        self._last_error: Optional[Dict[str, Any]] = None
 
     def reset_circuit_breakers(self) -> None:
         """测试或运维复位：清空断路器状态（不缓存历史区块）。"""
         with self._lock:
             self._failures.clear()
             self._open.clear()
+            self._cooldown_until.clear()
             self._sync_web3 = None
             self._async_web3 = None
             self._last_url = None
+            self._last_selected_latency = None
+            self._last_error = None
 
     def _eligible_urls(self) -> List[str]:
         return [u for u in self._config.rpc_urls if not self._open.get(u, False)]
@@ -82,6 +91,72 @@ class RPCManager:
         self._failures[url] = n
         if n >= CIRCUIT_FAILURE_THRESHOLD:
             self._open[url] = True
+            self._cooldown_until[url] = time.time() + self.CIRCUIT_COOLDOWN_SECONDS
+
+    def _record_outcome(
+        self,
+        eligible: List[str],
+        heights: Dict[str, int],
+        errors: Dict[str, BaseException],
+    ) -> None:
+        for u in eligible:
+            if u in heights:
+                self._record_transport_success(u)
+            else:
+                self._record_transport_failure(u)
+
+    def _classify_errors(self, errors: Dict[str, BaseException]) -> Dict[str, List[str]]:
+        classified: Dict[str, List[str]] = {
+            "quota_exhausted": [],
+            "timeout": [],
+            "transport": [],
+            "other": [],
+        }
+        for url, exc in errors.items():
+            if self._is_quota_exhausted(exc):
+                classified["quota_exhausted"].append(url)
+            elif isinstance(exc, TimeoutError):
+                classified["timeout"].append(url)
+            elif isinstance(exc, ConnectionError):
+                classified["transport"].append(url)
+            else:
+                classified["other"].append(url)
+        return classified
+
+    def _health_context(self) -> Dict[str, Any]:
+        return {
+            "rpc_urls": list(self._config.rpc_urls),
+            "last_url": self._last_url,
+            "open_endpoints": [url for url, open_ in self._open.items() if open_],
+            "failures": dict(self._failures),
+            "cooldown_until": dict(self._cooldown_until),
+            "request_timeout": self._timeout,
+            "eligible_count": len(self._eligible_urls()),
+        }
+
+    def _failure_context(
+        self,
+        *,
+        reason: str,
+        errors: Optional[Dict[str, BaseException]] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        context: Dict[str, Any] = {
+            "layer": "L4",
+            "reason": reason,
+            "health": self._health_context(),
+        }
+        if errors:
+            context["failed"] = {k: str(v) for k, v in errors.items()}
+            context["classified"] = self._classify_errors(errors)
+        if extra:
+            context.update(extra)
+        return context
+
+    def _snapshot_health_locked(self) -> Dict[str, Any]:
+        snapshot = self._health_context()
+        snapshot["last_selected_latency"] = self._last_selected_latency
+        return snapshot
 
     @staticmethod
     def _is_quota_exhausted(exc: BaseException) -> bool:
@@ -91,10 +166,12 @@ class RPCManager:
     def _raise_quota_exhausted(self, url: str, exc: BaseException) -> None:
         raise RPCQuotaExhaustedException(
             human_readable_reason="RPC returned HTTP 429 / Too Many Requests during block fetch.",
-            context={"layer": "L4", "url": url},
+            context=self._failure_context(reason="quota_exhausted", extra={"url": url}),
         ) from exc
 
     def _record_transport_success(self, url: str) -> None:
+        if time.time() < self._cooldown_until.get(url, 0):
+            return
         self._failures[url] = 0
         self._open[url] = False
 
@@ -102,7 +179,7 @@ class RPCManager:
         if not self._config.rpc_urls:
             raise RPCUnavailableException(
                 human_readable_reason="rpc_urls is empty; cannot reconcile chain height.",
-                context={"layer": "L4", "reason": "rpc_urls_empty"},
+                context=self._failure_context(reason="rpc_urls_empty"),
             )
         eligible = self._eligible_urls()
         if not eligible:
@@ -110,7 +187,7 @@ class RPCManager:
                 human_readable_reason=(
                     "All RPC endpoints have open circuit breakers; reconciliation blocked."
                 ),
-                context={"layer": "L4", "reason": "all_breakers_open"},
+                context=self._failure_context(reason="all_breakers_open"),
             )
         return list(eligible)
 
@@ -152,46 +229,62 @@ class RPCManager:
                     human_readable_reason=(
                         "RPC returned HTTP 429 / Too Many Requests during block fetch."
                     ),
-                    context={"layer": "L4", "failed": {k: str(v) for k, v in errors.items()}},
+                    context=self._failure_context(
+                        reason="quota_exhausted",
+                        errors=errors,
+                        extra={"url": next(iter(errors.keys()), None)},
+                    ),
                 ) from first
 
-            for u in eligible:
-                if u in heights:
-                    self._record_transport_success(u)
-                else:
-                    self._record_transport_failure(u)
+            self._record_outcome(eligible, heights, errors)
+
+            if errors:
+                self._last_error = {
+                    "layer": "L4",
+                    "reason": "reconcile_partial_failure",
+                    "failed": {k: str(v) for k, v in errors.items()},
+                }
 
             if len(heights) != len(eligible):
                 raise RPCUnavailableException(
                     human_readable_reason=(
                         "One or more RPC endpoints failed during block height reconciliation."
                     ),
-                    context={
-                        "layer": "L4",
-                        "failed": {k: str(v) for k, v in errors.items()},
-                        "ok_count": len(heights),
-                        "expected": len(eligible),
-                    },
+                    context=self._failure_context(
+                        reason="reconcile_failed",
+                        errors=errors,
+                        extra={"ok_count": len(heights), "expected": len(eligible)},
+                    ),
                 )
 
             values = list(heights.values())
             spread = max(values) - min(values)
-            if spread > BLOCK_HEIGHT_SPREAD_THRESHOLD:
+            if spread > self.HEALTH_SPREAD_THRESHOLD:
+                self._last_error = {
+                    "layer": "L4",
+                    "reason": "height_spread_exceeded",
+                    "heights": dict(heights),
+                    "spread": spread,
+                    "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                }
                 raise RPCUnavailableException(
                     human_readable_reason=(
                         "RPC node block heights diverge beyond the allowed threshold; "
                         "treating cluster state as contaminated (fail-closed)."
                     ),
-                    context={
-                        "layer": "L4",
-                        "heights": dict(heights),
-                        "spread": spread,
-                        "threshold": BLOCK_HEIGHT_SPREAD_THRESHOLD,
-                    },
+                    context=self._failure_context(
+                        reason="height_spread_exceeded",
+                        extra={
+                            "heights": dict(heights),
+                            "spread": spread,
+                            "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                        },
+                    ),
                 )
 
-            chosen = sorted(heights.keys())[0]
+            chosen = min(eligible, key=lambda url: (heights.get(url, 10**18), url))
             self._last_url = chosen
+            self._last_selected_latency = None
             self._sync_web3 = Web3(HTTPProvider(chosen, request_kwargs={"timeout": self._timeout}))
             self._async_web3 = None
             bn = max(values)
@@ -240,46 +333,55 @@ class RPCManager:
                     human_readable_reason=(
                         "RPC returned HTTP 429 / Too Many Requests during block fetch."
                     ),
-                    context={"layer": "L4", "failed": {k: str(v) for k, v in errors.items()}},
+                    context=self._failure_context(
+                        reason="quota_exhausted",
+                        errors=errors,
+                        extra={"url": next(iter(errors.keys()), None)},
+                    ),
                 ) from first
 
-            for u in eligible:
-                if u in heights:
-                    self._record_transport_success(u)
-                else:
-                    self._record_transport_failure(u)
+            self._record_outcome(eligible, heights, errors)
 
             if len(heights) != len(eligible):
                 raise RPCUnavailableException(
                     human_readable_reason=(
                         "One or more RPC endpoints failed during block height reconciliation."
                     ),
-                    context={
-                        "layer": "L4",
-                        "failed": {k: str(v) for k, v in errors.items()},
-                        "ok_count": len(heights),
-                        "expected": len(eligible),
-                    },
+                    context=self._failure_context(
+                        reason="reconcile_failed",
+                        errors=errors,
+                        extra={"ok_count": len(heights), "expected": len(eligible)},
+                    ),
                 )
 
             values = list(heights.values())
             spread = max(values) - min(values)
-            if spread > BLOCK_HEIGHT_SPREAD_THRESHOLD:
+            if spread > self.HEALTH_SPREAD_THRESHOLD:
+                self._last_error = {
+                    "layer": "L4",
+                    "reason": "height_spread_exceeded",
+                    "heights": dict(heights),
+                    "spread": spread,
+                    "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                }
                 raise RPCUnavailableException(
                     human_readable_reason=(
                         "RPC node block heights diverge beyond the allowed threshold; "
                         "treating cluster state as contaminated (fail-closed)."
                     ),
-                    context={
-                        "layer": "L4",
-                        "heights": dict(heights),
-                        "spread": spread,
-                        "threshold": BLOCK_HEIGHT_SPREAD_THRESHOLD,
-                    },
+                    context=self._failure_context(
+                        reason="height_spread_exceeded",
+                        extra={
+                            "heights": dict(heights),
+                            "spread": spread,
+                            "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                        },
+                    ),
                 )
 
-            chosen = sorted(heights.keys())[0]
+            chosen = min(eligible, key=lambda url: (heights.get(url, 10**18), url))
             self._last_url = chosen
+            self._last_selected_latency = None
             self._async_web3 = AsyncWeb3(
                 AsyncHTTPProvider(chosen, request_kwargs={"timeout": self._timeout})
             )
@@ -343,6 +445,9 @@ class AsyncQuorumProvider:
         self._retry_base_delay = retry_base_delay
         self._best_url: Optional[str] = None
         self._best_height: Optional[int] = None
+        self._last_error: Optional[Dict[str, Any]] = None
+        self._last_selected_latency: Optional[float] = None
+        self._lock = threading.Lock()
 
     async def refresh_quorum(self) -> int:
         if not self._rpc_urls:
@@ -368,9 +473,24 @@ class AsyncQuorumProvider:
         ]
         if not healthy:
             self._raise_quorum_failed("all endpoints stale", failures=failures)
-        self._best_url = min(healthy, key=lambda item: item[2])[0]
+        best_url, _, best_latency = min(healthy, key=lambda item: (item[2], item[0]))
+        self._best_url = best_url
         self._best_height = head
+        self._last_selected_latency = best_latency
         return head
+
+    def snapshot(self) -> Dict[str, Any]:
+        with self._lock:
+            return {
+                "timeout": self._timeout,
+                "best_url": self._best_url,
+                "best_height": self._best_height,
+                "last_error": dict(self._last_error) if self._last_error is not None else None,
+                "rpc_urls": list(self._rpc_urls),
+                "rpc_count": len(self._rpc_urls),
+                "last_selected_latency": self._last_selected_latency,
+                "staleness_threshold": self._staleness_threshold,
+            }
 
     async def eth_call(self, tx: Dict[str, Any], block: str = "latest") -> Any:
         if self._best_url is None:
@@ -476,6 +596,7 @@ class AsyncQuorumProvider:
 
     async def quorum_eth_call(self, tx: Dict[str, Any]) -> Dict[str, Any]:
         if not self._rpc_urls:
+            self._last_error = {"layer": "L4", "reason": "rpc_urls_empty"}
             raise LirixConsensusFailureException(
                 error_code="LRX_L4_CONSENSUS_FAILED",
                 value_protected="RPC Simulation Consistency",
@@ -509,10 +630,8 @@ class AsyncQuorumProvider:
             digest = await asyncio.to_thread(self._hash_result, res)
             return url, digest
 
-        # Keep raw results for later selection.
         raw: Dict[str, Any] = {url: res for url, res in results}
 
-        # Compute all hashes concurrently in the thread pool.
         hash_tasks = [_compute_hash(url, res) for url, res in results]
         hash_results = await asyncio.gather(*hash_tasks)
 
@@ -551,12 +670,18 @@ class AsyncQuorumProvider:
             primary_w3 = AsyncWeb3(primary_provider)
             block_obj = await primary_w3.eth.get_block(target_block)
             primary_block_hash = getattr(block_obj, "hash", None)
+        winner_url = nodes[0]
         return {
             "block_number": target_block,
             "block_hash": primary_block_hash,
             "hash": best_hash,
-            "result": raw[nodes[0]],
+            "result": raw[winner_url],
+            "result_source_url": winner_url,
+            "winner_url": winner_url,
+            "winner_hash": best_hash,
             "quorum": nodes,
+            "quorum_size": len(nodes),
+            "required_votes": required_votes,
         }
 
     def quorum_eth_call_sync(self, tx: Dict[str, Any]) -> Dict[str, Any]:
@@ -568,14 +693,17 @@ class AsyncQuorumProvider:
         *,
         failures: Optional[Dict[str, str]] = None,
     ) -> None:
+        context = {
+            "layer": "L4",
+            "reason": reason,
+            "failures": failures or {},
+        }
+        with self._lock:
+            self._last_error = dict(context)
         raise LirixRPCError(
             error_code="LRX_RPC_QUORUM_FAILED",
             value_protected="RPC Availability",
             resolution_agent="Switch RPC quorum source or retry when healthy nodes recover.",
             resolution_dev="Inspect endpoint health, latency, and staleness threshold for quorum.",
-            context={
-                "layer": "L4",
-                "reason": reason,
-                "failures": failures or {},
-            },
+            context=context,
         )

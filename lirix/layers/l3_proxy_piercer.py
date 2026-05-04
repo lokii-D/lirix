@@ -64,21 +64,25 @@ class AbiLRUCache:
         )
         self._db.commit()
         self._stop_event = threading.Event()
+        self._closed = False
+        self._last_touch_at: Dict[str, int] = {}
         self._janitor = threading.Thread(target=self._invalidation_loop, daemon=True)
         self._janitor.start()
 
     def get(self, address: str) -> Optional[Any]:
         key = Web3.to_checksum_address(address)
         with self._lock:
+            self._ensure_open_locked()
             if key in self._memory:
                 entry = self._memory.pop(key)
                 if self._is_stale(entry["expires_at"]):
                     self._purge_locked(key)
                     return None
                 self._memory[key] = entry
+                self._touch_locked(key)
                 return entry["abi"]
             row = self._db.execute(
-                "SELECT abi_json, expires_at FROM abi_cache WHERE address = ?",
+                "SELECT abi_json, expires_at, touched_at FROM abi_cache WHERE address = ?",
                 (key,),
             ).fetchone()
             if row is None:
@@ -90,11 +94,7 @@ class AbiLRUCache:
             value = json.loads(str(row[0]))
             self._memory[key] = {"abi": value, "expires_at": expires_at}
             self._trim_memory_locked()
-            self._db.execute(
-                "UPDATE abi_cache SET touched_at = ? WHERE address = ?",
-                (self._now(), key),
-            )
-            self._db.commit()
+            self._touch_locked(key, touched_at=int(row[2]))
             return value
 
     def set(self, address: str, abi: Any) -> None:
@@ -103,10 +103,12 @@ class AbiLRUCache:
         now = self._now()
         expires_at = now + self._ttl_seconds
         with self._lock:
+            self._ensure_open_locked()
             if key in self._memory:
                 self._memory.pop(key)
-            self._memory[key] = {"abi": abi, "expires_at": expires_at}
+            self._memory[key] = {"abi": self._copy_cached_abi(abi), "expires_at": expires_at}
             self._trim_memory_locked()
+            self._touch_locked(key, touched_at=now)
             self._db.execute(
                 """
                 INSERT INTO abi_cache(address, abi_json, touched_at, expires_at)
@@ -123,17 +125,39 @@ class AbiLRUCache:
     def invalidate(self, address: str) -> None:
         key = Web3.to_checksum_address(address)
         with self._lock:
+            self._ensure_open_locked()
             self._purge_locked(key)
 
     def invalidate_stale(self) -> None:
         with self._lock:
+            self._ensure_open_locked()
             self._invalidate_stale_locked()
 
     def close(self) -> None:
-        self._stop_event.set()
-        self._janitor.join(timeout=0.2)
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            self._stop_event.set()
+        self._janitor.join(timeout=1.0)
         with self._lock:
             self._db.close()
+
+    def snapshot(self) -> Dict[str, Any]:
+        with self._lock:
+            self._ensure_open_locked(allow_closed=True)
+            now = self._now()
+            stale_count = sum(
+                1 for entry in self._memory.values() if int(entry["expires_at"]) <= now
+            )
+            return {
+                "max_entries": self._max_entries,
+                "memory_entries": len(self._memory),
+                "stale_entries": stale_count,
+                "ttl_seconds": self._ttl_seconds,
+                "invalidation_interval_seconds": self._invalidation_interval_seconds,
+                "closed": self._closed,
+            }
 
     def _trim_memory_locked(self) -> None:
         while len(self._memory) > self._max_entries:
@@ -155,10 +179,33 @@ class AbiLRUCache:
     def _invalidation_loop(self) -> None:
         while not self._stop_event.wait(self._invalidation_interval_seconds):
             with self._lock:
+                if self._closed:
+                    return
                 self._invalidate_stale_locked()
+
+    def _touch_locked(self, address: str, *, touched_at: Optional[int] = None) -> None:
+        now = self._now() if touched_at is None else int(touched_at)
+        last = self._last_touch_at.get(address)
+        if last is not None and (now - last) < self._invalidation_interval_seconds:
+            return
+        self._last_touch_at[address] = now
+        self._db.execute("UPDATE abi_cache SET touched_at = ? WHERE address = ?", (now, address))
+        self._db.commit()
+
+    @staticmethod
+    def _copy_cached_abi(abi: Any) -> Any:
+        try:
+            return json.loads(json.dumps(abi, separators=(",", ":")))
+        except Exception:
+            return abi
+
+    def _ensure_open_locked(self, allow_closed: bool = False) -> None:
+        if self._closed and not allow_closed:
+            raise RuntimeError("AbiLRUCache is closed")
 
     def _purge_locked(self, address: str) -> None:
         self._memory.pop(address, None)
+        self._last_touch_at.pop(address, None)
         self._db.execute("DELETE FROM abi_cache WHERE address = ?", (address,))
         self._db.commit()
 
@@ -172,8 +219,13 @@ class AbiLRUCache:
 class ProxyPiercer:
     """Resolve proxy targets across EIP-1967, Beacon, and EIP-1822."""
 
+    INSPECTION_CACHE_TTL_SECONDS: int = 60
+    INSPECTION_CACHE_MAX_ENTRIES: int = 256
+
     def __init__(self, *, abi_cache: Optional[AbiLRUCache] = None) -> None:
         self._cache = abi_cache or AbiLRUCache()
+        self._inspection_cache: OrderedDict[str, tuple[float, Dict[str, Any]]] = OrderedDict()
+        self._inspection_lock = threading.Lock()
         self._implementation_slot = int(EIP1967_IMPLEMENTATION_SLOT, 16)
         self._beacon_slot = int(EIP1967_BEACON_SLOT, 16)
         self._admin_slot = int(EIP1967_ADMIN_SLOT, 16)
@@ -184,6 +236,16 @@ class ProxyPiercer:
 
     def inspect_target(self, web3: Web3, target_address: str) -> Dict[str, Any]:
         target = Web3.to_checksum_address(target_address)
+        now = time.time()
+        with self._inspection_lock:
+            cached = self._inspection_cache.get(target)
+            if cached is not None:
+                expires_at, cached_result = cached
+                if now < expires_at:
+                    self._inspection_cache.move_to_end(target)
+                    return self._copy_inspection_result(cached_result)
+                self._inspection_cache.pop(target, None)
+
         admin = self._read_slot_address(web3, target, self._admin_slot)
         implementation = self._read_slot_address(web3, target, self._implementation_slot)
         beacon = self._read_slot_address(web3, target, self._beacon_slot)
@@ -194,14 +256,20 @@ class ProxyPiercer:
             resolution_path.append("eip1967_beacon")
             beacon_implementation = self._resolve_beacon_implementation(web3, beacon)
             resolved = beacon_implementation or implementation or uups or target
+            proxy_kind = "beacon" if beacon_implementation is not None else "beacon_unresolved"
             if beacon_implementation is not None:
                 resolution_path.append("beacon.implementation()")
-            return {
+            else:
+                if implementation is not None:
+                    resolution_path.append("fallback.eip1967_implementation")
+                elif uups is not None:
+                    resolution_path.append("fallback.eip1822_uups")
+                else:
+                    resolution_path.append("fallback.self")
+            result = {
                 "target": target,
                 "resolved_target": resolved,
-                "proxy_kind": (
-                    "beacon" if beacon_implementation is not None else "beacon_unresolved"
-                ),
+                "proxy_kind": proxy_kind,
                 "implementation": implementation,
                 "beacon": beacon,
                 "beacon_implementation": beacon_implementation,
@@ -210,10 +278,12 @@ class ProxyPiercer:
                 "is_proxy": True,
                 "resolution_path": resolution_path,
             }
+            self._store_inspection_cache(target, result, now)
+            return self._copy_inspection_result(result)
 
         if implementation is not None:
             resolution_path.append("eip1967_implementation")
-            return {
+            result = {
                 "target": target,
                 "resolved_target": implementation,
                 "proxy_kind": "eip1967",
@@ -225,10 +295,12 @@ class ProxyPiercer:
                 "is_proxy": True,
                 "resolution_path": resolution_path,
             }
+            self._store_inspection_cache(target, result, now)
+            return self._copy_inspection_result(result)
 
         if uups is not None:
             resolution_path.append("eip1822_uups")
-            return {
+            result = {
                 "target": target,
                 "resolved_target": uups,
                 "proxy_kind": "uups",
@@ -240,8 +312,12 @@ class ProxyPiercer:
                 "is_proxy": True,
                 "resolution_path": resolution_path,
             }
+            self._store_inspection_cache(target, result, now)
+            return self._copy_inspection_result(result)
 
-        return {
+        if admin is not None:
+            resolution_path.append("eip1967_admin")
+        result = {
             "target": target,
             "resolved_target": target,
             "proxy_kind": "direct" if admin is None else "admin_only_proxy",
@@ -251,8 +327,46 @@ class ProxyPiercer:
             "admin": admin,
             "uups_implementation": None,
             "is_proxy": admin is not None,
-            "resolution_path": resolution_path or (["eip1967_admin"] if admin is not None else []),
+            "resolution_path": resolution_path,
         }
+        self._store_inspection_cache(target, result, now)
+        return self._copy_inspection_result(result)
+
+    def _store_inspection_cache(self, target: str, result: Dict[str, Any], now: float) -> None:
+        expires_at = now + self.INSPECTION_CACHE_TTL_SECONDS
+        with self._inspection_lock:
+            cached_result = self._copy_inspection_result(result)
+            self._inspection_cache[target] = (expires_at, cached_result)
+            self._inspection_cache.move_to_end(target)
+            self._purge_stale_inspection_cache_locked(now)
+            while len(self._inspection_cache) > self.INSPECTION_CACHE_MAX_ENTRIES:
+                self._inspection_cache.popitem(last=False)
+
+    def _purge_stale_inspection_cache_locked(self, now: float) -> None:
+        stale_keys = [
+            key for key, (expires_at, _) in self._inspection_cache.items() if expires_at <= now
+        ]
+        for key in stale_keys:
+            self._inspection_cache.pop(key, None)
+
+    def snapshot(self) -> Dict[str, Any]:
+        with self._inspection_lock:
+            now = time.time()
+            return {
+                "inspection_cache_entries": len(self._inspection_cache),
+                "inspection_cache_max_entries": self.INSPECTION_CACHE_MAX_ENTRIES,
+                "inspection_cache_ttl_seconds": self.INSPECTION_CACHE_TTL_SECONDS,
+                "stale_entries": sum(
+                    1 for expires_at, _ in self._inspection_cache.values() if expires_at <= now
+                ),
+            }
+
+    @staticmethod
+    def _copy_inspection_result(result: Dict[str, Any]) -> Dict[str, Any]:
+        copied = dict(result)
+        if "resolution_path" in copied and not isinstance(copied["resolution_path"], list):
+            copied["resolution_path"] = list(copied["resolution_path"])
+        return copied
 
     def fetch_abi(
         self,
@@ -270,7 +384,7 @@ class ProxyPiercer:
                 "target": actual_target,
                 "abi": cached,
                 "cache_hit": True,
-                "proxy": inspection,
+                "proxy": dict(inspection),
             }
         abi = abi_fetcher(actual_target)
         self._cache.set(actual_target, abi)
@@ -278,7 +392,7 @@ class ProxyPiercer:
             "target": actual_target,
             "abi": abi,
             "cache_hit": False,
-            "proxy": inspection,
+            "proxy": dict(inspection),
         }
 
     @staticmethod

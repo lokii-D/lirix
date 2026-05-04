@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock
 
 import matplotlib
 import numpy as np
+from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
 from eth_abi import encode
 from lirix.core.exceptions import LirixStateAssertionError
 from lirix.layers.l2_schema_validator import AssertionSchema
@@ -945,6 +946,26 @@ def run_rq2_assertions_benchmark() -> list[dict[str, Any]]:
     _write_required_volatility_vs_mcc_pdf(required_rows)
     profile_rows = _write_profile_comparison(merged)
     _write_report(merged, sweep, profile_rows, pr_rows, volatility_rows)
+    archive_artifacts(
+        ArtifactFamily(name="rq2", output_dir=OUTPUT_DIR),
+        [
+            SUMMARY_CSV_PATH.name,
+            CATEGORY_CSV_PATH.name,
+            SWEEP_CSV_PATH.name,
+            PROFILE_COMPARISON_CSV_PATH.name,
+            MAIN_PNG_PATH.name,
+            CATEGORY_PNG_PATH.name,
+            SWEEP_PNG_PATH.name,
+            PROFILE_PNG_PATH.name,
+            REPORT_PATH.name,
+            PR_CURVE_PNG_PATH.name,
+            VOLATILITY_CSV_PATH.name,
+            VOLATILITY_PNG_PATH.name,
+            RQ2_REQUIRED_CSV_PATH.name,
+            RQ2_REQUIRED_PR_PDF_PATH.name,
+            RQ2_REQUIRED_VOL_MCC_PDF_PATH.name,
+        ],
+    )
     return merged
 
 

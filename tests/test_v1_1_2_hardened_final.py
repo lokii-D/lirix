@@ -96,7 +96,7 @@ def test_circuit_breaker_timeout(mock_web3: Any) -> None:
 @patch("lirix.core.builder.Web3", create=True)
 @patch("lirix.core.builder.eth_abi_encode", create=True)
 def test_hallucination_error_on_bad_address(_: Any, mock_web3: object) -> None:
-    cast(Any, mock_web3).is_checksum_address.return_value = False
+    cast(Any, mock_web3).is_address.return_value = False
     builder = CalldataBuilder()
     with pytest.raises(LirixHallucinationError):
         builder.build(

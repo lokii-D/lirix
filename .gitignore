@@ -26,6 +26,9 @@ _lirix_launch_sandbox/
 # OS files
 .DS_Store
 
+# IDE / editor (local only)
+.cursor/
+
 # Local research/checklist artifacts (keep private)
 checklists/
 prompts/

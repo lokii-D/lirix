@@ -34,12 +34,16 @@ except ModuleNotFoundError:
 
 from lirix.integrations.autogen import tool as autogen_tool
 
+from .artifact_manager import ArtifactFamily, archive_artifacts
+from .artifact_paths import resolve_artifact_layout
+
 CONCURRENCY_MATRIX = [10, 50, 100, 200, 500]
 OPEN_LOOP_LAMBDA_MATRIX: list[int] = []
 WARMUP_SECONDS = 10.0
 MEASURE_WINDOW_SECONDS = 60.0
 MEASURE_ROUNDS = 2
-OUTPUT_DIR = Path(__file__).resolve().parent
+OUTPUT_LAYOUT = resolve_artifact_layout(Path(__file__).resolve().parent.parent)
+OUTPUT_DIR = OUTPUT_LAYOUT.output_dir / "rq1"
 CSV_PATH = OUTPUT_DIR / "rq1_throughput.csv"
 RQ1_TARGET_CSV_PATH = OUTPUT_DIR / "rq1_core_metrics.csv"
 RAW_CSV_PATH = OUTPUT_DIR / "rq1_trials_raw.csv"
@@ -1123,6 +1127,25 @@ def run_rq1_benchmark() -> list[dict[str, float | int | str]]:
     _write_tps_plot(summary_rows)
     _write_boxplot_n200(trials)
     _write_report(summary_rows)
+    archive_artifacts(
+        ArtifactFamily(name="rq1", output_dir=OUTPUT_DIR),
+        [
+            CSV_PATH.name,
+            RQ1_TARGET_CSV_PATH.name,
+            RAW_CSV_PATH.name,
+            CDF_CSV_PATH.name,
+            PNG_PATH.name,
+            TAIL_CCDF_PNG_PATH.name,
+            ABS_CCDF_PDF_PATH.name,
+            THROUGHPUT_LATENCY_PDF_PATH.name,
+            EVENT_LOOP_JITTER_LOG_PDF_PATH.name,
+            TPS_VS_TAIL_LATENCY_PDF_PATH.name,
+            PCTL_PNG_PATH.name,
+            TPS_PNG_PATH.name,
+            BOXPLOT_PNG_PATH.name,
+            REPORT_PATH.name,
+        ],
+    )
     print("[RQ1] Benchmark finished")
     return summary_rows
 

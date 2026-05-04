@@ -14,6 +14,10 @@ from lirix.core.exceptions import (
 from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.layers.l4_rpc_manager import RPCManager
+from web3 import Web3
+from web3 import types as web3_types
+from web3.exceptions import ContractLogicError
+
 from tests.test_layers.conftest import (
     addr_recipient,
     build_swap_calldata,
@@ -22,9 +26,6 @@ from tests.test_layers.conftest import (
     token_usdc,
     token_weth,
 )
-from web3 import Web3
-from web3 import types as web3_types
-from web3.exceptions import ContractLogicError
 
 
 def test_register_hook_top_level_alias() -> None:

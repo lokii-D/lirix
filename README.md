@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://pypi.org/project/lirix/"><img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI"></a>
-  <img src="https://img.shields.io/badge/Python-3.8--3.14-blue?style=flat-square" alt="Python Version">
+  <img src="https://img.shields.io/badge/Python-3.9--3.14-blue?style=flat-square" alt="Python Version">
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage 100%">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
@@ -49,8 +49,8 @@ Install Lirix inside a virtual environment to stay aligned with modern OS protec
 
 ```bash
 # 1. Create and activate a virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 
 # 2. Install Lirix
 pip install lirix
@@ -240,7 +240,7 @@ A: This is PEP 668 at work. Create and activate a virtual environment first, the
 
 <div align="center">
   <a href="https://pypi.org/project/lirix/"><img src="https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square" alt="PyPI"></a>
-  <img src="https://img.shields.io/badge/Python-3.8--3.14-blue?style=flat-square" alt="Python Version">
+  <img src="https://img.shields.io/badge/Python-3.9--3.14-blue?style=flat-square" alt="Python Version">
   <img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage 100%">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
@@ -282,8 +282,8 @@ Lirix 把原本裸露的风险缝隙，收拢成一条可验证、可熔断、�
 
 ```bash
 # 1. 创建并激活虚拟环境
-python3 -m venv venv
-source venv/bin/activate  # Windows 使用：venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # Windows 使用：.venv\Scripts\activate
 
 # 2. 安装 Lirix
 pip install lirix
@@ -471,7 +471,7 @@ Lirix Triple-Zero Standard 很简单：**Zero-Key、Zero-Telemetry、Zero-Trust*
 
 ## 开发环境要求
 
-- Python 3.8–3.14
+- Python 3.9–3.14
 - `black`
 - `ruff`
 - `mypy`

@@ -57,14 +57,23 @@ class LirixConfig(BaseModel):
         if not isinstance(v, Sequence) or isinstance(v, (str, bytes)):
             raise ConfigurationGuardException(
                 human_readable_reason="rpc_urls must be a list of strings.",
-                context={"value_type": type(v).__name__},
+                context={
+                    "field": "rpc_urls",
+                    "reason": "type_invalid",
+                    "value_type": type(v).__name__,
+                },
             )
         out: List[str] = []
         for i, item in enumerate(v):
             if not isinstance(item, str) or not item.strip():
                 raise ConfigurationGuardException(
                     human_readable_reason="Each rpc_urls entry must be a non-empty string.",
-                    context={"index": i, "value": item},
+                    context={
+                        "field": "rpc_urls",
+                        "reason": "entry_invalid",
+                        "index": i,
+                        "value": item,
+                    },
                 )
             out.append(item.strip())
         return out
@@ -77,14 +86,23 @@ class LirixConfig(BaseModel):
         if not isinstance(v, Sequence) or isinstance(v, (str, bytes)):
             raise ConfigurationGuardException(
                 human_readable_reason="allowed_intents must be a list of strings.",
-                context={"value_type": type(v).__name__},
+                context={
+                    "field": "allowed_intents",
+                    "reason": "type_invalid",
+                    "value_type": type(v).__name__,
+                },
             )
         out: List[str] = []
         for i, item in enumerate(v):
             if not isinstance(item, str) or not item.strip():
                 raise ConfigurationGuardException(
                     human_readable_reason="Each allowed_intents entry must be a non-empty string.",
-                    context={"index": i, "value": item},
+                    context={
+                        "field": "allowed_intents",
+                        "reason": "entry_invalid",
+                        "index": i,
+                        "value": item,
+                    },
                 )
             out.append(item.strip())
         return out
@@ -97,7 +115,11 @@ class LirixConfig(BaseModel):
         if not isinstance(v, Sequence) or isinstance(v, (str, bytes)):
             raise ConfigurationGuardException(
                 human_readable_reason="allowed_function_names must be a list of strings.",
-                context={"value_type": type(v).__name__},
+                context={
+                    "field": "allowed_function_names",
+                    "reason": "type_invalid",
+                    "value_type": type(v).__name__,
+                },
             )
         out: List[str] = []
         for i, item in enumerate(v):
@@ -106,7 +128,12 @@ class LirixConfig(BaseModel):
                     human_readable_reason=(
                         "Each allowed_function_names entry must be a non-empty string."
                     ),
-                    context={"index": i, "value": item},
+                    context={
+                        "field": "allowed_function_names",
+                        "reason": "entry_invalid",
+                        "index": i,
+                        "value": item,
+                    },
                 )
             out.append(item.strip())
         return out
@@ -122,13 +149,17 @@ class LirixConfig(BaseModel):
         if not isinstance(v, str):
             raise ConfigurationGuardException(
                 human_readable_reason=f"{field_name} must be a string address or empty.",
-                context={"value_type": type(v).__name__},
+                context={
+                    "field": field_name,
+                    "reason": "type_invalid",
+                    "value_type": type(v).__name__,
+                },
             )
         raw = v.strip()
         if not Web3.is_address(raw):
             raise ConfigurationGuardException(
                 human_readable_reason=f"{field_name} is not a valid hex address.",
-                context={"field": field_name, "value": raw},
+                context={"field": field_name, "reason": "address_invalid", "value": raw},
             )
         return Web3.to_checksum_address(raw)
 
@@ -144,18 +175,16 @@ class LirixConfig(BaseModel):
         if v is None:
             return []
         if not isinstance(v, Sequence) or isinstance(v, (str, bytes)):
-            raise ValueError(
-                f"{field_name} must be a list of address strings",
-            )
+            raise ValueError(f"{field_name} must be a list of address strings.")
         out: List[str] = []
         for i, item in enumerate(v):
             if not isinstance(item, str):
-                raise ValueError(f"{field_name}[{i}] must be a non-empty string address")
+                raise ValueError(f"{field_name}[{i}] must be a non-empty string address.")
             raw = item.strip()
             if not raw:
-                raise ValueError(f"{field_name}[{i}] must be a non-empty string address")
+                raise ValueError(f"{field_name}[{i}] must be a non-empty string address.")
             if not Web3.is_address(raw):
-                raise ValueError(f"{field_name}[{i}] is not a valid hex address: {raw!r}")
+                raise ValueError(f"{field_name}[{i}] is not a valid hex address.")
             out.append(Web3.to_checksum_address(raw))
         return out
 
@@ -168,7 +197,7 @@ class LirixConfig(BaseModel):
                     human_readable_reason=(
                         "strict_mode forbids overlapping blacklist and whitelist."
                     ),
-                    context={"overlap": sorted(overlap)},
+                    context={"reason": "overlap_blacklist_whitelist", "overlap": sorted(overlap)},
                 )
             bad_to = set(self.blacklisted_addresses) & set(self.allowed_to_addresses)
             if bad_to:
@@ -177,6 +206,6 @@ class LirixConfig(BaseModel):
                         "strict_mode forbids addresses in both blacklisted_addresses "
                         "and allowed_to_addresses."
                     ),
-                    context={"overlap": sorted(bad_to)},
+                    context={"reason": "overlap_blacklist_allowed_to", "overlap": sorted(bad_to)},
                 )
         return self
