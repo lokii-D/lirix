@@ -5,6 +5,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -64,3 +65,30 @@ def resolve_artifact_layout(base_dir: Path) -> ArtifactLayout:
     layout = ArtifactLayout(base_dir=base_dir, branch_slug=branch_slug, run_number=run_number)
     layout.output_dir.mkdir(parents=True, exist_ok=True)
     return layout
+
+
+def lirix_repo_root() -> Path:
+    """`benchmarks/rq_tests_py/artifact_paths.py` → Lirix repo root."""
+    return Path(__file__).resolve().parents[2]
+
+
+def tdsc_rq_tests_root(rq_index: int) -> Path:
+    return lirix_repo_root() / "tdsc" / f"rq{rq_index}_tests"
+
+
+def resolve_tdsc_rq_layout(rq_index: int) -> ArtifactLayout:
+    """Branch/run root under ``tdsc/rq{N}_tests`` (format subdirs live inside output_dir)."""
+    return resolve_artifact_layout(tdsc_rq_tests_root(rq_index))
+
+
+def relpaths_under(root: Path, paths: Iterable[Path]) -> list[str]:
+    return [path.relative_to(root).as_posix() for path in paths]
+
+
+def newest_file_named(root: Path, filename: str) -> Path | None:
+    if not root.exists():
+        return None
+    hits = list(root.rglob(filename))
+    if not hits:
+        return None
+    return max(hits, key=lambda p: p.stat().st_mtime)

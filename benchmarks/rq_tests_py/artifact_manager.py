@@ -60,5 +60,7 @@ def archive_artifacts(family: ArtifactFamily, artifact_names: Iterable[str]) -> 
     for artifact_name in artifact_names:
         source = family.output_dir / artifact_name
         if source.exists():
-            copy2(source, run_dir / artifact_name)
+            dest = run_dir / artifact_name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            copy2(source, dest)
     return run_dir

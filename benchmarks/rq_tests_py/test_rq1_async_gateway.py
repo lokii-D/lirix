@@ -35,29 +35,32 @@ except ModuleNotFoundError:
 from lirix.integrations.autogen import tool as autogen_tool
 
 from .artifact_manager import ArtifactFamily, archive_artifacts
-from .artifact_paths import resolve_artifact_layout
+from .artifact_paths import relpaths_under, resolve_tdsc_rq_layout
 
 CONCURRENCY_MATRIX = [10, 50, 100, 200, 500]
 OPEN_LOOP_LAMBDA_MATRIX: list[int] = []
 WARMUP_SECONDS = 10.0
 MEASURE_WINDOW_SECONDS = 60.0
 MEASURE_ROUNDS = 2
-OUTPUT_LAYOUT = resolve_artifact_layout(Path(__file__).resolve().parent.parent)
-OUTPUT_DIR = OUTPUT_LAYOUT.output_dir / "rq1"
-CSV_PATH = OUTPUT_DIR / "rq1_throughput.csv"
-RQ1_TARGET_CSV_PATH = OUTPUT_DIR / "rq1_core_metrics.csv"
-RAW_CSV_PATH = OUTPUT_DIR / "rq1_trials_raw.csv"
-CDF_CSV_PATH = OUTPUT_DIR / "rq1_cdf_n200_points.csv"
-PNG_PATH = OUTPUT_DIR / "rq1_gil_jitter_cdf.png"
-TAIL_CCDF_PNG_PATH = OUTPUT_DIR / "rq1_gil_jitter_ccdf.png"
-ABS_CCDF_PDF_PATH = OUTPUT_DIR / "ccdf_absolute_latency.pdf"
-THROUGHPUT_LATENCY_PDF_PATH = OUTPUT_DIR / "throughput_vs_latency.pdf"
-EVENT_LOOP_JITTER_LOG_PDF_PATH = OUTPUT_DIR / "rq1_event_loop_jitter_log.pdf"
-TPS_VS_TAIL_LATENCY_PDF_PATH = OUTPUT_DIR / "rq1_tps_vs_tail_latency.pdf"
-PCTL_PNG_PATH = OUTPUT_DIR / "rq1_jitter_percentiles.png"
-TPS_PNG_PATH = OUTPUT_DIR / "rq1_tps_scaling.png"
-BOXPLOT_PNG_PATH = OUTPUT_DIR / "rq1_jitter_boxplot_n200.png"
-REPORT_PATH = OUTPUT_DIR / "rq1_ieee_report.md"
+OUTPUT_LAYOUT = resolve_tdsc_rq_layout(1)
+RUN_ROOT = OUTPUT_LAYOUT.output_dir
+RQ1_CSV_DIR = RUN_ROOT / "rq1_csv"
+RQ1_PNG_DIR = RUN_ROOT / "rq1_png"
+RQ1_PDF_DIR = RUN_ROOT / "rq1_pdf"
+CSV_PATH = RQ1_CSV_DIR / "rq1_throughput.csv"
+RQ1_TARGET_CSV_PATH = RQ1_CSV_DIR / "rq1_core_metrics.csv"
+RAW_CSV_PATH = RQ1_CSV_DIR / "rq1_trials_raw.csv"
+CDF_CSV_PATH = RQ1_CSV_DIR / "rq1_cdf_n200_points.csv"
+PNG_PATH = RQ1_PNG_DIR / "rq1_gil_jitter_cdf.png"
+TAIL_CCDF_PNG_PATH = RQ1_PNG_DIR / "rq1_gil_jitter_ccdf.png"
+ABS_CCDF_PDF_PATH = RQ1_PDF_DIR / "ccdf_absolute_latency.pdf"
+THROUGHPUT_LATENCY_PDF_PATH = RQ1_PDF_DIR / "throughput_vs_latency.pdf"
+EVENT_LOOP_JITTER_LOG_PDF_PATH = RQ1_PDF_DIR / "rq1_event_loop_jitter_log.pdf"
+TPS_VS_TAIL_LATENCY_PDF_PATH = RQ1_PDF_DIR / "rq1_tps_vs_tail_latency.pdf"
+PCTL_PNG_PATH = RQ1_PNG_DIR / "rq1_jitter_percentiles.png"
+TPS_PNG_PATH = RQ1_PNG_DIR / "rq1_tps_scaling.png"
+BOXPLOT_PNG_PATH = RQ1_PNG_DIR / "rq1_jitter_boxplot_n200.png"
+REPORT_PATH = RQ1_CSV_DIR / "rq1_ieee_report.md"
 DUMMY_RPC_URLS = ("http://offline.local",)
 HEARTBEAT_INTERVAL_SECONDS = 0.01
 CDF_TARGET_CONCURRENCY = 200
@@ -501,6 +504,7 @@ def _extract_cdf_samples(trials: list[TrialResult]) -> dict[str, list[float]]:
 
 
 def _write_raw_csv(trials: list[TrialResult]) -> None:
+    RQ1_CSV_DIR.mkdir(parents=True, exist_ok=True)
     with RAW_CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
             fp,
@@ -535,7 +539,7 @@ def _write_raw_csv(trials: list[TrialResult]) -> None:
 
 
 def _write_summary_csv(rows: list[dict[str, float | int | str]]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    RQ1_CSV_DIR.mkdir(parents=True, exist_ok=True)
     with CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
             fp,
@@ -1113,6 +1117,8 @@ def run_rq1_benchmark() -> list[dict[str, float | int | str]]:
     summary_rows = _summarize_trials(trials)
     cdf_samples = _extract_cdf_samples(trials)
     print("[RQ1] Writing artifacts ...")
+    RQ1_PNG_DIR.mkdir(parents=True, exist_ok=True)
+    RQ1_PDF_DIR.mkdir(parents=True, exist_ok=True)
     _write_raw_csv(trials)
     _write_summary_csv(summary_rows)
     _write_rq1_target_csv(summary_rows)
@@ -1128,23 +1134,26 @@ def run_rq1_benchmark() -> list[dict[str, float | int | str]]:
     _write_boxplot_n200(trials)
     _write_report(summary_rows)
     archive_artifacts(
-        ArtifactFamily(name="rq1", output_dir=OUTPUT_DIR),
-        [
-            CSV_PATH.name,
-            RQ1_TARGET_CSV_PATH.name,
-            RAW_CSV_PATH.name,
-            CDF_CSV_PATH.name,
-            PNG_PATH.name,
-            TAIL_CCDF_PNG_PATH.name,
-            ABS_CCDF_PDF_PATH.name,
-            THROUGHPUT_LATENCY_PDF_PATH.name,
-            EVENT_LOOP_JITTER_LOG_PDF_PATH.name,
-            TPS_VS_TAIL_LATENCY_PDF_PATH.name,
-            PCTL_PNG_PATH.name,
-            TPS_PNG_PATH.name,
-            BOXPLOT_PNG_PATH.name,
-            REPORT_PATH.name,
-        ],
+        ArtifactFamily(name="rq1", output_dir=RUN_ROOT),
+        relpaths_under(
+            RUN_ROOT,
+            [
+                CSV_PATH,
+                RQ1_TARGET_CSV_PATH,
+                RAW_CSV_PATH,
+                CDF_CSV_PATH,
+                PNG_PATH,
+                TAIL_CCDF_PNG_PATH,
+                ABS_CCDF_PDF_PATH,
+                THROUGHPUT_LATENCY_PDF_PATH,
+                EVENT_LOOP_JITTER_LOG_PDF_PATH,
+                TPS_VS_TAIL_LATENCY_PDF_PATH,
+                PCTL_PNG_PATH,
+                TPS_PNG_PATH,
+                BOXPLOT_PNG_PATH,
+                REPORT_PATH,
+            ],
+        ),
     )
     print("[RQ1] Benchmark finished")
     return summary_rows

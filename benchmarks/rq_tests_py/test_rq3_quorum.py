@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import matplotlib
 from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
+from benchmarks.rq_tests_py.artifact_paths import relpaths_under, resolve_tdsc_rq_layout
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -29,14 +30,17 @@ PAYLOAD_TARGET_BYTES = 100 * 1024
 SEED = 20260429
 TRIALS_PER_CELL = 8
 
-OUTPUT_DIR = Path(__file__).resolve().parent
-CSV_PATH = OUTPUT_DIR / "rq3_quorum_overhead.csv"
-PNG_PATH = OUTPUT_DIR / "rq3_consensus_latency.png"
-RAW_CSV_PATH = OUTPUT_DIR / "rq3_quorum_trials_raw.csv"
-BOX_PNG_PATH = OUTPUT_DIR / "rq3_consensus_latency_boxplot.png"
-REPORT_MD_PATH = OUTPUT_DIR / "rq3_ieee_report.md"
-LIVENESS_CSV_PATH = OUTPUT_DIR / "rq3_liveness_boundary.csv"
-SURFACE_PNG_PATH = OUTPUT_DIR / "rq3_cpu_surface_heatmap.png"
+OUTPUT_LAYOUT = resolve_tdsc_rq_layout(3)
+RUN_ROOT = OUTPUT_LAYOUT.output_dir
+RQ3_CSV_DIR = RUN_ROOT / "rq3_csv"
+RQ3_PNG_DIR = RUN_ROOT / "rq3_png"
+CSV_PATH = RQ3_CSV_DIR / "rq3_quorum_overhead.csv"
+PNG_PATH = RQ3_PNG_DIR / "rq3_consensus_latency.png"
+RAW_CSV_PATH = RQ3_CSV_DIR / "rq3_quorum_trials_raw.csv"
+BOX_PNG_PATH = RQ3_PNG_DIR / "rq3_consensus_latency_boxplot.png"
+REPORT_MD_PATH = RQ3_CSV_DIR / "rq3_ieee_report.md"
+LIVENESS_CSV_PATH = RQ3_CSV_DIR / "rq3_liveness_boundary.csv"
+SURFACE_PNG_PATH = RQ3_PNG_DIR / "rq3_cpu_surface_heatmap.png"
 
 
 def _shuffle_json(value: Any, rng: random.Random) -> Any:
@@ -349,7 +353,9 @@ async def _run_liveness_boundary_trial(
 
 
 def _write_main_csv(rows: list[dict[str, Any]]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_ROOT.mkdir(parents=True, exist_ok=True)
+    RQ3_CSV_DIR.mkdir(parents=True, exist_ok=True)
+    RQ3_PNG_DIR.mkdir(parents=True, exist_ok=True)
     with CSV_PATH.open("w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(
             fp,
@@ -671,15 +677,19 @@ def run_rq3_quorum_benchmark() -> list[dict[str, Any]]:
     _write_surface_plot(rows)
     _write_report(rows, raw_rows)
     archive_artifacts(
-        ArtifactFamily(name="rq3", output_dir=OUTPUT_DIR),
-        [
-            CSV_PATH.name,
-            RAW_CSV_PATH.name,
-            BOX_PNG_PATH.name,
-            LIVENESS_CSV_PATH.name,
-            SURFACE_PNG_PATH.name,
-            REPORT_MD_PATH.name,
-        ],
+        ArtifactFamily(name="rq3", output_dir=RUN_ROOT),
+        relpaths_under(
+            RUN_ROOT,
+            [
+                CSV_PATH,
+                PNG_PATH,
+                RAW_CSV_PATH,
+                BOX_PNG_PATH,
+                LIVENESS_CSV_PATH,
+                SURFACE_PNG_PATH,
+                REPORT_MD_PATH,
+            ],
+        ),
     )
     return rows
 

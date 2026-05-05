@@ -13,13 +13,13 @@ import os
 import platform
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock
 
 import matplotlib
 import numpy as np
 from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
+from benchmarks.rq_tests_py.artifact_paths import relpaths_under, resolve_tdsc_rq_layout
 from eth_abi import encode
 from lirix.core.exceptions import LirixStateAssertionError
 from lirix.layers.l2_schema_validator import AssertionSchema
@@ -28,22 +28,26 @@ from lirix.shield.simulator import StateDeltaValidator
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUTPUT_DIR = Path(__file__).resolve().parent
-SUMMARY_CSV_PATH = OUTPUT_DIR / "rq2_assertions.csv"
-CATEGORY_CSV_PATH = OUTPUT_DIR / "rq2_category_breakdown.csv"
-SWEEP_CSV_PATH = OUTPUT_DIR / "rq2_bilateral_band_sweep.csv"
-PROFILE_COMPARISON_CSV_PATH = OUTPUT_DIR / "rq2_profile_comparison.csv"
-MAIN_PNG_PATH = OUTPUT_DIR / "rq2_interception_rates.png"
-CATEGORY_PNG_PATH = OUTPUT_DIR / "rq2_interception_by_category.png"
-SWEEP_PNG_PATH = OUTPUT_DIR / "rq2_band_tradeoff_curve.png"
-PROFILE_PNG_PATH = OUTPUT_DIR / "rq2_profile_comparison.png"
-REPORT_PATH = OUTPUT_DIR / "rq2_ieee_report.md"
-PR_CURVE_PNG_PATH = OUTPUT_DIR / "rq2_pr_curve_imbalanced.png"
-VOLATILITY_CSV_PATH = OUTPUT_DIR / "rq2_volatility_sensitivity.csv"
-VOLATILITY_PNG_PATH = OUTPUT_DIR / "rq2_volatility_sensitivity.png"
-RQ2_REQUIRED_CSV_PATH = OUTPUT_DIR / "rq2_assertion_strategy_efficacy.csv"
-RQ2_REQUIRED_PR_PDF_PATH = OUTPUT_DIR / "rq2_pr_curve_imbalanced.pdf"
-RQ2_REQUIRED_VOL_MCC_PDF_PATH = OUTPUT_DIR / "volatility_vs_mcc.pdf"
+OUTPUT_LAYOUT = resolve_tdsc_rq_layout(2)
+RUN_ROOT = OUTPUT_LAYOUT.output_dir
+RQ2_CSV_DIR = RUN_ROOT / "rq2_csv"
+RQ2_PNG_DIR = RUN_ROOT / "rq2_png"
+RQ2_PDF_DIR = RUN_ROOT / "rq2_pdf"
+SUMMARY_CSV_PATH = RQ2_CSV_DIR / "rq2_assertions.csv"
+CATEGORY_CSV_PATH = RQ2_CSV_DIR / "rq2_category_breakdown.csv"
+SWEEP_CSV_PATH = RQ2_CSV_DIR / "rq2_bilateral_band_sweep.csv"
+PROFILE_COMPARISON_CSV_PATH = RQ2_CSV_DIR / "rq2_profile_comparison.csv"
+MAIN_PNG_PATH = RQ2_PNG_DIR / "rq2_interception_rates.png"
+CATEGORY_PNG_PATH = RQ2_PNG_DIR / "rq2_interception_by_category.png"
+SWEEP_PNG_PATH = RQ2_PNG_DIR / "rq2_band_tradeoff_curve.png"
+PROFILE_PNG_PATH = RQ2_PNG_DIR / "rq2_profile_comparison.png"
+REPORT_PATH = RQ2_CSV_DIR / "rq2_ieee_report.md"
+PR_CURVE_PNG_PATH = RQ2_PNG_DIR / "rq2_pr_curve_imbalanced.png"
+VOLATILITY_CSV_PATH = RQ2_CSV_DIR / "rq2_volatility_sensitivity.csv"
+VOLATILITY_PNG_PATH = RQ2_PNG_DIR / "rq2_volatility_sensitivity.png"
+RQ2_REQUIRED_CSV_PATH = RQ2_CSV_DIR / "rq2_assertion_strategy_efficacy.csv"
+RQ2_REQUIRED_PR_PDF_PATH = RQ2_PDF_DIR / "rq2_pr_curve_imbalanced.pdf"
+RQ2_REQUIRED_VOL_MCC_PDF_PATH = RQ2_PDF_DIR / "volatility_vs_mcc.pdf"
 
 EXPECTED_VALUE = 1000
 SAMPLES_PER_SEED = 24_000
@@ -878,7 +882,10 @@ def _write_report(
 
 
 def run_rq2_assertions_benchmark() -> list[dict[str, Any]]:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_ROOT.mkdir(parents=True, exist_ok=True)
+    RQ2_CSV_DIR.mkdir(parents=True, exist_ok=True)
+    RQ2_PNG_DIR.mkdir(parents=True, exist_ok=True)
+    RQ2_PDF_DIR.mkdir(parents=True, exist_ok=True)
     seeds_out: list[list[dict[str, Any]]] = []
     expanded_specs = [
         (profile, strategy) for profile in EVAL_PROFILES for strategy in _strategies()
@@ -947,24 +954,27 @@ def run_rq2_assertions_benchmark() -> list[dict[str, Any]]:
     profile_rows = _write_profile_comparison(merged)
     _write_report(merged, sweep, profile_rows, pr_rows, volatility_rows)
     archive_artifacts(
-        ArtifactFamily(name="rq2", output_dir=OUTPUT_DIR),
-        [
-            SUMMARY_CSV_PATH.name,
-            CATEGORY_CSV_PATH.name,
-            SWEEP_CSV_PATH.name,
-            PROFILE_COMPARISON_CSV_PATH.name,
-            MAIN_PNG_PATH.name,
-            CATEGORY_PNG_PATH.name,
-            SWEEP_PNG_PATH.name,
-            PROFILE_PNG_PATH.name,
-            REPORT_PATH.name,
-            PR_CURVE_PNG_PATH.name,
-            VOLATILITY_CSV_PATH.name,
-            VOLATILITY_PNG_PATH.name,
-            RQ2_REQUIRED_CSV_PATH.name,
-            RQ2_REQUIRED_PR_PDF_PATH.name,
-            RQ2_REQUIRED_VOL_MCC_PDF_PATH.name,
-        ],
+        ArtifactFamily(name="rq2", output_dir=RUN_ROOT),
+        relpaths_under(
+            RUN_ROOT,
+            [
+                SUMMARY_CSV_PATH,
+                CATEGORY_CSV_PATH,
+                SWEEP_CSV_PATH,
+                PROFILE_COMPARISON_CSV_PATH,
+                MAIN_PNG_PATH,
+                CATEGORY_PNG_PATH,
+                SWEEP_PNG_PATH,
+                PROFILE_PNG_PATH,
+                REPORT_PATH,
+                PR_CURVE_PNG_PATH,
+                VOLATILITY_CSV_PATH,
+                VOLATILITY_PNG_PATH,
+                RQ2_REQUIRED_CSV_PATH,
+                RQ2_REQUIRED_PR_PDF_PATH,
+                RQ2_REQUIRED_VOL_MCC_PDF_PATH,
+            ],
+        ),
     )
     return merged
 

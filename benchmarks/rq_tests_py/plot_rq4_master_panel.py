@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -15,9 +16,36 @@ try:
 except ImportError:  # pragma: no cover - optional benchmark dependency
     pytest.skip("seaborn is required for the benchmark plot", allow_module_level=True)
 
-BASE_DIR = Path(__file__).resolve().parent
-RAW_CSV = BASE_DIR / "rq4_cognitive_convergence_boundary_raw.csv"
-OUT_PDF = BASE_DIR / "rq4_master_panel.pdf"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from benchmarks.rq_tests_py.artifact_paths import newest_file_named, tdsc_rq_tests_root  # noqa: E402
+
+RQ4_BOUNDARY_RAW_NAME = "rq4_cognitive_convergence_boundary_raw.csv"
+_LEGACY_RQ_TESTS_DIR = Path(__file__).resolve().parent
+
+
+def _resolve_rq4_boundary_raw_csv() -> Path:
+    tdsc_pick = newest_file_named(tdsc_rq_tests_root(4), RQ4_BOUNDARY_RAW_NAME)
+    fallback = _LEGACY_RQ_TESTS_DIR / RQ4_BOUNDARY_RAW_NAME
+    candidates = [p for p in (tdsc_pick, fallback) if p is not None and p.exists()]
+    if not candidates:
+        raise FileNotFoundError(
+            f"Locate {RQ4_BOUNDARY_RAW_NAME} under {_REPO_ROOT / 'tdsc' / 'rq4_tests'} "
+            f"or {_LEGACY_RQ_TESTS_DIR}"
+        )
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def _master_panel_out_pdf(raw_csv: Path) -> Path:
+    if raw_csv.parent.name == "rq4_csv":
+        run_root = raw_csv.parent.parent
+    else:
+        run_root = raw_csv.parent
+    out_dir = run_root / "rq4_pdf"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / "rq4_master_panel.pdf"
 
 
 def _load_data(path: Path) -> pd.DataFrame:
@@ -157,9 +185,11 @@ def _plot_master_panel(df: pd.DataFrame, out_pdf: Path) -> None:
 
 
 def main() -> None:
-    df = _load_data(RAW_CSV)
-    _plot_master_panel(df, OUT_PDF)
-    print(f"[rq4] Master panel saved: {OUT_PDF}")
+    raw_csv = _resolve_rq4_boundary_raw_csv()
+    out_pdf = _master_panel_out_pdf(raw_csv)
+    df = _load_data(raw_csv)
+    _plot_master_panel(df, out_pdf)
+    print(f"[rq4] Master panel saved: {out_pdf}")
 
 
 if __name__ == "__main__":

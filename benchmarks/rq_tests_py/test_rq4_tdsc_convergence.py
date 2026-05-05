@@ -23,34 +23,37 @@ httpx = pytest.importorskip("httpx")
 sns = pytest.importorskip("seaborn")
 
 from benchmarks.rq_tests_py.artifact_manager import ArtifactFamily, archive_artifacts
-from benchmarks.rq_tests_py.artifact_paths import resolve_artifact_layout
+from benchmarks.rq_tests_py.artifact_paths import relpaths_under, resolve_tdsc_rq_layout
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import LirixBaseException
 
-OUTPUT_LAYOUT = resolve_artifact_layout(Path(__file__).resolve().parent.parent)
-RUN_ROOT = OUTPUT_LAYOUT.output_dir / "rq4"
-CASES_DIR = RUN_ROOT / "rq4_cases"
-CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.csv"
-DETAIL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_case_details.csv"
-CURVE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_cumulative_curve.csv"
-PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.png"
-TRACES_DIR = RUN_ROOT / "rq4_traces"
-PARTIAL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_convergence.partial.csv"
-PARTIAL_DETAIL_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_case_details.partial.csv"
-PARTIAL_CURVE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_cumulative_curve.partial.csv"
-EXTENDED_METRICS_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_extended_metrics.csv"
-BY_KIND_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_by_kind.csv"
-K_DIST_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_k_distribution.csv"
-FAILURE_CODE_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_failure_code_breakdown.csv"
-EXTENDED_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_extended_analysis.png"
-KM_SURVIVAL_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_km_unconverged_survival.png"
-K_BOX_BY_KIND_PNG_PATH = RUN_ROOT / "rq4_cognitive_self_healing_k_boxplot_by_kind.png"
-CONTEXT_DECAY_CSV_PATH = RUN_ROOT / "rq4_cognitive_self_healing_context_decay.csv"
-RQ4_RAW_CSV_PATH = RUN_ROOT / "rq4_cognitive_convergence_boundary_raw.csv"
-RMST_ABORT_PDF_PATH = RUN_ROOT / "rmst_and_abort_decomposition.pdf"
-CONTEXT_SATURATION_PDF_PATH = RUN_ROOT / "context_saturation_decay.pdf"
-RQ4_IEEE_REPORT_MD_PATH = RUN_ROOT / "rq4_ieee_report.md"
-MANIFEST_JSON_PATH = RUN_ROOT / "rq4_run_manifest.json"
+OUTPUT_LAYOUT = resolve_tdsc_rq_layout(4)
+RUN_ROOT = OUTPUT_LAYOUT.output_dir
+RQ4_CSV_DIR = RUN_ROOT / "rq4_csv"
+RQ4_PNG_DIR = RUN_ROOT / "rq4_png"
+RQ4_PDF_DIR = RUN_ROOT / "rq4_pdf"
+CASES_DIR = RQ4_CSV_DIR / "rq4_cases"
+CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_convergence.csv"
+DETAIL_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_case_details.csv"
+CURVE_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_cumulative_curve.csv"
+PNG_PATH = RQ4_PNG_DIR / "rq4_cognitive_self_healing_convergence.png"
+TRACES_DIR = RQ4_CSV_DIR / "rq4_traces"
+PARTIAL_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_convergence.partial.csv"
+PARTIAL_DETAIL_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_case_details.partial.csv"
+PARTIAL_CURVE_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_cumulative_curve.partial.csv"
+EXTENDED_METRICS_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_extended_metrics.csv"
+BY_KIND_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_by_kind.csv"
+K_DIST_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_k_distribution.csv"
+FAILURE_CODE_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_failure_code_breakdown.csv"
+EXTENDED_PNG_PATH = RQ4_PNG_DIR / "rq4_cognitive_self_healing_extended_analysis.png"
+KM_SURVIVAL_PNG_PATH = RQ4_PNG_DIR / "rq4_cognitive_self_healing_km_unconverged_survival.png"
+K_BOX_BY_KIND_PNG_PATH = RQ4_PNG_DIR / "rq4_cognitive_self_healing_k_boxplot_by_kind.png"
+CONTEXT_DECAY_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_self_healing_context_decay.csv"
+RQ4_RAW_CSV_PATH = RQ4_CSV_DIR / "rq4_cognitive_convergence_boundary_raw.csv"
+RMST_ABORT_PDF_PATH = RQ4_PDF_DIR / "rmst_and_abort_decomposition.pdf"
+CONTEXT_SATURATION_PDF_PATH = RQ4_PDF_DIR / "context_saturation_decay.pdf"
+RQ4_IEEE_REPORT_MD_PATH = RQ4_CSV_DIR / "rq4_ieee_report.md"
+MANIFEST_JSON_PATH = RQ4_CSV_DIR / "rq4_run_manifest.json"
 
 SEED = 20260430
 TOTAL_CASES = 100
@@ -712,6 +715,9 @@ def _write_outputs(
     partial: bool = False,
 ) -> None:
     RUN_ROOT.mkdir(parents=True, exist_ok=True)
+    RQ4_CSV_DIR.mkdir(parents=True, exist_ok=True)
+    RQ4_PNG_DIR.mkdir(parents=True, exist_ok=True)
+    RQ4_PDF_DIR.mkdir(parents=True, exist_ok=True)
     CASES_DIR.mkdir(parents=True, exist_ok=True)
     TRACES_DIR.mkdir(parents=True, exist_ok=True)
     for old_json in CASES_DIR.glob("*.json"):
@@ -1491,24 +1497,27 @@ async def _run_async() -> dict[str, Any]:
     _write_ieee_rq4_artifacts(all_results, summary_rows)
     archive_artifacts(
         ArtifactFamily(name="rq4", output_dir=RUN_ROOT),
-        [
-            CSV_PATH.name,
-            DETAIL_CSV_PATH.name,
-            CURVE_CSV_PATH.name,
-            PNG_PATH.name,
-            EXTENDED_METRICS_CSV_PATH.name,
-            BY_KIND_CSV_PATH.name,
-            K_DIST_CSV_PATH.name,
-            FAILURE_CODE_CSV_PATH.name,
-            EXTENDED_PNG_PATH.name,
-            KM_SURVIVAL_PNG_PATH.name,
-            K_BOX_BY_KIND_PNG_PATH.name,
-            CONTEXT_DECAY_CSV_PATH.name,
-            RQ4_RAW_CSV_PATH.name,
-            RMST_ABORT_PDF_PATH.name,
-            CONTEXT_SATURATION_PDF_PATH.name,
-            RQ4_IEEE_REPORT_MD_PATH.name,
-        ],
+        relpaths_under(
+            RUN_ROOT,
+            [
+                CSV_PATH,
+                DETAIL_CSV_PATH,
+                CURVE_CSV_PATH,
+                PNG_PATH,
+                EXTENDED_METRICS_CSV_PATH,
+                BY_KIND_CSV_PATH,
+                K_DIST_CSV_PATH,
+                FAILURE_CODE_CSV_PATH,
+                EXTENDED_PNG_PATH,
+                KM_SURVIVAL_PNG_PATH,
+                K_BOX_BY_KIND_PNG_PATH,
+                CONTEXT_DECAY_CSV_PATH,
+                RQ4_RAW_CSV_PATH,
+                RMST_ABORT_PDF_PATH,
+                CONTEXT_SATURATION_PDF_PATH,
+                RQ4_IEEE_REPORT_MD_PATH,
+            ],
+        ),
     )
     narrative: dict[str, str] = {}
     for row in summary_rows:
@@ -1541,9 +1550,12 @@ def run_rq4_tdsc_convergence_benchmark() -> dict[str, Any]:
 
 def regenerate_extended_analysis_from_detail_csv() -> None:
     detail_path = DETAIL_CSV_PATH
-    legacy_detail_path = RUN_ROOT / "rq4_tdsc_case_details.csv"
+    legacy_detail_path = RQ4_CSV_DIR / "rq4_tdsc_case_details.csv"
+    legacy_flat_run_root = RUN_ROOT / "rq4_tdsc_case_details.csv"
     if not detail_path.exists() and legacy_detail_path.exists():
         detail_path = legacy_detail_path
+    if not detail_path.exists() and legacy_flat_run_root.exists():
+        detail_path = legacy_flat_run_root
     if not detail_path.exists():
         raise RuntimeError(f"Detail CSV not found: {detail_path}")
     results: list[CaseResult] = []
