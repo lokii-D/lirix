@@ -20,7 +20,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmarks.rq_tests_py.artifact_paths import newest_file_named, tdsc_rq_tests_root  # noqa: E402
+from benchmarks.rq_tests_py.artifact_paths import (  # noqa: E402
+    newest_file_named,
+    tdsc_rq_tests_root,
+)
 
 RQ4_BOUNDARY_RAW_NAME = "rq4_cognitive_convergence_boundary_raw.csv"
 _LEGACY_RQ_TESTS_DIR = Path(__file__).resolve().parent
@@ -39,10 +42,7 @@ def _resolve_rq4_boundary_raw_csv() -> Path:
 
 
 def _master_panel_out_pdf(raw_csv: Path) -> Path:
-    if raw_csv.parent.name == "rq4_csv":
-        run_root = raw_csv.parent.parent
-    else:
-        run_root = raw_csv.parent
+    run_root = raw_csv.parent.parent if raw_csv.parent.name == "rq4_csv" else raw_csv.parent
     out_dir = run_root / "rq4_pdf"
     out_dir.mkdir(parents=True, exist_ok=True)
     return out_dir / "rq4_master_panel.pdf"
