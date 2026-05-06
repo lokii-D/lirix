@@ -11,7 +11,7 @@ from lirix.core.constants import HOOK_ON_AUDIT_LOG
 from lirix.core.hook_manager import HookManager
 
 
-def test_audit_logger_risk_level_maps_to_severity() -> None:
+def test_audit_logger_maps_risk_levels_to_severity_text() -> None:
     buf = StringIO()
     log = AuditLogger(stream=buf)
     for risk, expected in (
@@ -36,7 +36,7 @@ def test_audit_logger_risk_level_maps_to_severity() -> None:
         assert payload["severity_text"] == expected
 
 
-def test_audit_emit_redacts_sensitive_keys_inside_lists() -> None:
+def test_audit_logger_redacts_nested_refresh_tokens() -> None:
     buf = StringIO()
     log = AuditLogger(stream=buf)
     log.emit(
@@ -51,7 +51,7 @@ def test_audit_emit_redacts_sensitive_keys_inside_lists() -> None:
     assert payload["attributes"]["items"][0]["refresh_token"] == "[REDACTED]"
 
 
-def test_audit_emit_redacts_sensitive_keys_in_context() -> None:
+def test_audit_logger_redacts_api_and_oauth_secrets() -> None:
     buf = StringIO()
     log = AuditLogger(stream=buf)
     log.emit(
@@ -70,7 +70,7 @@ def test_audit_emit_redacts_sensitive_keys_in_context() -> None:
     assert "sk-12345" not in buf.getvalue()
 
 
-def test_audit_on_audit_log_hook_receives_redacted_attributes() -> None:
+def test_audit_logger_emits_redacted_hook_attributes() -> None:
     buf = StringIO()
     mgr = HookManager()
     captured: list[dict[str, object]] = []
@@ -94,7 +94,7 @@ def test_audit_on_audit_log_hook_receives_redacted_attributes() -> None:
     assert captured[0].get("api_key") == "[REDACTED]"
 
 
-def test_audit_logger_invokes_on_audit_log_hook() -> None:
+def test_audit_logger_passes_audit_event_to_hook_manager() -> None:
     buf = StringIO()
     mgr = HookManager()
     seen: list[dict[str, object]] = []
@@ -116,7 +116,7 @@ def test_audit_logger_invokes_on_audit_log_hook() -> None:
     assert seen and seen[0].get("intent") == "swap"
 
 
-def test_audit_logger_filters_keys_ending_with_pk() -> None:
+def test_audit_logger_redacts_private_key_like_fields() -> None:
     buf = StringIO()
     log = AuditLogger(stream=buf)
     log.emit(

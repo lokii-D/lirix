@@ -6,6 +6,8 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Final, FrozenSet, Mapping
 
+from web3 import Web3
+
 # --- Multicall3 / 聚合 ---
 AGGREGATE3_SELECTOR: Final[bytes] = bytes.fromhex("82ad56cb")
 AGGREGATE3_VALUE_SELECTOR: Final[bytes] = bytes.fromhex("174dea71")
@@ -14,6 +16,17 @@ AGGREGATE3_VALUE_SELECTOR: Final[bytes] = bytes.fromhex("174dea71")
 SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR: Final[bytes] = bytes.fromhex("38ed1739")
 SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR: Final[bytes] = bytes.fromhex("7ff36ab5")
 SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR: Final[bytes] = bytes.fromhex("18cbafe5")
+
+# --- Uniswap V3 / Agni 兼容入口 ---
+EXACT_INPUT_SELECTOR: Final[bytes] = Web3.keccak(
+    text="exactInput((bytes,address,uint256,uint256,uint256,bytes))"
+)[:4]
+EXACT_OUTPUT_SELECTOR: Final[bytes] = Web3.keccak(
+    text="exactOutput((bytes,address,uint256,uint256,uint256,bytes))"
+)[:4]
+
+# --- Merchant Moe / Liquidity Book Router（保守纳入 swap 允许集）---
+MOE_SWAP_SELECTOR: Final[bytes] = bytes.fromhex("d004f0f8")
 
 # --- ERC20 标准 ---
 ERC20_TRANSFER_SELECTOR: Final[bytes] = bytes.fromhex("a9059cbb")
@@ -36,6 +49,9 @@ SWAP_INTENT_ALLOWED_SELECTORS: Final[FrozenSet[bytes]] = frozenset(
         SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
         SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR,
         SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR,
+        EXACT_INPUT_SELECTOR,
+        EXACT_OUTPUT_SELECTOR,
+        MOE_SWAP_SELECTOR,
         AGGREGATE3_SELECTOR,
         AGGREGATE3_VALUE_SELECTOR,
     }
@@ -55,6 +71,9 @@ FUNCTION_NAME_TO_ALLOWED_SELECTORS: Final[Mapping[str, FrozenSet[bytes]]] = Mapp
         "swapExactTokensForTokens": frozenset({SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR}),
         "swapExactETHForTokens": frozenset({SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR}),
         "swapExactTokensForETH": frozenset({SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR}),
+        "exactInput": frozenset({EXACT_INPUT_SELECTOR}),
+        "exactOutput": frozenset({EXACT_OUTPUT_SELECTOR}),
+        "swap": frozenset({MOE_SWAP_SELECTOR}),
         "transfer": frozenset({ERC20_TRANSFER_SELECTOR}),
         "approve": frozenset({ERC20_APPROVE_SELECTOR}),
         "aggregate3": frozenset({AGGREGATE3_SELECTOR}),

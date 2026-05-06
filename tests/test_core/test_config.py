@@ -10,33 +10,33 @@ from pydantic import ValidationError
 from web3 import Web3
 
 
-def test_lirix_config_minimal() -> None:
+def test_defaults_are_initialized_when_only_chain_id_provided() -> None:
     cfg = LirixConfig(chain_id=1)
     assert cfg.rpc_urls == []
     assert cfg.allowed_intents == []
     assert cfg.strict_mode is True
 
 
-def test_lirix_config_allowed_function_names_none_normalized() -> None:
+def test_model_validate_none_allowed_function_names_coerces_to_empty_list() -> None:
     cfg = LirixConfig.model_validate(
         {"chain_id": 1, "strict_mode": False, "allowed_function_names": None}
     )
     assert cfg.allowed_function_names == []
 
 
-def test_lirix_config_multicall_none_normalized() -> None:
+def test_model_validate_none_multicall_address_is_preserved_as_none() -> None:
     cfg = LirixConfig.model_validate(
         {"chain_id": 1, "strict_mode": False, "multicall3_address": None}
     )
     assert cfg.multicall3_address is None
 
 
-def test_lirix_config_rejects_unknown_fields() -> None:
+def test_unknown_fields_are_rejected_by_pydantic_model() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(chain_id=1, not_a_field=True)  # type: ignore[call-arg]
 
 
-def test_lirix_config_optional_lists_normalize_none() -> None:
+def test_nullable_list_fields_are_normalized_to_empty_lists() -> None:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,
@@ -51,17 +51,17 @@ def test_lirix_config_optional_lists_normalize_none() -> None:
     assert cfg.whitelisted_addresses == []
 
 
-def test_lirix_config_rpc_urls_stripped() -> None:
+def test_rpc_urls_are_trimmed_when_provided_with_whitespace() -> None:
     cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=[" http://127.0.0.1:8545 "])
     assert cfg.rpc_urls == ["http://127.0.0.1:8545"]
 
 
-def test_lirix_config_allowed_intents_stripped() -> None:
+def test_allowed_intents_are_trimmed_when_provided_with_whitespace() -> None:
     cfg = LirixConfig(chain_id=1, strict_mode=False, allowed_intents=[" transfer "])
     assert cfg.allowed_intents == ["transfer"]
 
 
-def test_lirix_config_address_lowercase_normalized_to_checksum(
+def test_blacklisted_addresses_are_normalized_to_checksum_format(
     vitalik_lower: str,
     vitalik_checksum: str,
 ) -> None:
@@ -73,7 +73,7 @@ def test_lirix_config_address_lowercase_normalized_to_checksum(
     assert cfg.blacklisted_addresses[0] == vitalik_checksum
 
 
-def test_lirix_config_checksum_addresses(
+def test_shared_address_between_lists_allowed_when_not_strict(
     vitalik_checksum: str,
 ) -> None:
     cfg = LirixConfig(
@@ -85,7 +85,7 @@ def test_lirix_config_checksum_addresses(
     assert cfg.blacklisted_addresses[0] == vitalik_checksum
 
 
-def test_lirix_config_strict_overlap_forbidden(
+def test_strict_mode_rejects_overlap_when_blacklist_has_extra_entries(
     vitalik_checksum: str,
     other_checksum: str,
 ) -> None:
@@ -98,7 +98,7 @@ def test_lirix_config_strict_overlap_forbidden(
         )
 
 
-def test_lirix_config_strict_overlap_allowed_when_disabled(
+def test_non_strict_mode_allows_overlap_between_blacklist_and_whitelist(
     vitalik_checksum: str,
 ) -> None:
     cfg = LirixConfig(
@@ -110,7 +110,7 @@ def test_lirix_config_strict_overlap_allowed_when_disabled(
     assert cfg.strict_mode is False
 
 
-def test_lirix_config_strict_mode_no_overlap_ok(
+def test_strict_mode_allows_disjoint_blacklist_and_whitelist(
     vitalik_checksum: str,
     other_checksum: str,
 ) -> None:
@@ -123,42 +123,42 @@ def test_lirix_config_strict_mode_no_overlap_ok(
     assert cfg.strict_mode is True
 
 
-def test_lirix_config_invalid_address_type() -> None:
+def test_multicall_address_must_be_string_or_none() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, multicall3_address=123)  # type: ignore[arg-type]
 
 
-def test_lirix_config_rpc_urls_not_sequence() -> None:
+def test_rpc_urls_must_be_a_list_not_string() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, rpc_urls="x")  # type: ignore[arg-type]
 
 
-def test_lirix_config_empty_rpc_entry() -> None:
+def test_rpc_urls_reject_blank_entries() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, rpc_urls=["  "])
 
 
-def test_lirix_config_intents_not_sequence() -> None:
+def test_allowed_intents_must_be_a_list_not_string() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, allowed_intents="x")  # type: ignore[arg-type]
 
 
-def test_lirix_config_empty_intent_entry() -> None:
+def test_allowed_intents_reject_blank_entries() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, allowed_intents=["  "])
 
 
-def test_lirix_config_address_list_not_sequence() -> None:
+def test_blacklisted_addresses_must_be_list_type() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(chain_id=1, strict_mode=False, blacklisted_addresses="x")  # type: ignore[arg-type]
 
 
-def test_lirix_config_address_not_hex() -> None:
+def test_blacklisted_addresses_reject_non_address_strings() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(chain_id=1, strict_mode=False, blacklisted_addresses=["0xnotanaddress"])
 
 
-def test_lirix_config_address_invalid_raises_value_error_wrapped() -> None:
+def test_blacklisted_addresses_reject_short_hex_values() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(
             chain_id=1,
@@ -167,7 +167,7 @@ def test_lirix_config_address_invalid_raises_value_error_wrapped() -> None:
         )
 
 
-def test_lirix_config_address_list_rejects_non_string_entry() -> None:
+def test_blacklisted_addresses_reject_non_string_items() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(
             chain_id=1,
@@ -176,7 +176,7 @@ def test_lirix_config_address_list_rejects_non_string_entry() -> None:
         )
 
 
-def test_lirix_config_address_list_rejects_blank_string_entry() -> None:
+def test_blacklisted_addresses_reject_whitespace_only_values() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(
             chain_id=1,
@@ -185,7 +185,7 @@ def test_lirix_config_address_list_rejects_blank_string_entry() -> None:
         )
 
 
-def test_lirix_config_address_list_rejects_empty_string_entry() -> None:
+def test_blacklisted_addresses_reject_empty_string_values() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(
             chain_id=1,
@@ -194,12 +194,12 @@ def test_lirix_config_address_list_rejects_empty_string_entry() -> None:
         )
 
 
-def test_lirix_config_chain_id_validation() -> None:
+def test_chain_id_must_be_positive_integer() -> None:
     with pytest.raises(ValidationError):
         LirixConfig(chain_id=-1)
 
 
-def test_lirix_config_strict_overlap_blacklist_and_allowed_to() -> None:
+def test_strict_mode_rejects_address_in_blacklist_and_allowed_to_lists() -> None:
     a = Web3.to_checksum_address("0x0000000000000000000000000000000000000001")
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
@@ -210,7 +210,7 @@ def test_lirix_config_strict_overlap_blacklist_and_allowed_to() -> None:
         )
 
 
-def test_lirix_config_allowed_function_names_bad_container() -> None:
+def test_allowed_function_names_must_be_list_type() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
@@ -219,7 +219,7 @@ def test_lirix_config_allowed_function_names_bad_container() -> None:
         )
 
 
-def test_lirix_config_multicall3_invalid_address() -> None:
+def test_multicall_address_rejects_invalid_address_string() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
@@ -228,7 +228,7 @@ def test_lirix_config_multicall3_invalid_address() -> None:
         )
 
 
-def test_lirix_config_optional_contract_blank_becomes_none() -> None:
+def test_blank_optional_router_and_multicall_addresses_normalize_to_none() -> None:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,
@@ -239,7 +239,7 @@ def test_lirix_config_optional_contract_blank_becomes_none() -> None:
     assert cfg.uniswap_v2_router is None
 
 
-def test_lirix_config_allowed_function_names_empty_entry() -> None:
+def test_allowed_function_names_reject_blank_entries() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
@@ -248,7 +248,7 @@ def test_lirix_config_allowed_function_names_empty_entry() -> None:
         )
 
 
-def test_lirix_config_allowed_function_names_bad_type() -> None:
+def test_allowed_function_names_reject_non_list_values() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
@@ -257,10 +257,22 @@ def test_lirix_config_allowed_function_names_bad_type() -> None:
         )
 
 
-def test_lirix_config_optional_contract_non_string() -> None:
+def test_multicall_address_rejects_non_string_numeric_values() -> None:
     with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
             strict_mode=False,
             multicall3_address=123,  # type: ignore[arg-type]
         )
+
+
+def test_for_mantle_factory_populates_chain_defaults() -> None:
+    cfg = LirixConfig.for_mantle()
+    assert cfg.chain_id == LirixConfig.MANTLE_CHAIN_ID
+    assert cfg.rpc_urls == list(LirixConfig.MANTLE_MAINNET_RPC_URLS)
+    assert cfg.multicall3_address == Web3.to_checksum_address(
+        "0xcA11bde05977b3631167028862bE2a173976CA11"
+    )
+    assert {
+        Web3.to_checksum_address(addr) for addr in LirixConfig.MANTLE_ALLOWED_TO_ADDRESSES
+    }.issubset(set(cfg.allowed_to_addresses))

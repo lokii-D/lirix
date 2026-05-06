@@ -559,13 +559,11 @@ class AsyncQuorumProvider:
 
     async def _retry_call(self, url: str, coro_factory: Any) -> Any:
         delay = self._retry_base_delay
-        last_exc: Optional[BaseException] = None
         start = time.perf_counter()
         for attempt in range(self._MAX_RETRIES):
             try:
                 return await coro_factory()
             except BaseException as exc:  # noqa: BLE001
-                last_exc = exc
                 retryable = self._is_quota_exhausted(exc) or isinstance(exc, self._RETRYABLE_ERRORS)
                 elapsed = time.perf_counter() - start
                 if (
@@ -583,15 +581,6 @@ class AsyncQuorumProvider:
                     raise
                 await asyncio.sleep(delay)
                 delay *= 2
-        if last_exc is not None:
-            if isinstance(last_exc, TimeoutError):
-                raise LirixRPCTimeoutException(
-                    human_readable_reason=(
-                        "RPC call timed out while waiting for quorum retries to complete."
-                    ),
-                    context={"layer": "L4", "url": url},
-                ) from last_exc
-            raise last_exc
         raise RuntimeError(f"unreachable retry state for {url}")
 
     async def quorum_eth_call(self, tx: Dict[str, Any]) -> Dict[str, Any]:

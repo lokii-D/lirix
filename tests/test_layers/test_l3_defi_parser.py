@@ -16,6 +16,7 @@ from lirix.layers.l3_defi_parser import DeFiPayloadParser
 from tests.test_layers.conftest import (
     SWAP_SELECTOR,
     addr_recipient,
+    build_moe_swap_calldata,
     build_multicall_calldata,
     build_swap_calldata,
     mainnet_multicall,
@@ -48,17 +49,17 @@ def _parser_cfg(**kw: Any) -> LirixConfig:
     return LirixConfig(**base)
 
 
-def test_l3_data_exactly_zero_x_only() -> None:
+def test_test_l3_defi_parser() -> None:
     cfg = _parser_cfg()
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0x"}) is True
 
 
-def test_l3_short_hex_blob_under_four_bytes() -> None:
+def test_test_l3_defi_parser_2() -> None:
     cfg = _parser_cfg()
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0x00"}) is True
 
 
-def test_swap_with_zero_slippage_blocked() -> None:
+def test_test_l3_defi_parser_3() -> None:
     cfg = _parser_cfg()
     data = build_swap_calldata(
         path=[token_weth(), token_usdc()],
@@ -69,7 +70,7 @@ def test_swap_with_zero_slippage_blocked() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_swap_with_valid_slippage_passed() -> None:
+def test_test_l3_defi_parser_4() -> None:
     cfg = _parser_cfg()
     data = build_swap_calldata(
         path=[token_weth(), token_usdc()],
@@ -79,13 +80,13 @@ def test_swap_with_valid_slippage_passed() -> None:
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data}) is True
 
 
-def test_l3_hex_fromhex_failure_odd_nibbles() -> None:
+def test_test_l3_defi_parser_5() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="not valid hex"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0x0"})
 
 
-def test_l3_chain999_swap_hits_multicall_default_guard() -> None:
+def test_test_l3_defi_parser_6() -> None:
     cfg = LirixConfig(
         chain_id=999,
         strict_mode=False,
@@ -103,7 +104,7 @@ def test_l3_chain999_swap_hits_multicall_default_guard() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_l3_outer_generic_contract_unknown_selector() -> None:
+def test_test_l3_defi_parser_7() -> None:
     cfg = _parser_cfg()
     assert (
         DeFiPayloadParser(cfg).validate({"to": addr_recipient(), "data": "0x12345678" + "00" * 20})
@@ -111,7 +112,7 @@ def test_l3_outer_generic_contract_unknown_selector() -> None:
     )
 
 
-def test_l3_multicall_with_empty_inner_calldata_plus_swap() -> None:
+def test_test_l3_defi_parser_8() -> None:
     cfg = _parser_cfg()
     swap_b = bytes.fromhex(
         build_swap_calldata(
@@ -126,7 +127,7 @@ def test_l3_multicall_with_empty_inner_calldata_plus_swap() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": data})
 
 
-def test_l3_nested_inner_swap_wrong_router_target() -> None:
+def test_test_l3_defi_parser_9() -> None:
     cfg = _parser_cfg()
     swap_b = bytes.fromhex(
         build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())[2:]
@@ -137,7 +138,7 @@ def test_l3_nested_inner_swap_wrong_router_target() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": data})
 
 
-def test_l3_swap_corrupt_inner_abi_body() -> None:
+def test_test_l3_defi_parser_10() -> None:
     cfg = _parser_cfg()
     body = SWAP_SELECTOR + b"\x01\x02"
     data = "0x" + body.hex()
@@ -145,19 +146,19 @@ def test_l3_swap_corrupt_inner_abi_body() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_l3_swap_happy_path() -> None:
+def test_test_l3_defi_parser_11() -> None:
     cfg = _parser_cfg(blacklisted_addresses=[])
     data = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data}) is True
 
 
-def test_l3_swap_with_empty_whitelist_ok() -> None:
+def test_test_l3_defi_parser_12() -> None:
     cfg = _parser_cfg(whitelisted_addresses=[])
     data = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data}) is True
 
 
-def test_l3_double_nested_multicall_then_swap() -> None:
+def test_test_l3_defi_parser_13() -> None:
     cfg = _parser_cfg()
     swap_b = bytes.fromhex(
         build_swap_calldata(
@@ -173,7 +174,7 @@ def test_l3_double_nested_multicall_then_swap() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": double})
 
 
-def test_l3_multicall_nested_swap_happy_path() -> None:
+def test_test_l3_defi_parser_14() -> None:
     cfg = _parser_cfg(blacklisted_addresses=[])
     inner = bytes.fromhex(
         build_swap_calldata(
@@ -187,13 +188,30 @@ def test_l3_multicall_nested_swap_happy_path() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": mc_data})
 
 
-def test_l3_decode_error_truncated_swap() -> None:
+def test_test_l3_defi_parser_15() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="Failed to decode swap calldata"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0x38ed173900"})
 
 
-def test_l3_router_poison_non_swap_selector() -> None:
+def test_test_l3_defi_parser_16() -> None:
+    cfg = _parser_cfg()
+    data = build_moe_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
+    assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data}) is True
+
+
+def test_test_l3_defi_parser_17() -> None:
+    cfg = _parser_cfg()
+    data = build_moe_swap_calldata(
+        path=[token_weth(), token_usdc()],
+        recipient=addr_recipient(),
+        amount_out_min=0,
+    )
+    with pytest.raises(DeFiSlippageMissingException, match="Merchant Moe swap calldata"):
+        DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
+
+
+def test_test_l3_defi_parser_18() -> None:
     cfg = _parser_cfg()
     with pytest.raises(
         MaliciousPayloadException, match="Non-swap calldata directed at Uniswap router"
@@ -201,7 +219,7 @@ def test_l3_router_poison_non_swap_selector() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0xdeadbeef00"})
 
 
-def test_l3_multicall_poison_swap_shaped_on_multicall() -> None:
+def test_test_l3_defi_parser_19() -> None:
     cfg = _parser_cfg()
     swap = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
     with pytest.raises(
@@ -210,7 +228,7 @@ def test_l3_multicall_poison_swap_shaped_on_multicall() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": swap})
 
 
-def test_l3_aggregate3_wrong_outer_target() -> None:
+def test_test_l3_defi_parser_20() -> None:
     cfg = _parser_cfg()
     empty_mc = build_multicall_calldata([])
     with pytest.raises(
@@ -224,7 +242,7 @@ def test_l3_aggregate3_wrong_outer_target() -> None:
         )
 
 
-def test_l3_multicall_inner_target_poison() -> None:
+def test_test_l3_defi_parser_21() -> None:
     cfg = _parser_cfg()
     inner_mc = bytes.fromhex(build_multicall_calldata([])[2:])
     calls = [(addr_recipient(), False, inner_mc)]
@@ -235,7 +253,7 @@ def test_l3_multicall_inner_target_poison() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": data})
 
 
-def test_l3_multicall_inner_unknown_selector() -> None:
+def test_test_l3_defi_parser_22() -> None:
     cfg = _parser_cfg()
     junk = bytes.fromhex("deadbeef") + b"\x00" * 32
     calls = [(mainnet_router(), False, junk)]
@@ -244,7 +262,7 @@ def test_l3_multicall_inner_unknown_selector() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": data})
 
 
-def test_l3_blacklist_recipient_in_swap() -> None:
+def test_test_l3_defi_parser_23() -> None:
     bad = malicious_dead()
     cfg = _parser_cfg(blacklisted_addresses=[bad])
     data = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=bad)
@@ -252,7 +270,7 @@ def test_l3_blacklist_recipient_in_swap() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_l3_whitelist_miss_extra_token_touch() -> None:
+def test_test_l3_defi_parser_24() -> None:
     cfg = _parser_cfg(
         whitelisted_addresses=[
             mainnet_router(),
@@ -266,27 +284,27 @@ def test_l3_whitelist_miss_extra_token_touch() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_l3_swap_to_wrong_outer_contract() -> None:
+def test_test_l3_defi_parser_25() -> None:
     cfg = _parser_cfg()
     data = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
     with pytest.raises(MaliciousPayloadException, match="swap calldata must target canonical"):
         DeFiPayloadParser(cfg).validate({"to": addr_recipient(), "data": data})
 
 
-def test_l3_multicall_decode_failure() -> None:
+def test_test_l3_defi_parser_26() -> None:
     cfg = _parser_cfg()
     bad = "0x82ad56cb" + "ff" * 12
     with pytest.raises(MaliciousPayloadException, match="Failed to decode Multicall3"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": bad})
 
 
-def test_l3_to_not_string() -> None:
+def test_test_l3_defi_parser_27() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="to must be a string"):
         DeFiPayloadParser(cfg).validate({"to": 12345, "data": "0x"})
 
 
-def test_l3_unknown_chain_requires_overrides() -> None:
+def test_test_l3_defi_parser_28() -> None:
     cfg = LirixConfig(
         chain_id=999,
         strict_mode=False,
@@ -299,7 +317,7 @@ def test_l3_unknown_chain_requires_overrides() -> None:
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data})
 
 
-def test_l3_unknown_chain_with_explicit_contracts() -> None:
+def test_test_l3_defi_parser_29() -> None:
     cfg = LirixConfig(
         chain_id=999,
         strict_mode=False,
@@ -314,19 +332,19 @@ def test_l3_unknown_chain_with_explicit_contracts() -> None:
     assert DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": data}) is True
 
 
-def test_l3_invalid_data_type() -> None:
+def test_test_l3_defi_parser_30() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="data must be a string"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": 12345})
 
 
-def test_l3_invalid_hex_data() -> None:
+def test_test_l3_defi_parser_31() -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException, match="not valid hex"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_router(), "data": "0xzz"})
 
 
-def test_lirix_chain_validate_full_stack_happy() -> None:
+def test_test_l3_defi_parser_32() -> None:
     cfg = _parser_cfg(blacklisted_addresses=[])
     client = Lirix(cfg)
     data = build_swap_calldata(
@@ -344,7 +362,7 @@ def test_lirix_chain_validate_full_stack_happy() -> None:
         client.chain_validate("swap", payload)
 
 
-def test_lirix_chain_validate_stops_at_l3() -> None:
+def test_test_l3_defi_parser_33() -> None:
     cfg = _parser_cfg(blacklisted_addresses=[addr_recipient()])
     client = Lirix(cfg)
     data = build_swap_calldata(path=[token_weth(), token_usdc()], recipient=addr_recipient())
@@ -403,27 +421,27 @@ def test_lirix_chain_validate_stops_at_l3() -> None:
         ("data_not_string", {"to": mainnet_router(), "data": None}),
     ],
 )
-def test_l3_malicious_matrix_raises(_id: str, payload: dict[str, Any]) -> None:
+def test_test_l3_defi_parser_34(_id: str, payload: dict[str, Any]) -> None:
     cfg = _parser_cfg()
     with pytest.raises(MaliciousPayloadException):
         DeFiPayloadParser(cfg).validate(payload)
 
 
-def test_l3_multicall_depth_six_guard_intercepted() -> None:
+def test_test_l3_defi_parser_35() -> None:
     cfg = _parser_cfg()
     deep = stack_nested_multicall(mainnet_multicall(), 6)
     with pytest.raises(MaliciousPayloadException, match="Multicall nesting depth"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": deep})
 
 
-def test_l3_multicall_ten_layer_zip_bomb_intercepts_not_recursion_error() -> None:
+def test_test_l3_defi_parser_36() -> None:
     cfg = _parser_cfg()
     deep = stack_nested_multicall(mainnet_multicall(), 10)
     with pytest.raises(MaliciousPayloadException, match="Multicall nesting depth"):
         DeFiPayloadParser(cfg).validate({"to": mainnet_multicall(), "data": deep})
 
 
-def test_l3_short_blob_invokes_layer_hook() -> None:
+def test_test_l3_defi_parser_37() -> None:
     cfg = _parser_cfg()
     mgr = HookManager()
     seen: list[str] = []
@@ -440,7 +458,7 @@ def test_l3_short_blob_invokes_layer_hook() -> None:
     assert seen == ["ok"]
 
 
-def test_l3_aggregate3_value_wrong_outer_to_raises() -> None:
+def test_test_l3_defi_parser_38() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -451,7 +469,7 @@ def test_l3_aggregate3_value_wrong_outer_to_raises() -> None:
         DeFiPayloadParser(cfg).validate({"to": token_weth(), "data": data})
 
 
-def test_l3_aggregate3_value_decode_walk_ok() -> None:
+def test_test_l3_defi_parser_39() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -459,7 +477,7 @@ def test_l3_aggregate3_value_decode_walk_ok() -> None:
     assert DeFiPayloadParser(cfg).validate({"to": mc, "data": outer["data"]}) is True
 
 
-def test_l3_aggregate3_value_decode_failure() -> None:
+def test_test_l3_defi_parser_40() -> None:
     cfg = _parser_cfg()
     sel = AGGREGATE3_VALUE_SELECTOR.hex()
     with pytest.raises(MaliciousPayloadException, match="aggregate3Value"):
@@ -468,7 +486,7 @@ def test_l3_aggregate3_value_decode_failure() -> None:
         )
 
 
-def test_l3_aggregate3_value_nested_inner_value_walk() -> None:
+def test_test_l3_defi_parser_41() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -477,7 +495,7 @@ def test_l3_aggregate3_value_nested_inner_value_walk() -> None:
     assert DeFiPayloadParser(cfg).validate({"to": mc, "data": nested["data"]}) is True
 
 
-def test_l3_value_walk_recurse_into_aggregate3_on_mc() -> None:
+def test_test_l3_defi_parser_42() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -494,7 +512,7 @@ def test_l3_value_walk_recurse_into_aggregate3_on_mc() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_value_walk_recurse_into_aggregate3_value_on_mc() -> None:
+def test_test_l3_defi_parser_43() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -516,7 +534,7 @@ def test_l3_value_walk_recurse_into_aggregate3_value_on_mc() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_aggregate3_value_inner_unknown_selector() -> None:
+def test_test_l3_defi_parser_44() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     inner = abi_encode(
@@ -527,7 +545,7 @@ def test_l3_aggregate3_value_inner_unknown_selector() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_aggregate3_value_nested_aggregate3_wrong_router() -> None:
+def test_test_l3_defi_parser_45() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     weth = token_weth()
@@ -538,7 +556,7 @@ def test_l3_aggregate3_value_nested_aggregate3_wrong_router() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_aggregate3_value_nested_aggregate3_value_wrong_target() -> None:
+def test_test_l3_defi_parser_46() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     weth = token_weth()
@@ -549,7 +567,7 @@ def test_l3_aggregate3_value_nested_aggregate3_value_wrong_target() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_aggregate3_value_inner_swap_walk() -> None:
+def test_test_l3_defi_parser_47() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     rt = mainnet_router()
@@ -566,7 +584,7 @@ def test_l3_aggregate3_value_inner_swap_walk() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": outer["data"]})
 
 
-def test_l3_walk_multicall_value_depth_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l3_defi_parser_48(monkeypatch: pytest.MonkeyPatch) -> None:
     import lirix.layers.l3_defi_parser as mod
 
     monkeypatch.setattr(mod, "MAX_MULTICALL_RECURSION_DEPTH", 0)
@@ -579,7 +597,7 @@ def test_l3_walk_multicall_value_depth_guard(monkeypatch: pytest.MonkeyPatch) ->
         p._walk_multicall_value(inner, set(), 1)
 
 
-def test_l3_aggregate3_batch_inner_value_wrong_multicall_target() -> None:
+def test_test_l3_defi_parser_49() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     enc = MulticallEncoder(mc)
@@ -591,7 +609,7 @@ def test_l3_aggregate3_batch_inner_value_wrong_multicall_target() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_value_walk_inner_aggregate3_wrong_target() -> None:
+def test_test_l3_defi_parser_50() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     weth = token_weth()
@@ -602,7 +620,7 @@ def test_l3_value_walk_inner_aggregate3_wrong_target() -> None:
         DeFiPayloadParser(cfg).validate({"to": mc, "data": data})
 
 
-def test_l3_value_walk_inner_swap_wrong_router() -> None:
+def test_test_l3_defi_parser_51() -> None:
     cfg = _parser_cfg()
     mc = mainnet_multicall()
     weth = token_weth()

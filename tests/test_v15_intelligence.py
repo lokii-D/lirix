@@ -48,7 +48,7 @@ class _FakeWeb3:
         self.eth = _FakeEth(storage=storage, calls=calls)
 
 
-def test_l3_proxy_piercer_resolves_eip1967_implementation() -> None:
+def test_proxy_piercer_resolves_eip1967_implementation_slot() -> None:
     proxy = Web3.to_checksum_address("0x0000000000000000000000000000000000001000")
     implementation = Web3.to_checksum_address("0x0000000000000000000000000000000000002000")
     web3 = _FakeWeb3(
@@ -61,7 +61,7 @@ def test_l3_proxy_piercer_resolves_eip1967_implementation() -> None:
     assert inspection["proxy_kind"] == "eip1967"
 
 
-def test_l3_proxy_piercer_resolves_beacon_proxy() -> None:
+def test_proxy_piercer_resolves_beacon_implementation_via_call() -> None:
     proxy = Web3.to_checksum_address("0x0000000000000000000000000000000000003000")
     beacon = Web3.to_checksum_address("0x0000000000000000000000000000000000004000")
     implementation = Web3.to_checksum_address("0x0000000000000000000000000000000000005000")
@@ -77,7 +77,7 @@ def test_l3_proxy_piercer_resolves_beacon_proxy() -> None:
     assert inspection["proxy_kind"] == "beacon"
 
 
-def test_l3_proxy_piercer_beacon_decode_rejects_short_payload() -> None:
+def test_beacon_resolution_returns_none_for_short_payload() -> None:
     beacon = Web3.to_checksum_address("0x0000000000000000000000000000000000004000")
     web3 = _FakeWeb3(calls={(beacon, "0x5c60da1b"): b"\x00" * 12})
 
@@ -86,7 +86,7 @@ def test_l3_proxy_piercer_beacon_decode_rejects_short_payload() -> None:
     assert resolved is None
 
 
-def test_l3_proxy_piercer_resolves_uups_slot() -> None:
+def test_proxy_piercer_resolves_uups_implementation_slot() -> None:
     proxy = Web3.to_checksum_address("0x0000000000000000000000000000000000006000")
     implementation = Web3.to_checksum_address("0x0000000000000000000000000000000000007000")
     web3 = _FakeWeb3(
@@ -99,7 +99,7 @@ def test_l3_proxy_piercer_resolves_uups_slot() -> None:
     assert inspection["proxy_kind"] == "uups"
 
 
-def test_l3_proxy_piercer_surfaces_admin_slot_for_fallback_verification() -> None:
+def test_proxy_piercer_marks_admin_only_proxy_without_implementation() -> None:
     proxy = Web3.to_checksum_address("0x0000000000000000000000000000000000008000")
     admin = Web3.to_checksum_address("0x0000000000000000000000000000000000009000")
     web3 = _FakeWeb3(storage={(proxy, int(EIP1967_ADMIN_SLOT, 16)): _slot_bytes(admin)})
@@ -112,7 +112,7 @@ def test_l3_proxy_piercer_surfaces_admin_slot_for_fallback_verification() -> Non
     assert inspection["proxy_kind"] == "admin_only_proxy"
 
 
-def test_l3_abi_cache_hits_memory_without_refetch(tmp_path: Any) -> None:
+def test_abi_cache_returns_hit_on_repeated_fetch(tmp_path: Any) -> None:
     clock = {"now": 1_000_000}
     cache = AbiLRUCache(
         sqlite_path=str(tmp_path / "abi-cache-hits.sqlite3"),
@@ -140,7 +140,7 @@ def test_l3_abi_cache_hits_memory_without_refetch(tmp_path: Any) -> None:
         cache.close()
 
 
-def test_l3_abi_cache_ttl_expiration_purges_and_refetches(tmp_path: Any) -> None:
+def test_abi_cache_ttl_expiration_triggers_refetch(tmp_path: Any) -> None:
     clock = {"now": 2_000_000}
     cache = AbiLRUCache(
         sqlite_path=str(tmp_path / "abi-cache-ttl.sqlite3"),
@@ -178,7 +178,7 @@ def test_l3_abi_cache_ttl_expiration_purges_and_refetches(tmp_path: Any) -> None
         cache.close()
 
 
-def test_l5_shadow_policy_rejects_forbidden_method_even_on_allowed_target() -> None:
+def test_shadow_auditor_blocks_forbidden_method_even_when_simulation_ok() -> None:
     auditor = ShadowAuditor()
     target = Web3.to_checksum_address("0x0000000000000000000000000000000000003030")
 
@@ -197,7 +197,7 @@ def test_l5_shadow_policy_rejects_forbidden_method_even_on_allowed_target() -> N
     assert exc_info.value.context["policy_key"] == "forbidden_methods"
 
 
-def test_l5_shadow_policy_blocks_excessive_slippage_in_lirix_flow(
+def test_lirix_validate_and_simulate_enforces_slippage_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = {

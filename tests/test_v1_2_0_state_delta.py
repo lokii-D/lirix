@@ -11,7 +11,7 @@ from lirix.shield.simulator import StateDeltaValidator
 from tests.factories import build_valid_l2_payload
 
 
-def test_state_assertion_passes() -> None:
+def test_test_v1_2_0_state_delta() -> None:
     async def _run() -> None:
         payload = build_valid_l2_payload(
             assertions=[
@@ -29,7 +29,7 @@ def test_state_assertion_passes() -> None:
     asyncio.run(_run())
 
 
-def test_honeypot_detected_reverts() -> None:
+def test_test_v1_2_0_state_delta_2() -> None:
     async def _run() -> None:
         payload = build_valid_l2_payload(
             assertions=[
@@ -56,7 +56,7 @@ def test_honeypot_detected_reverts() -> None:
     asyncio.run(_run())
 
 
-def test_fluent_builder_populates_assertions() -> None:
+def test_test_v1_2_0_state_delta_3() -> None:
     draft = (
         LirixTxBuilder(
             "transfer(address,uint256)", ["0x000000000000000000000000000000000000dEaD", 1]

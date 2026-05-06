@@ -6,7 +6,7 @@ from __future__ import annotations
 from lirix.core.exceptions import LirixBaseException, LirixSecurityException
 
 
-def test_lirix_base_exception_json_contract() -> None:
+def test_test_exceptions() -> None:
     exc = LirixBaseException(
         error_code="LRX_UNIT_TEST",
         value_protected="Vault",
@@ -28,7 +28,7 @@ def test_lirix_base_exception_json_contract() -> None:
     assert payload["value_protected"] == "Vault"
 
 
-def test_legacy_adapter_kwargs() -> None:
+def test_test_exceptions_2() -> None:
     exc = LirixSecurityException(human_readable_reason="old")
 
     payload = exc.to_dict()

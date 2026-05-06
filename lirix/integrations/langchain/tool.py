@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Type, cast
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from lirix import Lirix
 from lirix.core.exceptions import (
@@ -134,6 +134,11 @@ class LirixSecurityValidator(BaseTool):
     args_schema: Type[BaseModel] = LirixSecurityValidatorInput
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    _rpc_urls: list[str] = PrivateAttr(default_factory=list)
+    _default_intent: Optional[str] = PrivateAttr(default=None)
+    _state_delta_assertions: dict[str, Any] = PrivateAttr(default_factory=dict)
+    _security_policy: dict[str, Any] = PrivateAttr(default_factory=dict)
+
     def __init__(
         self,
         *,
@@ -145,12 +150,12 @@ class LirixSecurityValidator(BaseTool):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.rpc_urls = list(rpc_urls)
-        self.default_intent = default_intent
-        self.state_delta_assertions = dict(state_delta_assertions or {})
-        self.security_policy = self._coerce_policy(security_policy)
+        self._rpc_urls = list(rpc_urls)
+        self._default_intent = default_intent
+        self._state_delta_assertions = dict(state_delta_assertions or {})
+        self._security_policy = self._coerce_policy(security_policy)
         if policy is not None:
-            self.security_policy.update(self._coerce_policy(policy))
+            self._security_policy.update(self._coerce_policy(policy))
 
     @staticmethod
     def _coerce_policy(policy: Optional[Any]) -> dict[str, Any]:
@@ -170,12 +175,12 @@ class LirixSecurityValidator(BaseTool):
         security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
-        guardian = Lirix(rpc_urls=self.rpc_urls)
-        resolved_intent = intent or self.default_intent or "unknown"
-        merged_assertions = dict(self.state_delta_assertions)
+        guardian = Lirix(rpc_urls=self._rpc_urls)
+        resolved_intent = intent or self._default_intent or "unknown"
+        merged_assertions = dict(self._state_delta_assertions)
         if state_delta_assertions is not None:
             merged_assertions.update(dict(state_delta_assertions))
-        merged_security_policy = dict(self.security_policy)
+        merged_security_policy = dict(self._security_policy)
         if security_policy is not None:
             merged_security_policy.update(self._coerce_policy(security_policy))
         try:
@@ -198,12 +203,12 @@ class LirixSecurityValidator(BaseTool):
         security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
-        guardian = Lirix(rpc_urls=self.rpc_urls)
-        resolved_intent = intent or self.default_intent or "unknown"
-        merged_assertions = dict(self.state_delta_assertions)
+        guardian = Lirix(rpc_urls=self._rpc_urls)
+        resolved_intent = intent or self._default_intent or "unknown"
+        merged_assertions = dict(self._state_delta_assertions)
         if state_delta_assertions is not None:
             merged_assertions.update(dict(state_delta_assertions))
-        merged_security_policy = dict(self.security_policy)
+        merged_security_policy = dict(self._security_policy)
         if security_policy is not None:
             merged_security_policy.update(self._coerce_policy(security_policy))
         try:

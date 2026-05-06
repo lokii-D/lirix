@@ -11,7 +11,7 @@ from lirix.core.signatures import AGGREGATE3_SELECTOR, AGGREGATE3_VALUE_SELECTOR
 from web3 import Web3
 
 
-def test_encode_single_aggregate3() -> None:
+def test_encode_transactions_uses_aggregate3_for_zero_value_calls() -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     enc = MulticallEncoder(mc)
     weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
@@ -23,21 +23,21 @@ def test_encode_single_aggregate3() -> None:
     assert bytes.fromhex(out["data"][2:10]) == AGGREGATE3_SELECTOR
 
 
-def test_encode_transactions_must_be_list() -> None:
+def test_encode_transactions_rejects_non_list_input() -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     enc = MulticallEncoder(mc)
     with pytest.raises(MulticallEncodingException, match="list"):
         enc.encode_transactions(object())  # type: ignore[arg-type]
 
 
-def test_encode_element_must_be_dict() -> None:
+def test_encode_transactions_rejects_non_dict_item() -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     enc = MulticallEncoder(mc)
     with pytest.raises(MulticallEncodingException, match="dict"):
         enc.encode_transactions([object()])  # type: ignore[list-item]
 
 
-def test_encode_abi_failure_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_encode_transactions_wraps_abi_encoding_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
     enc = MulticallEncoder(mc)
@@ -52,7 +52,7 @@ def test_encode_abi_failure_paths(monkeypatch: pytest.MonkeyPatch) -> None:
         enc.encode_transactions([{"to": weth, "data": "0x", "value": 1}])
 
 
-def test_encode_outer_value_wei_matches_sum_ok() -> None:
+def test_encode_transactions_accepts_matching_outer_value() -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
     enc = MulticallEncoder(mc)
@@ -66,7 +66,7 @@ def test_encode_outer_value_wei_matches_sum_ok() -> None:
     assert out["value"] == 5
 
 
-def test_encode_outer_value_wei_mismatch_fail_closed() -> None:
+def test_encode_transactions_rejects_mismatched_declared_outer_value() -> None:
     """声明的 outer msg.value 与子调用 value 之和不一致时，SDK 层 fail-closed。"""
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
@@ -82,7 +82,7 @@ def test_encode_outer_value_wei_mismatch_fail_closed() -> None:
         )
 
 
-def test_encode_aggregate3_value_selector() -> None:
+def test_encode_transactions_uses_aggregate3value_and_sums_value() -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     enc = MulticallEncoder(mc)
     weth = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
@@ -111,7 +111,9 @@ def test_encode_aggregate3_value_selector() -> None:
         ("bad", "non-empty"),
     ],
 )
-def test_encode_validation_errors(transactions: object, msg: str) -> None:
+def test_encode_transactions_rejects_invalid_transaction_shapes(
+    transactions: object, msg: str
+) -> None:
     mc = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
     enc = MulticallEncoder(mc)
     with pytest.raises(MulticallEncodingException, match=msg):

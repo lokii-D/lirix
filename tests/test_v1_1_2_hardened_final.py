@@ -21,7 +21,7 @@ MOCK_PATH = "web3.eth.async_eth.AsyncEth.call"
 
 
 @patch(MOCK_PATH, new_callable=AsyncMock)
-def test_simulation_success(mock_call: AsyncMock) -> None:
+def test_test_v1_1_2_hardened_final(mock_call: AsyncMock) -> None:
     async def _run() -> None:
         mock_call.side_effect = asyncio.TimeoutError()
         guard = LirixGuard(rpc_url="http://localhost:8545")
@@ -41,7 +41,7 @@ def test_simulation_success(mock_call: AsyncMock) -> None:
 
 
 @patch("lirix.shield.simulator.Web3", create=True)
-def test_simulation_error_json(mock_web3: Any) -> None:
+def test_test_v1_1_2_hardened_final_2(mock_web3: Any) -> None:
     async def boom(_: object) -> None:
         raise ValueError({"data": "0x08c379a0"})
 
@@ -73,7 +73,7 @@ def test_simulation_error_json(mock_web3: Any) -> None:
 
 
 @patch("lirix.shield.simulator.Web3", create=True)
-def test_circuit_breaker_timeout(mock_web3: Any) -> None:
+def test_test_v1_1_2_hardened_final_3(mock_web3: Any) -> None:
     async def slow(_: object) -> None:
         raise asyncio.TimeoutError()
 
@@ -95,7 +95,7 @@ def test_circuit_breaker_timeout(mock_web3: Any) -> None:
 
 @patch("lirix.core.builder.Web3", create=True)
 @patch("lirix.core.builder.eth_abi_encode", create=True)
-def test_hallucination_error_on_bad_address(_: Any, mock_web3: object) -> None:
+def test_test_v1_1_2_hardened_final_4(_: Any, mock_web3: object) -> None:
     cast(Any, mock_web3).is_address.return_value = False
     builder = CalldataBuilder()
     with pytest.raises(LirixHallucinationError):
@@ -105,7 +105,7 @@ def test_hallucination_error_on_bad_address(_: Any, mock_web3: object) -> None:
 
 
 @patch("lirix.shield.simulator.Web3", create=True)
-def test_last_trace_sanitized(mock_web3: Any) -> None:
+def test_test_v1_1_2_hardened_final_5(mock_web3: Any) -> None:
     async def ok(*_args: object, **_kwargs: object) -> None:
         return None
 

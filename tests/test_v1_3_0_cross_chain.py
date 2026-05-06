@@ -9,7 +9,7 @@ from lirix.layers.l4_rpc_manager import AsyncQuorumProvider
 from lirix.registry.bridges import resolve_bridge_route
 
 
-def test_async_quorum_provider_routes_to_healthy_node(monkeypatch: MonkeyPatch) -> None:
+def test_test_v1_3_0_cross_chain(monkeypatch: MonkeyPatch) -> None:
     provider = AsyncQuorumProvider(
         ["http://stale:8545", "http://timeout:8545", "http://healthy:8545"],
         staleness_threshold=2,
@@ -54,7 +54,7 @@ def test_async_quorum_provider_routes_to_healthy_node(monkeypatch: MonkeyPatch) 
     assert captured_url["url"] == "http://healthy:8545"
 
 
-def test_bridge_intent_translation_into_l2_payload() -> None:
+def test_test_v1_3_0_cross_chain_2() -> None:
     draft = LirixTxBuilder().bridge("LayerZero", 1, 137, 100).build()
     route = resolve_bridge_route("LayerZero", 1)
 

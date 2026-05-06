@@ -33,4 +33,6 @@ _lirix_launch_sandbox/
 checklists/
 prompts/
 tdsc/
+mantle_TT/
 REPORT.md
+coverage.xml

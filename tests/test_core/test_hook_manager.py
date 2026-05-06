@@ -21,7 +21,7 @@ from lirix.core.exceptions import (
 from lirix.core.hook_manager import HookManager
 
 
-def test_register_hook_and_invoke_sync() -> None:
+def test_register_and_invoke_sync_hook_passes_kwargs() -> None:
     mgr = HookManager()
     out: list[int] = []
 
@@ -35,7 +35,7 @@ def test_register_hook_and_invoke_sync() -> None:
     assert out == [1]
 
 
-def test_register_hook_rejects_bad_signature() -> None:
+def test_register_hook_rejects_callback_without_varargs() -> None:
     mgr = HookManager()
 
     def bad(x: int) -> int:
@@ -45,7 +45,7 @@ def test_register_hook_rejects_bad_signature() -> None:
         mgr.register_hook(HOOK_PRE_VALIDATE, bad)
 
 
-def test_register_hook_requires_var_kwargs() -> None:
+def test_register_hook_rejects_callback_without_varkwargs() -> None:
     mgr = HookManager()
 
     def only_args(*args: object) -> None:
@@ -55,7 +55,7 @@ def test_register_hook_requires_var_kwargs() -> None:
         mgr.register_hook(HOOK_PRE_VALIDATE, only_args)
 
 
-def test_register_hook_requires_var_args() -> None:
+def test_register_hook_with_only_kwargs_is_rejected_for_missing_varargs() -> None:
     mgr = HookManager()
 
     def only_kw(**kwargs: object) -> None:
@@ -65,20 +65,20 @@ def test_register_hook_requires_var_args() -> None:
         mgr.register_hook(HOOK_PRE_VALIDATE, only_kw)
 
 
-def test_register_hook_rejects_non_callable() -> None:
+def test_register_hook_rejects_non_callable_object() -> None:
     mgr = HookManager()
     bad: object = object()
     with pytest.raises(RuntimeError, match="Unable"):
         mgr.register_hook(HOOK_PRE_VALIDATE, cast(Any, bad))
 
 
-def test_invoke_unknown_hook_point_raises() -> None:
+def test_invoke_hooks_rejects_unknown_hook_point() -> None:
     mgr = HookManager()
     with pytest.raises(HookUnknownPointException):
         mgr.invoke_hooks("not_a_point")
 
 
-def test_register_unknown_hook_point_raises() -> None:
+def test_register_hook_rejects_unknown_hook_point() -> None:
     mgr = HookManager()
 
     def cb(*args: object, **kwargs: object) -> None:
@@ -88,7 +88,7 @@ def test_register_unknown_hook_point_raises() -> None:
         mgr.register_hook("bad", cb)
 
 
-def test_invoke_async_hook_with_sync_raises() -> None:
+def test_sync_invoke_raises_for_async_hook_registration() -> None:
     mgr = HookManager()
 
     async def acb(*args: object, **kwargs: object) -> int:
@@ -99,7 +99,7 @@ def test_invoke_async_hook_with_sync_raises() -> None:
         mgr.invoke_hooks(HOOK_PRE_VALIDATE)
 
 
-def test_ainvoke_mixed_sync_and_async() -> None:
+def test_ainvoke_hooks_runs_sync_and_async_hooks_in_order() -> None:
     mgr = HookManager()
 
     def s(*args: object, **kwargs: object) -> int:
@@ -118,13 +118,13 @@ def test_ainvoke_mixed_sync_and_async() -> None:
     assert results == [2, 3]
 
 
-def test_ainvoke_unknown_hook_point_raises() -> None:
+def test_ainvoke_hooks_rejects_unknown_hook_point() -> None:
     mgr = HookManager()
     with pytest.raises(HookUnknownPointException):
         asyncio.run(mgr.ainvoke_hooks("nope"))
 
 
-def test_hook_execution_exception_wraps() -> None:
+def test_sync_invoke_wraps_unexpected_hook_error() -> None:
     mgr = HookManager()
 
     def bad(*args: object, **kwargs: object) -> None:
@@ -136,7 +136,7 @@ def test_hook_execution_exception_wraps() -> None:
     assert isinstance(ei.value.__cause__, ValueError)
 
 
-def test_lirix_security_exception_propagates() -> None:
+def test_sync_invoke_propagates_invalid_intent_exception() -> None:
     mgr = HookManager()
 
     def bad(*args: object, **kwargs: object) -> None:
@@ -147,7 +147,7 @@ def test_lirix_security_exception_propagates() -> None:
         mgr.invoke_hooks(HOOK_PRE_VALIDATE)
 
 
-def test_ainvoke_wraps_unexpected_errors() -> None:
+def test_ainvoke_wraps_unexpected_async_hook_error() -> None:
     mgr = HookManager()
 
     async def bad(*args: object, **kwargs: object) -> None:
@@ -158,7 +158,7 @@ def test_ainvoke_wraps_unexpected_errors() -> None:
         asyncio.run(mgr.ainvoke_hooks(HOOK_PRE_VALIDATE))
 
 
-def test_ainvoke_propagates_lirix_exception() -> None:
+def test_ainvoke_propagates_invalid_intent_exception() -> None:
     mgr = HookManager()
 
     async def bad(*args: object, **kwargs: object) -> None:
@@ -169,7 +169,7 @@ def test_ainvoke_propagates_lirix_exception() -> None:
         asyncio.run(mgr.ainvoke_hooks(HOOK_PRE_VALIDATE))
 
 
-def test_clear_all_and_single() -> None:
+def test_clear_removes_point_hooks_and_global_hooks() -> None:
     mgr = HookManager()
 
     def cb(*args: object, **kwargs: object) -> int:
@@ -183,12 +183,12 @@ def test_clear_all_and_single() -> None:
     assert mgr.invoke_hooks(HOOK_PRE_VALIDATE) == []
 
 
-def test_clear_missing_hook_no_error() -> None:
+def test_clear_on_empty_point_is_noop() -> None:
     mgr = HookManager()
     mgr.clear(HOOK_PRE_VALIDATE)
 
 
-def test_invoke_hooks_isolated_lirix_exception_propagates_with_timeout_thread() -> None:
+def test_invoke_hooks_isolated_propagates_policy_violation() -> None:
     mgr = HookManager()
 
     def policy(*args: object, **kwargs: object) -> None:
@@ -199,7 +199,7 @@ def test_invoke_hooks_isolated_lirix_exception_propagates_with_timeout_thread() 
         mgr.invoke_hooks_isolated(HOOK_LAYER_L2, timeout_sec=1.0)
 
 
-def test_invoke_hooks_isolated_timeout_without_audit_still_skips() -> None:
+def test_invoke_hooks_isolated_marks_timeout_result() -> None:
     mgr = HookManager()
 
     def slow(*args: object, **kwargs: object) -> None:
@@ -211,7 +211,7 @@ def test_invoke_hooks_isolated_timeout_without_audit_still_skips() -> None:
     assert "timeout" in str(out[0].get("error", ""))
 
 
-def test_invoke_hooks_isolated_timeout_skips_and_emits_system_audit() -> None:
+def test_invoke_hooks_isolated_timeout_and_success_are_both_recorded() -> None:
     buf = StringIO()
     audit = AuditLogger(stream=buf)
     mgr = HookManager()
@@ -233,7 +233,7 @@ def test_invoke_hooks_isolated_timeout_skips_and_emits_system_audit() -> None:
     assert "timeout" in log.lower() or "exceeded wall-clock" in log.lower()
 
 
-def test_invoke_hooks_isolated_suppresses_and_continues() -> None:
+def test_invoke_hooks_isolated_continues_after_nonfatal_errors() -> None:
     mgr = HookManager()
     log: list[str] = []
 
@@ -256,13 +256,13 @@ def test_invoke_hooks_isolated_suppresses_and_continues() -> None:
     assert out[2]["ok"] is True
 
 
-def test_invoke_hooks_isolated_unknown_point_raises() -> None:
+def test_invoke_hooks_isolated_rejects_unknown_hook_point() -> None:
     mgr = HookManager()
     with pytest.raises(HookUnknownPointException):
         mgr.invoke_hooks_isolated("not_a_real_point")
 
 
-def test_ainvoke_hooks_isolated_unknown_point_raises() -> None:
+def test_ainvoke_hooks_isolated_rejects_unknown_hook_point() -> None:
     mgr = HookManager()
 
     async def _run() -> None:
@@ -272,7 +272,7 @@ def test_ainvoke_hooks_isolated_unknown_point_raises() -> None:
         asyncio.run(_run())
 
 
-def test_ainvoke_hooks_isolated_propagates_lirix_exception() -> None:
+def test_ainvoke_hooks_isolated_propagates_invalid_intent_exception() -> None:
     mgr = HookManager()
 
     async def bad(*args: object, **kwargs: object) -> None:
@@ -283,7 +283,7 @@ def test_ainvoke_hooks_isolated_propagates_lirix_exception() -> None:
         asyncio.run(mgr.ainvoke_hooks_isolated(HOOK_POST_VALIDATE))
 
 
-def test_invoke_hooks_isolated_propagates_lirix_exception() -> None:
+def test_invoke_hooks_isolated_propagates_invalid_intent_exception() -> None:
     mgr = HookManager()
 
     def bad(*args: object, **kwargs: object) -> None:
@@ -294,7 +294,7 @@ def test_invoke_hooks_isolated_propagates_lirix_exception() -> None:
         mgr.invoke_hooks_isolated(HOOK_LAYER_L2)
 
 
-def test_invoke_hooks_isolated_async_cb_records_error() -> None:
+def test_invoke_hooks_isolated_reports_async_hook_requires_ainvoke() -> None:
     mgr = HookManager()
 
     async def acb(*args: object, **kwargs: object) -> int:
@@ -306,7 +306,7 @@ def test_invoke_hooks_isolated_async_cb_records_error() -> None:
     assert out[0].get("error") == "async_hook_requires_ainvoke"
 
 
-def test_ainvoke_hooks_isolated_sync_callback_timeout_uses_executor() -> None:
+def test_ainvoke_hooks_isolated_reports_timeout_for_slow_sync_hook() -> None:
     mgr = HookManager()
 
     def slow_sync(*args: object, **kwargs: object) -> None:
@@ -322,7 +322,7 @@ def test_ainvoke_hooks_isolated_sync_callback_timeout_uses_executor() -> None:
     assert "timeout" in str(out[0].get("error", ""))
 
 
-def test_ainvoke_hooks_isolated_async_timeout_skips() -> None:
+def test_ainvoke_hooks_isolated_records_timeout_and_success_results() -> None:
     buf = StringIO()
     audit = AuditLogger(stream=buf)
     mgr = HookManager()
@@ -346,7 +346,7 @@ def test_ainvoke_hooks_isolated_async_timeout_skips() -> None:
     assert out[1]["ok"] is True
 
 
-def test_ainvoke_hooks_isolated_async_and_sync() -> None:
+def test_ainvoke_hooks_isolated_mixes_success_and_failure_results() -> None:
     mgr = HookManager()
 
     async def a(*args: object, **kwargs: object) -> int:
@@ -362,14 +362,16 @@ def test_ainvoke_hooks_isolated_async_and_sync() -> None:
     assert out[1]["ok"] is False
 
 
-def test_core_package_exports() -> None:
+def test_core_module_reexports_hook_constants() -> None:
     import lirix.core as core
 
     assert core.HOOK_PRE_VALIDATE == HOOK_PRE_VALIDATE
     assert core.PREDEFINED_HOOK_POINTS
 
 
-def test_lirix_public_api_smoke(vitalik_checksum: str) -> None:
+def test_audit_logger_payload_contains_rfc3339_timestamp_and_attributes(
+    vitalik_checksum: str,
+) -> None:
     from lirix import Lirix, LirixConfig
 
     cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=["http://127.0.0.1:8545"])

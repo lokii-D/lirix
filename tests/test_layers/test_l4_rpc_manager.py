@@ -28,21 +28,21 @@ def _cfg(urls: list[str]) -> LirixConfig:
     )
 
 
-def test_empty_rpc_urls_fail_closed() -> None:
+def test_test_l4_rpc_manager() -> None:
     mgr = RPCManager(_cfg([]))
     with pytest.raises(RPCUnavailableException) as ei:
         mgr.sync_reconcile()
     assert ei.value.context.get("reason") == "rpc_urls_empty"
 
 
-def test_sync_web3_before_reconcile() -> None:
+def test_test_l4_rpc_manager_2() -> None:
     mgr = RPCManager(_cfg(["http://127.0.0.1:9"]))
     with pytest.raises(RPCUnavailableException) as ei:
         mgr.sync_web3()
     assert ei.value.context.get("reason") == "web3_not_ready"
 
 
-def test_reconcile_success_single_node(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_3(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://good:8545"])
     mgr = RPCManager(cfg)
 
@@ -54,7 +54,7 @@ def test_reconcile_success_single_node(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr.sync_web3() is not None
 
 
-def test_sync_reconcile_triggers_layer_l4_hook(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_4(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://good:8545"])
     hooks = HookManager()
     modes: list[str] = []
@@ -75,7 +75,7 @@ def test_sync_reconcile_triggers_layer_l4_hook(monkeypatch: pytest.MonkeyPatch) 
     assert modes == ["sync"]
 
 
-def test_async_reconcile_triggers_layer_l4_hook(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_5(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://async-hook:8545"])
     hooks = HookManager()
     modes: list[str] = []
@@ -100,7 +100,7 @@ def test_async_reconcile_triggers_layer_l4_hook(monkeypatch: pytest.MonkeyPatch)
     assert modes == ["async"]
 
 
-def test_reconcile_height_spread_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_6(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://a:8545", "http://b:8545"])
     mgr = RPCManager(cfg)
 
@@ -115,7 +115,7 @@ def test_reconcile_height_spread_fail_closed(monkeypatch: pytest.MonkeyPatch) ->
     assert ei.value.context.get("spread") is not None
 
 
-def test_rpc_429_quota_exhausted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_7(monkeypatch: pytest.MonkeyPatch) -> None:
     mgr = RPCManager(_cfg(["http://quota:8545"]))
     before_failures = dict(mgr._failures)  # noqa: SLF001
 
@@ -128,7 +128,7 @@ def test_rpc_429_quota_exhausted(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr._failures == before_failures  # noqa: SLF001
 
 
-def test_async_rpc_429_quota_exhausted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_8(monkeypatch: pytest.MonkeyPatch) -> None:
     mgr = RPCManager(_cfg(["http://quota-async:8545"]))
     before_failures = dict(mgr._failures)  # noqa: SLF001
 
@@ -145,7 +145,7 @@ def test_async_rpc_429_quota_exhausted(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr._failures == before_failures  # noqa: SLF001
 
 
-def test_circuit_breaker_opens_after_three_transport_failures(
+def test_test_l4_rpc_manager_9(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cfg = _cfg(["http://unreachable:8545"])
@@ -162,7 +162,7 @@ def test_circuit_breaker_opens_after_three_transport_failures(
         mgr.sync_reconcile()
 
 
-def test_reset_circuit_breakers(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_10(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://unreachable:8545"])
     mgr = RPCManager(cfg)
 
@@ -177,7 +177,7 @@ def test_reset_circuit_breakers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr._open.get("http://unreachable:8545") is not True  # noqa: SLF001
 
 
-def test_partial_node_failure_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_11(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://a:8545", "http://b:8545"])
     mgr = RPCManager(cfg)
 
@@ -192,7 +192,7 @@ def test_partial_node_failure_fail_closed(monkeypatch: pytest.MonkeyPatch) -> No
     assert ei.value.context.get("ok_count") == 1
 
 
-def test_async_reconcile_matches_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_12(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://async:8545"])
     mgr = RPCManager(cfg)
 
@@ -208,14 +208,14 @@ def test_async_reconcile_matches_sync(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr.async_web3() is not None
 
 
-def test_async_web3_before_reconcile() -> None:
+def test_test_l4_rpc_manager_13() -> None:
     mgr = RPCManager(_cfg(["http://x:8545"]))
     with pytest.raises(RPCUnavailableException) as ei:
         mgr.async_web3()
     assert ei.value.context.get("reason") == "async_web3_not_ready"
 
 
-def test_thread_pool_executor_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_14(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://n1:8545", "http://n2:8545", "http://n3:8545"])
     mgr = RPCManager(cfg)
 
@@ -226,7 +226,7 @@ def test_thread_pool_executor_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mgr.sync_reconcile() == 5
 
 
-def test_fetch_block_number_sync_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_15(monkeypatch: pytest.MonkeyPatch) -> None:
     from lirix.layers import l4_rpc_manager as l4
 
     mock_w3 = MagicMock()
@@ -237,7 +237,7 @@ def test_fetch_block_number_sync_success(monkeypatch: pytest.MonkeyPatch) -> Non
     assert mgr._fetch_block_number_sync("http://ok:8545") == ("http://ok:8545", 99)
 
 
-def test_fetch_block_number_async_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_16(monkeypatch: pytest.MonkeyPatch) -> None:
     from lirix.layers import l4_rpc_manager as l4
 
     class _Eth:
@@ -259,7 +259,7 @@ def test_fetch_block_number_async_success(monkeypatch: pytest.MonkeyPatch) -> No
     assert asyncio.run(_run()) == ("http://ok-async:8545", 55)
 
 
-def test_fetch_block_number_sync_quota_raises_from_block_number_access(
+def test_test_l4_rpc_manager_17(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix.layers import l4_rpc_manager as l4
@@ -275,7 +275,7 @@ def test_fetch_block_number_sync_quota_raises_from_block_number_access(
         mgr._fetch_block_number_sync("http://quota-inner:8545")
 
 
-def test_fetch_block_number_sync_non_quota_re_raises_from_block_number(
+def test_test_l4_rpc_manager_18(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix.layers import l4_rpc_manager as l4
@@ -289,7 +289,7 @@ def test_fetch_block_number_sync_non_quota_re_raises_from_block_number(
         mgr._fetch_block_number_sync("http://sync-transport-err:8545")
 
 
-def test_fetch_block_number_async_quota_raises_from_block_number_access(
+def test_test_l4_rpc_manager_19(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix.layers import l4_rpc_manager as l4
@@ -314,7 +314,7 @@ def test_fetch_block_number_async_quota_raises_from_block_number_access(
         asyncio.run(_run())
 
 
-def test_fetch_block_number_async_non_quota_re_raises_from_block_number(
+def test_test_l4_rpc_manager_20(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix.layers import l4_rpc_manager as l4
@@ -339,7 +339,7 @@ def test_fetch_block_number_async_non_quota_re_raises_from_block_number(
         asyncio.run(_run())
 
 
-def test_fetch_block_number_sync_not_connected(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_21(monkeypatch: pytest.MonkeyPatch) -> None:
     from lirix.layers import l4_rpc_manager as l4
 
     mock_w3 = MagicMock()
@@ -351,7 +351,7 @@ def test_fetch_block_number_sync_not_connected(monkeypatch: pytest.MonkeyPatch) 
         mgr._fetch_block_number_sync("http://x:8545")
 
 
-def test_async_reconcile_partial_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_22(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://bad:8545", "http://good:8545"])
     mgr = RPCManager(cfg)
 
@@ -369,7 +369,7 @@ def test_async_reconcile_partial_failure(monkeypatch: pytest.MonkeyPatch) -> Non
         asyncio.run(_run())
 
 
-def test_async_reconcile_spread_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_23(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://a:8545", "http://b:8545"])
     mgr = RPCManager(cfg)
 
@@ -388,7 +388,7 @@ def test_async_reconcile_spread_fail_closed(monkeypatch: pytest.MonkeyPatch) -> 
     assert ei.value.context.get("spread") is not None
 
 
-def test_async_fetch_not_connected(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_24(monkeypatch: pytest.MonkeyPatch) -> None:
     from lirix.layers import l4_rpc_manager as l4
 
     mock_w3 = MagicMock()
@@ -407,7 +407,7 @@ def test_async_fetch_not_connected(monkeypatch: pytest.MonkeyPatch) -> None:
         asyncio.run(_run())
 
 
-def test_healthy_node_after_peer_breaker_open(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l4_rpc_manager_25(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(["http://bad:8545", "http://good:8545"])
     mgr = RPCManager(cfg)
 

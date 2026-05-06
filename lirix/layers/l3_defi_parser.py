@@ -15,7 +15,10 @@ from lirix.core.hook_manager import HookManager
 from lirix.core.signatures import (
     AGGREGATE3_SELECTOR,
     AGGREGATE3_VALUE_SELECTOR,
+    EXACT_INPUT_SELECTOR,
+    EXACT_OUTPUT_SELECTOR,
     MAX_MULTICALL_RECURSION_DEPTH,
+    MOE_SWAP_SELECTOR,
     SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR,
     SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR,
     SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
@@ -105,10 +108,29 @@ class DeFiPayloadParser:
             SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
             SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR,
             SWAP_EXACT_ETH_FOR_TOKENS_SELECTOR,
+            EXACT_INPUT_SELECTOR,
+            EXACT_OUTPUT_SELECTOR,
+            MOE_SWAP_SELECTOR,
         }
         if outer_to == rt and sel not in swap_selectors:
             raise MaliciousPayloadException(
                 human_readable_reason="Non-swap calldata directed at Uniswap router.",
+                context={"layer": "L3", "selector": sel.hex()},
+            )
+        if (
+            outer_to == rt
+            and sel in {EXACT_INPUT_SELECTOR, EXACT_OUTPUT_SELECTOR}
+            and len(body) < 4
+        ):
+            raise MaliciousPayloadException(
+                human_readable_reason="Failed to decode V3/Router swap calldata.",
+                context={"layer": "L3", "selector": sel.hex()},
+            )
+        if outer_to == rt and sel == MOE_SWAP_SELECTOR and len(body) < 4:
+            raise MaliciousPayloadException(
+                human_readable_reason=(
+                    "Failed to decode Merchant Moe swap calldata as V2-style arguments."
+                ),
                 context={"layer": "L3", "selector": sel.hex()},
             )
         if outer_to == mc and sel not in (
@@ -159,6 +181,32 @@ class DeFiPayloadParser:
                     },
                 )
             self._accumulate_swap(body, collected, selector=sel)
+        elif sel in {EXACT_INPUT_SELECTOR, EXACT_OUTPUT_SELECTOR}:
+            if outer_to != rt:
+                raise MaliciousPayloadException(
+                    human_readable_reason=(
+                        "swap calldata must target canonical router (route poison)."
+                    ),
+                    context={
+                        "layer": "L3",
+                        "outer_to": outer_to,
+                        "expected_router": rt,
+                    },
+                )
+            self._accumulate_v3_swap(body, collected, selector=sel)
+        elif sel == MOE_SWAP_SELECTOR:
+            if outer_to != rt:
+                raise MaliciousPayloadException(
+                    human_readable_reason=(
+                        "swap calldata must target canonical router (route poison)."
+                    ),
+                    context={
+                        "layer": "L3",
+                        "outer_to": outer_to,
+                        "expected_router": rt,
+                    },
+                )
+            self._accumulate_moe_swap(body, collected, selector=sel)
         self._enforce_addresses(collected)
         h = self._hooks
         if h is not None:
@@ -231,6 +279,10 @@ class DeFiPayloadParser:
                         context={"layer": "L3", "inner_target": taddr},
                     )
                 self._accumulate_swap(inner_body, collected, selector=inner_sel)
+            elif inner_sel in {EXACT_INPUT_SELECTOR, EXACT_OUTPUT_SELECTOR}:
+                self._accumulate_v3_swap(inner_body, collected, selector=inner_sel)
+            elif inner_sel == MOE_SWAP_SELECTOR:
+                self._accumulate_moe_swap(inner_body, collected, selector=inner_sel)
             else:
                 raise MaliciousPayloadException(
                     human_readable_reason="Unsupported inner call inside Multicall3 batch.",
@@ -321,6 +373,89 @@ class DeFiPayloadParser:
                     "Swap calldata sets amountOutMin=0; this permits unbounded slippage."
                 ),
                 context={"layer": "L3", "selector": selector.hex(), "amount_out_min": 0},
+            )
+        collected.add(Web3.to_checksum_address(recipient))
+        for addr in path:
+            collected.add(Web3.to_checksum_address(addr))
+
+    def _accumulate_v3_swap(self, body: bytes, collected: Set[str], *, selector: bytes) -> None:
+        try:
+            path, recipient, amount_in, amount_out_min, _deadline, _data = eth_abi_decode(
+                ["bytes", "address", "uint256", "uint256", "uint256", "bytes"],
+                body,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MaliciousPayloadException(
+                human_readable_reason="Failed to decode V3/Router swap calldata.",
+                context={"layer": "L3", "selector": selector.hex()},
+            ) from exc
+        if int(amount_out_min) == 0:
+            raise DeFiSlippageMissingException(
+                human_readable_reason=(
+                    "V3 swap calldata sets amountOutMinimum=0; this permits unbounded slippage."
+                ),
+                context={"layer": "L3", "selector": selector.hex(), "amount_out_min": 0},
+            )
+        if int(amount_in) == 0:
+            raise MaliciousPayloadException(
+                human_readable_reason="V3 swap calldata sets amountIn=0; suspicious route.",
+                context={"layer": "L3", "selector": selector.hex(), "amount_in": 0},
+            )
+        collected.add(Web3.to_checksum_address(recipient))
+        self._collect_v3_path_addresses(path, collected, selector=selector)
+
+    def _collect_v3_path_addresses(
+        self,
+        path: bytes,
+        collected: Set[str],
+        *,
+        selector: bytes,
+    ) -> None:
+        if len(path) < 20:
+            raise MaliciousPayloadException(
+                human_readable_reason="V3 path is too short to contain any hop.",
+                context={"layer": "L3", "selector": selector.hex(), "path_len": len(path)},
+            )
+        if len(path) % 23 != 20:
+            raise MaliciousPayloadException(
+                human_readable_reason="V3 path encoding is malformed.",
+                context={"layer": "L3", "selector": selector.hex(), "path_len": len(path)},
+            )
+        offset = 0
+        collected.add(Web3.to_checksum_address("0x" + path[offset : offset + 20].hex()))
+        offset += 20
+        while offset < len(path):
+            offset += 3
+            collected.add(Web3.to_checksum_address("0x" + path[offset : offset + 20].hex()))
+            offset += 20
+
+    def _accumulate_moe_swap(self, body: bytes, collected: Set[str], *, selector: bytes) -> None:
+        try:
+            amount_in, amount_out_min, path, recipient, _deadline = eth_abi_decode(
+                ["uint256", "uint256", "address[]", "address", "uint256"],
+                body,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MaliciousPayloadException(
+                human_readable_reason=(
+                    "Failed to decode Merchant Moe swap calldata as V2-style arguments."
+                ),
+                context={"layer": "L3", "selector": selector.hex()},
+            ) from exc
+        if int(amount_out_min) == 0:
+            raise DeFiSlippageMissingException(
+                human_readable_reason=(
+                    "Merchant Moe swap calldata sets amountOutMinimum=0; "
+                    "this permits unbounded slippage."
+                ),
+                context={"layer": "L3", "selector": selector.hex(), "amount_out_min": 0},
+            )
+        if int(amount_in) == 0:
+            raise MaliciousPayloadException(
+                human_readable_reason=(
+                    "Merchant Moe swap calldata sets amountIn=0; suspicious route."
+                ),
+                context={"layer": "L3", "selector": selector.hex(), "amount_in": 0},
             )
         collected.add(Web3.to_checksum_address(recipient))
         for addr in path:

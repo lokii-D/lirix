@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Sequence
+from typing import Any, ClassVar, List, Optional, Sequence
 
 from pydantic import (
     BaseModel,
@@ -17,11 +17,43 @@ from web3 import Web3
 
 from lirix.core.exceptions import ConfigurationGuardException
 
+MANTLE_MAINNET_RPC_URLS: tuple[str, ...] = (
+    "https://rpc.mantle.xyz",
+    "https://mantle.drpc.org",
+    "https://rpc.ankr.com/mantle",
+)
+MANTLE_TESTNET_RPC_URLS: tuple[str, ...] = ("https://rpc.testnet.mantle.xyz",)
+MANTLE_CHAIN_ID: int = 5000
+MANTLE_TESTNET_CHAIN_ID: int = 5001
+MANTLE_ALLOWED_TO_ADDRESSES: frozenset[str] = frozenset(
+    {
+        # DEX Routers
+        "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",  # Merchant Moe MoeRouter
+        "0x6e3d7b0365c960aaf214e0afa86a99b4a62ae82d",  # Agni Finance Swap Router
+        # Yield/Lending protocols
+        "0x888888888889758F76e7103c6CbF23ABbF58F946",  # Pendle Router V4
+        "0x972BcB0284cca0152527c4f70f8F689852bCAFc5",  # INIT Capital InitCore (Proxy)
+        # Asset tokens
+        "0xcDA86A272531e8640cD7F1a92c01839911B90bb0",  # mETH
+        "0xE6829d9a7eE3040e1276Fa75293Bde931859e8fA",  # cmETH
+        "0xC96dE26018A54D51c097160568752c4E3BD6C364",  # FBTC
+        "0x5bE26527e817998A7206475496fDE1E68957c5A6",  # USDY
+        "0x78c1b0C915c4FAA5FFfA6CAbf0219DA63d7f4cb8",  # WMNT
+        "0x4515a45337f461a11ff0fe8abf3c606ae5dc00c9",  # MOE
+    }
+)
+
 
 class LirixConfig(BaseModel):
     """全局配置基类（Pydantic v2）：初始化即完成地址 checksum 洗牌与边界校验。"""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
+
+    MANTLE_MAINNET_RPC_URLS: ClassVar[tuple[str, ...]] = MANTLE_MAINNET_RPC_URLS
+    MANTLE_TESTNET_RPC_URLS: ClassVar[tuple[str, ...]] = MANTLE_TESTNET_RPC_URLS
+    MANTLE_CHAIN_ID: ClassVar[int] = MANTLE_CHAIN_ID
+    MANTLE_TESTNET_CHAIN_ID: ClassVar[int] = MANTLE_TESTNET_CHAIN_ID
+    MANTLE_ALLOWED_TO_ADDRESSES: ClassVar[frozenset[str]] = MANTLE_ALLOWED_TO_ADDRESSES
 
     chain_id: int = Field(..., ge=0, description="目标链 ID")
     rpc_urls: List[str] = Field(
@@ -209,3 +241,38 @@ class LirixConfig(BaseModel):
                     context={"reason": "overlap_blacklist_allowed_to", "overlap": sorted(bad_to)},
                 )
         return self
+
+    @staticmethod
+    def for_mantle(*, testnet: bool = False, strict_mode: bool = True) -> LirixConfig:
+        chain_id = MANTLE_TESTNET_CHAIN_ID if testnet else MANTLE_CHAIN_ID
+        rpc_urls = list(MANTLE_TESTNET_RPC_URLS if testnet else MANTLE_MAINNET_RPC_URLS)
+        whitelisted = sorted(
+            set(MANTLE_ALLOWED_TO_ADDRESSES)
+            | {
+                "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+                "0xcA11bde05977b3631167028862bE2a173976CA11",
+                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+                "0x000000000000000000000000000000000000dEaD",
+            }
+        )
+        return LirixConfig(
+            chain_id=chain_id,
+            rpc_urls=rpc_urls,
+            strict_mode=strict_mode,
+            allowed_intents=["swap", "transfer", "bridge", "simulate"],
+            allowed_function_names=[
+                "swap",
+                "swapExactTokensForTokens",
+                "swapExactETHForTokens",
+                "swapExactTokensForETH",
+                "exactInput",
+                "exactOutput",
+            ],
+            allowed_to_addresses=list(MANTLE_ALLOWED_TO_ADDRESSES),
+            whitelisted_addresses=whitelisted,
+            blacklisted_addresses=["0x000000000000000000000000000000000000bEEF"],
+            multicall3_address="0xcA11bde05977b3631167028862bE2a173976CA11",
+            uniswap_v2_router="0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
+        )

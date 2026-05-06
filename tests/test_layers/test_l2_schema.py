@@ -24,21 +24,21 @@ def _valid_base() -> dict[str, Any]:
     }
 
 
-def test_l2_validate_mapping_alias() -> None:
+def test_validate_mapping_accepts_minimal_valid_payload() -> None:
     assert SchemaValidator().validate_mapping(_valid_base()) is True
 
 
-def test_l2_happy_path() -> None:
+def test_validate_accepts_minimal_valid_payload() -> None:
     assert SchemaValidator().validate(_valid_base()) is True
 
 
-def test_l2_accepts_exact_uint256_max_value() -> None:
+def test_validate_accepts_max_uint256_value_boundary() -> None:
     base = _valid_base()
     base["value"] = 2**256 - 1
     assert SchemaValidator().validate(base) is True
 
 
-def test_l2_accepts_calldata_at_max_length_boundary() -> None:
+def test_validate_accepts_calldata_at_max_length_boundary() -> None:
     base = _valid_base()
     body_pairs = (MAX_L2_CALLDATA_HEX_CHARS - 2) // 2
     base["data"] = "0x" + "aa" * body_pairs
@@ -75,14 +75,14 @@ def test_l2_accepts_calldata_at_max_length_boundary() -> None:
         "empty_function_name",
     ],
 )
-def test_l2_malicious_schema_payloads(patch: dict[str, Any]) -> None:
+def test_validate_rejects_invalid_payload_variants(patch: dict[str, Any]) -> None:
     base = _valid_base()
     base.update(patch)
     with pytest.raises(SchemaValidationException):
         SchemaValidator().validate(base)
 
 
-def test_lirix_chain_validate_stops_at_l2() -> None:
+def test_chain_validate_rejects_lowercase_to_address() -> None:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,

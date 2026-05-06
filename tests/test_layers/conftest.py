@@ -6,6 +6,7 @@ from __future__ import annotations
 from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 from lirix.core.signatures import (
     AGGREGATE3_SELECTOR,
+    MOE_SWAP_SELECTOR,
     SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
 )
 from web3 import Web3
@@ -50,6 +51,21 @@ def build_swap_calldata(
         [amount_in, amount_out_min, path, recipient, deadline],
     )
     return "0x" + SWAP_SELECTOR.hex() + body.hex()
+
+
+def build_moe_swap_calldata(
+    *,
+    path: list[str],
+    recipient: str,
+    amount_in: int = 1,
+    amount_out_min: int = 1,
+    deadline: int = 9_999_999_999,
+) -> str:
+    body = abi_encode(
+        ["uint256", "uint256", "address[]", "address", "uint256"],
+        [amount_in, amount_out_min, path, recipient, deadline],
+    )
+    return "0x" + MOE_SWAP_SELECTOR.hex() + body.hex()
 
 
 def build_multicall_calldata(calls: list[tuple[str, bool, bytes]]) -> str:

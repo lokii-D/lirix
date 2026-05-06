@@ -26,6 +26,7 @@ EIP1967_BEACON_SLOT = "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582
 EIP1967_ADMIN_SLOT = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
 EIP1822_PROXIABLE_SLOT = "0xc5f16f0fcc639fa48a6947836d9850f504798523bf8c9a3a87d5876bb1f7c97"
 BEACON_IMPLEMENTATION_SELECTOR = "0x5c60da1b"
+DIAMOND_FACET_ADDRESS_SELECTOR = "0xcdffacc6"  # facetAddress(bytes4)
 
 
 class AbiLRUCache:
@@ -315,6 +316,24 @@ class ProxyPiercer:
             self._store_inspection_cache(target, result, now)
             return self._copy_inspection_result(result)
 
+        diamond = self._resolve_diamond_facet(web3, target)
+        if diamond is not None:
+            resolution_path.append("eip2535_diamond")
+            result = {
+                "target": target,
+                "resolved_target": diamond,
+                "proxy_kind": "diamond",
+                "implementation": diamond,
+                "beacon": beacon,
+                "beacon_implementation": None,
+                "admin": admin,
+                "uups_implementation": None,
+                "is_proxy": True,
+                "resolution_path": resolution_path,
+            }
+            self._store_inspection_cache(target, result, now)
+            return self._copy_inspection_result(result)
+
         if admin is not None:
             resolution_path.append("eip1967_admin")
         result = {
@@ -364,7 +383,7 @@ class ProxyPiercer:
     @staticmethod
     def _copy_inspection_result(result: Dict[str, Any]) -> Dict[str, Any]:
         copied = dict(result)
-        if "resolution_path" in copied and not isinstance(copied["resolution_path"], list):
+        if "resolution_path" in copied:
             copied["resolution_path"] = list(copied["resolution_path"])
         return copied
 
@@ -404,6 +423,28 @@ class ProxyPiercer:
         if tail == b"\x00" * 20:
             return None
         return Web3.to_checksum_address("0x" + tail.hex())
+
+    @classmethod
+    def _resolve_diamond_facet(cls, web3: Web3, target: str) -> Optional[str]:
+        payload = cast(
+            TxParams, {"to": target, "data": bytes.fromhex(DIAMOND_FACET_ADDRESS_SELECTOR[2:])}
+        )
+        try:
+            raw = web3.eth.call(payload)
+        except Exception:
+            return None
+        if not raw:
+            return None
+        if isinstance(raw, str):
+            body = raw[2:] if raw.startswith("0x") else raw
+            try:
+                raw = bytes.fromhex(body)
+            except ValueError:
+                return None
+        if not isinstance(raw, (bytes, bytearray)) or len(raw) < 32:
+            return None
+        decoded_address = ProxyPiercer._decode_abi_address(web3, bytes(raw)[:32])
+        return decoded_address
 
     @staticmethod
     def _resolve_beacon_implementation(web3: Web3, beacon_address: str) -> Optional[str]:

@@ -8,12 +8,12 @@ from typing import List
 import lirix.core.compat as compat
 
 
-def test_compat_get_origin_and_args() -> None:
+def test_test_compat() -> None:
     assert compat.get_origin(List[int]) is list
     assert int in compat.get_args(List[int])
 
 
-def test_compat_get_type_hints() -> None:
+def test_test_compat_2() -> None:
     def f(x: int) -> str:
         return str(x)
 

@@ -9,7 +9,7 @@ from lirix import Lirix, LirixConfig
 from lirix.core.constants import HOOK_PRE_SIMULATION
 
 
-def test_pre_simulation_plugin_is_decoupled_from_core() -> None:
+def test_test_hook_plugin_sandbox() -> None:
     """沙盒插件：仅依赖 Hook 约定与 kwargs，不 import 核心业务实现。"""
 
     class _SandboxPlugin:

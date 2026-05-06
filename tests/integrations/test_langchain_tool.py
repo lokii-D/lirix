@@ -14,7 +14,7 @@ class DummyResult:
         return '{"validated": true}'
 
 
-def test_langchain_tool_arun_returns_remediation_when_lirix_blocks(
+def test_test_langchain_tool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
@@ -48,7 +48,7 @@ def test_langchain_tool_arun_returns_remediation_when_lirix_blocks(
     )
 
 
-def test_langchain_tool_serializes_success_result(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_langchain_tool_2(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return DummyResult()
 
@@ -60,7 +60,7 @@ def test_langchain_tool_serializes_success_result(monkeypatch: pytest.MonkeyPatc
     assert output == '{"validated": true}'
 
 
-def test_langchain_tool_formats_policy_violation_with_context(
+def test_test_langchain_tool_3(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:

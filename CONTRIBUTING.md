@@ -14,6 +14,7 @@ Every pull request must satisfy all of the following before review can proceed:
 - Any behavior change must be accompanied by tests that prove the new behavior and protect the old one.
 - Pull requests that break CLI idempotency are auto-rejected, including any change that causes `lirix init` to corrupt, overwrite, or leak `.env` files.
 - Pull requests that weaken L4 BFT concurrency guarantees are auto-rejected, including any change that fails strict async-mocking coverage for HTTP 429 handling, timeouts, and retry-safe failure paths.
+- Release-facing documentation must stay synchronized with the published version, including v1.6.0 terminology, examples, and user-facing wording.
 
 If a PR misses any of these requirements, it is auto-rejected until corrected.
 

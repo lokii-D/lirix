@@ -12,7 +12,7 @@ class DummyResult:
         return '{"validated": true}'
 
 
-def test_autogen_function_returns_remediation(monkeypatch: Any) -> None:
+def test_test_autogen_tool(monkeypatch: Any) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         raise LirixSecurityException(
             resolution_agent=(
@@ -34,7 +34,7 @@ def test_autogen_function_returns_remediation(monkeypatch: Any) -> None:
     )
 
 
-def test_autogen_function_serializes_success(monkeypatch: Any) -> None:
+def test_test_autogen_tool_2(monkeypatch: Any) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return DummyResult()
 
@@ -49,7 +49,7 @@ def test_autogen_function_serializes_success(monkeypatch: Any) -> None:
     assert output == '{"validated": true}'
 
 
-def test_autogen_function_formats_policy_violation_with_context(monkeypatch: Any) -> None:
+def test_test_autogen_tool_3(monkeypatch: Any) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         raise LirixPolicyViolationException(
             error_code="LRX_SHADOW_POLICY_BLOCKED",

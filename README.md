@@ -9,12 +9,12 @@
   <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="#-installation">📦 Installation</a> | <a href="#-zero-friction-initialization">⚡ Zero-Friction Initialization</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Ecosystem Integrations</a> | <a href="#-deep-dive-the-5-layer-security-shield">🎯 Deep Dive</a> | <a href="#-architecture--hooks">🗺️ Architecture & Hooks</a> | <a href="#-support--faq">💬 Support / FAQ</a>
 </p>
 
-# Lirix v1.5.3: The Omniscience Update for Web3 AI Agents
+# Lirix v1.6.0: The Deterministic Security Boundary for Web3 AI Agents
 
 [![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
 [![Build Status](https://github.com/lokii-D/lirix/actions/workflows/ci.yml/badge.svg)](https://github.com/lokii-D/lirix/actions)
 
-Lirix v1.5.3 is the deterministic security boundary for Web3 AI agents. It stands between untrusted model output and on-chain execution, neutralizing prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can reach private keys, signing authority, or capital.
+Lirix v1.6.0 is the deterministic security boundary for Web3 AI agents. It stands between untrusted model output and on-chain execution, neutralizing prompt injections, stale RPC reads, hallucinated contract paths, and toxic DeFi payloads before they can reach private keys, signing authority, or capital.
 
 ## ☠️ Before Lirix (Vulnerable)
 
@@ -25,7 +25,7 @@ multicall = ai_agent.generate("swap and stake everything")
 sign_and_broadcast(multicall)  # malicious payload slips through
 ```
 
-## 🛡️ After Lirix (Bulletproof)
+## 🛡️ After Lirix (Fail-Closed)
 
 ```python
 from lirix import Lirix, LirixSecurityException
@@ -245,9 +245,9 @@ A: This is PEP 668 at work. Create and activate a virtual environment first, the
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
 </div>
 
-<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.5.3：面向 Web3 AI Agent 的全知更新</h1>
+<h1 id="-简体中文-chinese-version">🇨🇳 Lirix v1.6.0：面向 Web3 AI Agent 的确定性安全边界</h1>
 
-Lirix v1.5.3 不是“工具箱”，而是 Web3 AI Agent 的确定性安全边界。它横亘在不可信模型输出与链上执行之间。提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载，必须先经过它的审判，才能接近私钥、签名权或资金。
+Lirix v1.6.0 不是“工具箱”，而是 Web3 AI Agent 的确定性安全边界。它横亘在不可信模型输出与链上执行之间，先拦住提示词越狱注入、陈旧 RPC 读数、幻觉式合约路径与有毒 DeFi 负载，再允许它们接近私钥、签名权或资金。
 
 ## ☠️ Lirix 之前（存在风险）
 
@@ -258,7 +258,7 @@ multicall = ai_agent.generate("swap and stake everything")
 sign_and_broadcast(multicall)  # 恶意 payload 直接穿透
 ```
 
-## 🛡️ Lirix 之后（刀枪不入）
+## 🛡️ Lirix 之后（fail-closed）
 
 ```python
 from lirix import Lirix, LirixSecurityException
@@ -387,7 +387,7 @@ class AutoGenLirixBridge:
 autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet..."]))
 ```
 
-Lirix 是 Web3 AI Agent 进入生产环境时的官方熔断控制平面。封装一次，后续所有规划器、工具与自治工作流都会继承同一条安全边界。这就是开发者真正需要的：确定性。可回滚。可审计。
+Lirix 是 Web3 AI Agent 进入生产环境时的官方熔断控制平面。封装一次，后续所有规划器、工具与自治工作流都会继承同一条安全边界。这就是开发者真正需要的：确定性、可回滚、可审计。
 
 ## 🎯 深入解析：五层安全防线
 
@@ -436,10 +436,10 @@ Lirix 在 AI 意图与链上执行之间，立起一条毫不妥协的隔离带�
 
 ```text
 lirix/
-├── lirix/        # 核心防线 layers
-├── tests/        # 验证与对抗覆盖
-├── docs/         # 审计与架构资料
-└── SECURITY.md   # 安全披露与零信任规则
+├── lirix/        # core defense layers
+├── tests/        # verification and adversarial coverage
+├── docs/         # audit and architecture references
+└── SECURITY.md   # disclosure policy and zero-trust rules
 ```
 
 完整结构与安全说明请查看 **[docs/STRUCTURE.md](docs/STRUCTURE.md)**。

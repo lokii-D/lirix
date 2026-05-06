@@ -39,9 +39,15 @@ class StateDeltaValidator:
         if not assertions:
             return True
 
-        # Extract simulated return_data (prefer explicit simulation_result).
+        # Extract simulated return_data (prefer explicit simulation_result, then nested metrics).
         source_data = simulation_result or payload
-        raw_return_data = source_data.get("return_data", "0x")
+        raw_return_data = source_data.get("return_data")
+        if raw_return_data is None:
+            nested_metrics = source_data.get("metrics")
+            if isinstance(nested_metrics, Mapping):
+                raw_return_data = nested_metrics.get("return_data")
+        if raw_return_data is None:
+            raw_return_data = "0x"
 
         # Convert hex return_data into int.
         try:
@@ -186,7 +192,15 @@ class SimulationEngine:
         sender: str | None = None,
         value: int = 0,
     ) -> bool:
-        decode_fn, Web3Cls, ContractLogicError, Web3Exception = self._load_web3()
+        try:
+            decode_fn, Web3Cls, ContractLogicError, Web3Exception = self._load_web3()
+        except ImportError as exc:
+            raise LirixDependencyError(
+                error_code="LRX_DEP_SIMULATION_MISSING",
+                resolution_agent="Install the simulation extras before running RPC simulations.",
+                resolution_dev="Run: pip install lirix[simulation]",
+                value_protected="Unknown Asset Value",
+            ) from exc
         assert self._w3 is not None
         tx: dict[str, Any] = {
             "to": Web3Cls.to_checksum_address(target),

@@ -27,7 +27,7 @@ from web3 import types as web3_types
 from web3.exceptions import ContractLogicError
 
 
-def test_register_hook_top_level_alias() -> None:
+def test_register_hook_helper_wires_pre_validate_hook() -> None:
     mgr = HookManager()
     seen: list[int] = []
 
@@ -39,7 +39,7 @@ def test_register_hook_top_level_alias() -> None:
     assert seen == [1]
 
 
-def test_atomic_multicall_requires_multicall_address_off_mainnet() -> None:
+def test_atomic_multicall_requires_explicit_multicall_address_on_unknown_chain() -> None:
     cfg = LirixConfig(
         chain_id=42,
         strict_mode=False,
@@ -59,7 +59,9 @@ def test_atomic_multicall_requires_multicall_address_off_mainnet() -> None:
         )
 
 
-def test_atomic_multicall_bad_selector_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_atomic_multicall_rejects_encoder_output_to_non_multicall_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     mc = mainnet_multicall()
     weth = token_weth()
     cfg = LirixConfig(
@@ -91,7 +93,7 @@ def test_atomic_multicall_bad_selector_guard(monkeypatch: pytest.MonkeyPatch) ->
         atomic_multicall(client, "swap", [{"to": weth, "data": "0x"}])
 
 
-def test_atomic_multicall_aggregate3_value_branch() -> None:
+def test_atomic_multicall_selects_aggregate3value_when_subcall_has_value() -> None:
     mc = mainnet_multicall()
     weth = token_weth()
     cfg = LirixConfig(
@@ -113,7 +115,7 @@ def test_atomic_multicall_aggregate3_value_branch() -> None:
     assert out["payload"]["function_name"] == "aggregate3Value"
 
 
-def test_atomic_multicall_uses_explicit_multicall3_address() -> None:
+def test_atomic_multicall_uses_configured_multicall_address_on_custom_chain() -> None:
     mc = mainnet_multicall()
     weth = token_weth()
     cfg = LirixConfig(
@@ -133,7 +135,7 @@ def test_atomic_multicall_uses_explicit_multicall3_address() -> None:
     assert out["encoded"]["to"] == mc
 
 
-def test_atomic_multicall_pack_and_hooks_no_anvil_required() -> None:
+def test_atomic_multicall_emits_pack_hook_with_encoded_payload() -> None:
     mc = mainnet_multicall()
     weth = token_weth()
     cfg = LirixConfig(
@@ -162,7 +164,7 @@ def test_atomic_multicall_pack_and_hooks_no_anvil_required() -> None:
     assert seen_pack and isinstance(seen_pack[0], dict)
 
 
-def test_layer_hook_isolated_does_not_break_validation() -> None:
+def test_chain_validate_survives_noncritical_l1_hook_exception() -> None:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,
@@ -198,7 +200,7 @@ def test_layer_hook_isolated_does_not_break_validation() -> None:
     )
 
 
-def test_rpc_fail_closed_unreachable() -> None:
+def test_rpc_manager_reconcile_raises_when_all_rpcs_unavailable() -> None:
     cfg = LirixConfig(
         chain_id=1,
         rpc_urls=["http://127.0.0.1:59999"],
@@ -211,7 +213,7 @@ def test_rpc_fail_closed_unreachable() -> None:
         mgr.sync_reconcile()
 
 
-def test_anvil_multicall_eth_call_atomic_revert(
+def test_multicall3_aggregate3_reverts_atomically_on_invalid_subcall(
     deploy_multicall3_locally: Web3,
 ) -> None:
     """无 fork：Multicall3 由 fixture 注入；子调用 INVALID 时整笔 aggregate3 原子回滚。"""

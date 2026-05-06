@@ -25,7 +25,7 @@ def _base_cfg() -> LirixConfig:
     )
 
 
-def test_l1_validate_mapping_alias() -> None:
+def test_validate_mapping_accepts_minimal_allowed_swap_payload() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -34,7 +34,7 @@ def test_l1_validate_mapping_alias() -> None:
     assert IntentValidator(cfg).validate_mapping("swap", p) is True
 
 
-def test_l1_happy_path() -> None:
+def test_validate_accepts_valid_swap_payload_with_value_and_data() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -45,7 +45,7 @@ def test_l1_happy_path() -> None:
     assert IntentValidator(cfg).validate("swap", p) is True
 
 
-def test_l1_wrong_intent_injection() -> None:
+def test_validate_rejects_intent_not_in_allowlist() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -76,7 +76,7 @@ def test_l1_wrong_intent_injection() -> None:
         "empty_to_whitelist",
     ],
 )
-def test_l1_fail_closed_policy(
+def test_validate_rejects_when_required_allowlists_are_empty(
     mutator: Callable[[LirixConfig], LirixConfig],
     exc_match: str,
 ) -> None:
@@ -114,13 +114,13 @@ def test_l1_fail_closed_policy(
         "to_not_in_whitelist",
     ],
 )
-def test_l1_injection_and_policy_payloads(payload: dict[str, Any]) -> None:
+def test_validate_rejects_payloads_with_missing_or_invalid_fields(payload: dict[str, Any]) -> None:
     cfg = _base_cfg()
     with pytest.raises(InvalidIntentException):
         IntentValidator(cfg).validate("swap", payload)
 
 
-def test_l1_swap_intent_rejects_approve_method_id() -> None:
+def test_validate_rejects_erc20_approve_selector_under_swap_intent() -> None:
     cfg = _base_cfg()
     spender = Web3.to_checksum_address("0x0000000000000000000000000000000000000001")
     body = abi_encode(["address", "uint256"], [spender, 10**18])
@@ -135,7 +135,7 @@ def test_l1_swap_intent_rejects_approve_method_id() -> None:
         IntentValidator(cfg).validate("swap", p)
 
 
-def test_l1_transfer_intent_rejects_approve_method_id() -> None:
+def test_validate_rejects_erc20_approve_selector_under_transfer_intent() -> None:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,
@@ -155,7 +155,7 @@ def test_l1_transfer_intent_rejects_approve_method_id() -> None:
         IntentValidator(cfg).validate("transfer", p)
 
 
-def test_l1_short_calldata_skips_method_reconcile() -> None:
+def test_validate_allows_odd_length_hex_data_by_fail_open_policy() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -166,7 +166,7 @@ def test_l1_short_calldata_skips_method_reconcile() -> None:
     assert IntentValidator(cfg).validate("swap", p) is True
 
 
-def test_l1_non_string_data_skips_method_reconcile() -> None:
+def test_validate_allows_non_string_data_by_fail_open_policy() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -177,7 +177,7 @@ def test_l1_non_string_data_skips_method_reconcile() -> None:
     assert IntentValidator(cfg).validate("swap", p) is True
 
 
-def test_l1_unknown_intent_skips_method_id_binding() -> None:
+def test_validate_allows_non_risky_selector_for_non_swap_intent() -> None:
     r = Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
     cfg = LirixConfig(
         chain_id=1,
@@ -195,7 +195,7 @@ def test_l1_unknown_intent_skips_method_id_binding() -> None:
     assert IntentValidator(cfg).validate("airdrop", p) is True
 
 
-def test_l1_invalid_hex_in_data_fail_closed_for_reconciliation() -> None:
+def test_validate_rejects_non_hex_data_string() -> None:
     cfg = _base_cfg()
     p = {
         "to": cfg.allowed_to_addresses[0],
@@ -207,7 +207,7 @@ def test_l1_invalid_hex_in_data_fail_closed_for_reconciliation() -> None:
         IntentValidator(cfg).validate("swap", p)
 
 
-def test_lirix_chain_validate_l1_then_stops() -> None:
+def test_chain_validate_rejects_function_not_in_allowlist() -> None:
     cfg = _base_cfg()
     client = Lirix(cfg)
     bad = {

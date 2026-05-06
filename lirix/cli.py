@@ -136,11 +136,7 @@ def _merge_env_defaults(env_path: Path, *, force: bool) -> None:
         return
 
     env_path.parent.mkdir(parents=True, exist_ok=True)
-    content = "\n".join(updated_lines)
-    if content:
-        content += "\n"
-    else:
-        content = "\n".join(f"{key}={value}" for key, value in ENV_DEFAULTS.items()) + "\n"
+    content = "\n".join(updated_lines) + "\n"
     env_path.write_text(content, encoding="utf-8")
     if force:
         LOGGER.info("Force-updated Lirix keys in .env.")

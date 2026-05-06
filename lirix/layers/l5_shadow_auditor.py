@@ -65,6 +65,19 @@ class ShadowPolicySchema(BaseModel):
 class ShadowAuditor:
     """Hard security policy override for AI-proposed assertions."""
 
+    _DEFAULT_POLICY = ShadowPolicySchema(
+        max_slippage_bps=50,
+        allowed_target_contracts="ANY",
+        forbidden_methods=[
+            "0xa9059cbb",
+            "0x095ea7b3",
+            "0x23b872dd",
+            "0x38ed1739",
+            "0x18cbafe5",
+            "0x7ff36ab5",
+        ],
+    )
+
     def audit(
         self,
         *,
@@ -72,17 +85,24 @@ class ShadowAuditor:
         simulation_result: Mapping[str, Any],
         security_policy: Optional[Union[ShadowPolicySchema, Mapping[str, Any]]] = None,
     ) -> bool:
-        if not security_policy:
-            return True
-        policy = (
-            security_policy
-            if isinstance(security_policy, ShadowPolicySchema)
-            else ShadowPolicySchema.model_validate(security_policy)
-        )
+        policy = self._resolve_policy(security_policy)
         self._enforce_target_contract(payload, policy)
         self._enforce_forbidden_method(payload, policy)
         self._enforce_slippage(simulation_result, policy)
         return True
+
+    @classmethod
+    def _resolve_policy(
+        cls,
+        security_policy: Optional[Union[ShadowPolicySchema, Mapping[str, Any]]],
+    ) -> ShadowPolicySchema:
+        if security_policy is None:
+            return cls._DEFAULT_POLICY
+        if isinstance(security_policy, ShadowPolicySchema):
+            return security_policy
+        merged = cls._DEFAULT_POLICY.model_dump()
+        merged.update(dict(security_policy))
+        return ShadowPolicySchema.model_validate(merged)
 
     def _enforce_target_contract(
         self,
@@ -138,6 +158,8 @@ class ShadowAuditor:
         if policy.max_slippage_bps is None:
             return
         observed = self._read_metric(simulation_result, "slippage_bps")
+        if observed is None:
+            return
         if not isinstance(observed, (int, float)) or int(observed) > policy.max_slippage_bps:
             raise self._policy_violation(
                 "max_slippage_bps",

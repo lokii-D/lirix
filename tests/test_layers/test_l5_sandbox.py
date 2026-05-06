@@ -35,7 +35,7 @@ def _boom_calldata() -> str:
     return "0xa169ce09"
 
 
-def test_evm_revert_error_string() -> None:
+def test_test_l5_sandbox() -> None:
     # Error("hi") style payload fragment (selector + abi tail)
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
@@ -45,7 +45,7 @@ def test_evm_revert_error_string() -> None:
     assert "hello" in msg
 
 
-def test_evm_revert_panic() -> None:
+def test_test_l5_sandbox_2() -> None:
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     body: bytes = abi_encode(["uint256"], [0x11])
@@ -54,18 +54,18 @@ def test_evm_revert_panic() -> None:
     assert "panic" in msg.lower() or "overflow" in msg.lower()
 
 
-def test_evm_revert_custom_selector() -> None:
+def test_test_l5_sandbox_3() -> None:
     data = "0xdeadbeef12345678"
     msg = evm_revert_to_natural_language(data)
     assert "custom" in msg.lower()
 
 
-def test_evm_revert_none_and_short() -> None:
+def test_test_l5_sandbox_4() -> None:
     assert "without" in evm_revert_to_natural_language(None).lower()
     assert "without" in evm_revert_to_natural_language("0x010203").lower()
 
 
-def test_evm_revert_dict_payload() -> None:
+def test_test_l5_sandbox_5() -> None:
     _d = (
         "0x08c379a0000000000000000000000000000000000000000000000000000000000000002"
         "000000000000000000000000000000000000000000000000000000000000000003"
@@ -75,26 +75,26 @@ def test_evm_revert_dict_payload() -> None:
     assert "abc" in msg or "revert" in msg.lower()
 
 
-def test_evm_revert_dict_non_string_inner() -> None:
+def test_test_l5_sandbox_6() -> None:
     msg = evm_revert_to_natural_language({"data": cast(Any, 123)})
     assert "without" in msg.lower()
 
 
-def test_evm_revert_invalid_hex_string() -> None:
+def test_test_l5_sandbox_7() -> None:
     msg = evm_revert_to_natural_language("0xzz")
     assert "without" in msg.lower()
 
 
-def test_hex_to_bytes_prepends_0x() -> None:
+def test_test_l5_sandbox_8() -> None:
     raw = _hex_to_bytes("cafe")  # noqa: SLF001
     assert raw == bytes.fromhex("cafe")
 
 
-def test_normalize_revert_payload_non_str_non_dict() -> None:
+def test_test_l5_sandbox_9() -> None:
     assert _normalize_revert_payload(cast(Any, 42)) is None  # noqa: SLF001
 
 
-def test_decode_error_string_empty_message() -> None:
+def test_test_l5_sandbox_10() -> None:
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     body: bytes = abi_encode(["string"], [""])
@@ -103,7 +103,7 @@ def test_decode_error_string_empty_message() -> None:
     assert "empty" in msg.lower()
 
 
-def test_decode_panic_unknown_code() -> None:
+def test_test_l5_sandbox_11() -> None:
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     body: bytes = abi_encode(["uint256"], [0xABCDEF])
@@ -112,12 +112,12 @@ def test_decode_panic_unknown_code() -> None:
     assert "panic" in msg.lower()
 
 
-def test_decode_panic_corrupt_body() -> None:
+def test_test_l5_sandbox_12() -> None:
     msg = evm_revert_to_natural_language("0x4e487b71dead")
     assert "decoded" in msg.lower() or "panic" in msg.lower()
 
 
-def test_build_tx_with_from_address() -> None:
+def test_test_l5_sandbox_13() -> None:
     sim = SandboxSimulator()
     tx = sim._build_call_tx(  # noqa: SLF001
         {
@@ -130,7 +130,7 @@ def test_build_tx_with_from_address() -> None:
     assert tx["from"] == "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955"
 
 
-def test_simulate_empty_return_data() -> None:
+def test_test_l5_sandbox_14() -> None:
     w3 = MagicMock()
     w3.eth.call = MagicMock(return_value=b"")
     sim = SandboxSimulator()
@@ -146,12 +146,12 @@ def test_simulate_empty_return_data() -> None:
     assert out["return_data"] == "0x"
 
 
-def test_decode_error_string_corrupt() -> None:
+def test_test_l5_sandbox_15() -> None:
     msg = evm_revert_to_natural_language("0x08c379a0ffff")
     assert "decode" in msg.lower() or "could not" in msg.lower()
 
 
-def test_simulate_success() -> None:
+def test_test_l5_sandbox_16() -> None:
     w3 = MagicMock()
     w3.eth.call = MagicMock(return_value=b"\x01\x02")
     sim = SandboxSimulator()
@@ -168,7 +168,7 @@ def test_simulate_success() -> None:
     assert out["return_data"] == "0x0102"
 
 
-def test_simulate_contract_logic_error() -> None:
+def test_test_l5_sandbox_17() -> None:
     w3 = MagicMock()
     w3.eth.call = MagicMock(
         side_effect=ContractLogicError(
@@ -190,7 +190,7 @@ def test_simulate_contract_logic_error() -> None:
     assert "abc" in ei.value.human_readable_reason
 
 
-def test_simulate_web3_rpc_error() -> None:
+def test_test_l5_sandbox_18() -> None:
     w3 = MagicMock()
 
     class _E(Web3Exception):
@@ -210,7 +210,7 @@ def test_simulate_web3_rpc_error() -> None:
         )
 
 
-def test_simulate_contract_paused_translation() -> None:
+def test_test_l5_sandbox_19() -> None:
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     w3 = MagicMock()
@@ -229,7 +229,7 @@ def test_simulate_contract_paused_translation() -> None:
         )
 
 
-def test_build_tx_invalid() -> None:
+def test_test_l5_sandbox_20() -> None:
     sim = SandboxSimulator()
     with pytest.raises(SimulationFailedException):
         sim.simulate({"to": 1, "data": "0x", "value": 0}, web3=MagicMock(), block_number=1)
@@ -255,7 +255,7 @@ def test_build_tx_invalid() -> None:
         )
 
 
-def test_simulate_async_success() -> None:
+def test_test_l5_sandbox_21() -> None:
     async def _run() -> None:
         aw3 = MagicMock()
         aw3.eth.call = AsyncMock(return_value=b"")
@@ -274,7 +274,7 @@ def test_simulate_async_success() -> None:
     asyncio.run(_run())
 
 
-def test_simulate_async_wrapped() -> None:
+def test_test_l5_sandbox_22() -> None:
     async def _run() -> None:
         aw3 = MagicMock()
         aw3.eth.call = AsyncMock(
@@ -298,7 +298,7 @@ def test_simulate_async_wrapped() -> None:
     asyncio.run(_run())
 
 
-def test_simulate_async_contract_paused_translation() -> None:
+def test_test_l5_sandbox_23() -> None:
     from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
 
     async def _run() -> None:
@@ -338,7 +338,7 @@ def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict[str, ob
         raise AssertionError(f"anvil unreachable: {exc}") from exc
 
 
-def test_anvil_revert_message_accuracy() -> None:
+def test_test_l5_sandbox_24() -> None:
     """集成：真实 eth_call 回滚与 Error(string) 解析一致（需本地 Anvil）。"""
     rpc = "http://127.0.0.1:18545"
     artifact = _repo_root() / "out" / "Reverter.sol" / "Reverter.json"
@@ -384,7 +384,7 @@ def test_anvil_revert_message_accuracy() -> None:
         proc.wait(timeout=5)
 
 
-def test_lirix_validate_and_simulate_pipeline(
+def test_test_l5_sandbox_25(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix import Lirix
@@ -426,7 +426,7 @@ def test_lirix_validate_and_simulate_pipeline(
     assert out["simulation_ok"] is True
 
 
-def test_lirix_async_validate_and_simulate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_l5_sandbox_26(monkeypatch: pytest.MonkeyPatch) -> None:
     from lirix import Lirix
     from lirix.layers.l4_rpc_manager import RPCManager
 
@@ -468,7 +468,7 @@ def test_lirix_async_validate_and_simulate(monkeypatch: pytest.MonkeyPatch) -> N
     assert out["validated"] is True
 
 
-def test_state_override_balance_void_mint_passes_through_eth_call() -> None:
+def test_test_l5_sandbox_27() -> None:
     """虚空印钞：无 override 时模拟因余额不足回滚；带 balance state override 时放行并校验透传。"""
     from_addr = Web3.to_checksum_address("0x1111111111111111111111111111111111111111")
     to_addr = Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
@@ -521,7 +521,7 @@ def test_state_override_balance_void_mint_passes_through_eth_call() -> None:
     assert captured[-1]["block_identifier"] == 7
 
 
-def test_async_state_override_passed_to_eth_call() -> None:
+def test_test_l5_sandbox_28() -> None:
     async def _run() -> None:
         from_addr = Web3.to_checksum_address("0x2222222222222222222222222222222222222222")
         to_addr = Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
@@ -556,7 +556,7 @@ def test_async_state_override_passed_to_eth_call() -> None:
     asyncio.run(_run())
 
 
-def test_lirix_validate_and_simulate_forwards_state_overrides(
+def test_test_l5_sandbox_29(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from lirix import Lirix
@@ -617,7 +617,7 @@ def test_lirix_validate_and_simulate_forwards_state_overrides(
     assert captured["state_overrides"] == ov
 
 
-def test_simulate_async_rpc_error() -> None:
+def test_test_l5_sandbox_30() -> None:
     async def _run() -> None:
         aw3 = MagicMock()
 
