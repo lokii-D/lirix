@@ -46,7 +46,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov",
     "ruff",
-    "black",
+    "black==24.10.0",
     "mypy",
     "tox>=4.0.0",
     "build",
