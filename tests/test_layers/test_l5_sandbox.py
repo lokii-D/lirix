@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import subprocess
 import time
 import urllib.error
@@ -341,6 +342,8 @@ def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict[str, ob
 def test_test_l5_sandbox_24() -> None:
     """集成：真实 eth_call 回滚与 Error(string) 解析一致（需本地 Anvil）。"""
     rpc = "http://127.0.0.1:18545"
+    if shutil.which("anvil") is None:
+        pytest.skip("anvil not found in PATH")
     artifact = _repo_root() / "out" / "Reverter.sol" / "Reverter.json"
     if not artifact.is_file():
         pytest.skip("forge build artifact missing; run `forge build` first")
