@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
@@ -52,7 +51,7 @@ def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model_4(
         captured["kwargs"] = kwargs
         return {"ok": True}
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
         rpc_urls=["https://example.invalid"],
         default_intent="swap",
@@ -90,7 +89,7 @@ def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model_5(
         captured["kwargs"] = kwargs
         return "done"
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
         rpc_urls=["https://example.invalid"],
         security_policy=PolicyModel(),
@@ -119,7 +118,7 @@ async def test_validator_async_path_serializes_model_output(
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return Dummy()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     output = await tool._arun("swap 1 ETH for USDC")
     assert output == '{"async": true}'

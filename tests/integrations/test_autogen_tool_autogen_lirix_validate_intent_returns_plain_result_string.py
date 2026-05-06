@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from lirix import Lirix
 from lirix.integrations.autogen.tool import alirix_validate_intent, lirix_validate_intent
 
 
@@ -12,7 +11,7 @@ def test_test_autogen_tool_autogen_lirix_validate_intent_returns_plain_result_st
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return {"ok": True}
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     out = lirix_validate_intent("payload", rpc_urls=["https://rpc.invalid"], intent="swap")
     assert out == "{'ok': True}"
 

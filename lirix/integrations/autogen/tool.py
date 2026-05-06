@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Mapping, Optional, Sequence, cast
 
-from lirix import Lirix
+import lirix as lirix_pkg
 from lirix.core.exceptions import LirixBaseException
 from lirix.integrations.langchain.tool import _format_security_exception
 
@@ -34,7 +34,7 @@ def lirix_validate_intent(
         A JSON-like string for safe results, or the remediation string from
         `LirixSecurityException.resolution_for_agent` when the payload is unsafe.
     """
-    guardian = Lirix(rpc_urls=rpc_urls)
+    guardian = lirix_pkg.Lirix(rpc_urls=rpc_urls)
     merged_payload = {"raw_intent_or_calldata": raw_intent_or_calldata}
     if state_delta_assertions is not None:
         merged_payload.update(dict(state_delta_assertions))

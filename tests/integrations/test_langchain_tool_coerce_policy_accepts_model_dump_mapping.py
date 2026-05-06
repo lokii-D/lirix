@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
@@ -34,7 +33,7 @@ def test_test_langchain_tool_coerce_policy_accepts_model_dump_mapping_2(
 
         return _R()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
         rpc_urls=["https://rpc.invalid"],
         default_intent="swap",

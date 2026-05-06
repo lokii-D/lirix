@@ -31,7 +31,6 @@ def test_test_langchain_tool_coerce_policy_supports_mapping_model_dump() -> None
 def test_test_langchain_tool_coerce_policy_supports_mapping_model_dump_2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from lirix import Lirix
 
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         assert intent == "swap"
@@ -41,7 +40,7 @@ def test_test_langchain_tool_coerce_policy_supports_mapping_model_dump_2(
         assert kwargs["security_policy"] == {"max_slippage_bps": 10}
         return _DummyResult()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
         rpc_urls=["https://example.invalid"],
         default_intent="swap",

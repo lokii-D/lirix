@@ -4,7 +4,6 @@ import asyncio
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.langchain.tool import LirixSecurityValidator
 
@@ -25,7 +24,7 @@ def test_test_langchain_tool(
             context={"intent": intent, "payload": payload},
         )
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     tool = LirixSecurityValidator(
         rpc_urls=["https://example-rpc.invalid"],
@@ -52,7 +51,7 @@ def test_test_langchain_tool_2(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return DummyResult()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     tool = LirixSecurityValidator(rpc_urls=["https://example-rpc.invalid"], default_intent="swap")
     output = tool._run("swap 1 ETH for USDC")
@@ -76,7 +75,7 @@ def test_test_langchain_tool_3(
             },
         )
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     tool = LirixSecurityValidator(rpc_urls=["https://example-rpc.invalid"], default_intent="swap")
     output = tool._run("swap 1 ETH for USDC")

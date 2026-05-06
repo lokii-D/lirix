@@ -7,7 +7,6 @@ import asyncio
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
@@ -37,7 +36,7 @@ def test_test_langchain_tool_format_security_exception_policy_context_2(
         calls.append(intent)
         return _Model()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     assert tool._run("swap 1 ETH for USDC") == '{"ok": true}'
     assert asyncio.run(tool._arun("swap 1 ETH for USDC")) == '{"ok": true}'

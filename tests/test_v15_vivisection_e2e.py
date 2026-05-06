@@ -6,7 +6,6 @@ import sys
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.cli import scaffold_init
 from lirix.integrations.langchain.tool import LirixSecurityValidator
 from lirix.layers import ProxyPiercer
@@ -125,8 +124,7 @@ async def test_v15_vivisection_e2e(
 
     monkeypatch.setattr(SandboxSimulator, "simulate_async", fake_simulate_async)
     monkeypatch.setattr(
-        Lirix,
-        "validate_and_simulate",
+        "lirix.Lirix.validate_and_simulate",
         lambda self, intent, payload, **kwargs: asyncio.run(
             self.async_validate_and_simulate(intent, payload, **kwargs)
         ),

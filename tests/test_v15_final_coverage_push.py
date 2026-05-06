@@ -63,7 +63,7 @@ async def test_langchain_ainvoke_returns_model_dump_json(monkeypatch: pytest.Mon
     ) -> Any:
         return _Model()
 
-    monkeypatch.setattr(Lirix, "async_validate_and_simulate", fake_async_validate)
+    monkeypatch.setattr("lirix.Lirix.async_validate_and_simulate", fake_async_validate)
     validator = LirixSecurityValidator(rpc_urls=["https://rpc.invalid"])
     out = await validator._ainvoke_guardian("payload")
     assert out == '{"ok":true}'

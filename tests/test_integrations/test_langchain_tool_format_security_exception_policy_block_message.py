@@ -7,7 +7,6 @@ import asyncio
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
@@ -27,6 +26,6 @@ def test_test_langchain_tool_format_security_exception_policy_block_message_2(
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return "ok"
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     assert asyncio.run(tool._arun("swap 1 ETH for USDC")) == "ok"

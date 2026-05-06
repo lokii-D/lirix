@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.autogen.tool import lirix_validate_intent
 
@@ -20,7 +19,7 @@ def test_test_autogen_tool(monkeypatch: Any) -> None:
             )
         )
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     output = lirix_validate_intent(
         "swap 1 ETH for USDC",
@@ -38,7 +37,7 @@ def test_test_autogen_tool_2(monkeypatch: Any) -> None:
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return DummyResult()
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     output = lirix_validate_intent(
         "swap 1 ETH for USDC",
@@ -63,7 +62,7 @@ def test_test_autogen_tool_3(monkeypatch: Any) -> None:
             },
         )
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
 
     output = lirix_validate_intent(
         "swap 1 ETH for USDC",

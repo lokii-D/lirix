@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixPolicyViolationException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
@@ -41,7 +40,7 @@ def test_test_langchain_tool_format_security_exception_includes_policy_details_2
             context={"policy_key": "forbidden_methods", "expected": ["x"], "observed": "y"},
         )
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", boom)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", boom)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
     assert tool._run("raw") == (
         "Transaction Blocked by Lirix Policy: forbidden_methods violated "

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Type, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from lirix import Lirix
+import lirix as lirix_pkg
 from lirix.core.exceptions import (
     LirixBaseException,
     LirixPolicyViolationException,
@@ -175,7 +175,7 @@ class LirixSecurityValidator(BaseTool):
         security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
-        guardian = Lirix(rpc_urls=self._rpc_urls)
+        guardian = lirix_pkg.Lirix(rpc_urls=self._rpc_urls)
         resolved_intent = intent or self._default_intent or "unknown"
         merged_assertions = dict(self._state_delta_assertions)
         if state_delta_assertions is not None:
@@ -203,7 +203,7 @@ class LirixSecurityValidator(BaseTool):
         security_policy: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> str:
-        guardian = Lirix(rpc_urls=self._rpc_urls)
+        guardian = lirix_pkg.Lirix(rpc_urls=self._rpc_urls)
         resolved_intent = intent or self._default_intent or "unknown"
         merged_assertions = dict(self._state_delta_assertions)
         if state_delta_assertions is not None:

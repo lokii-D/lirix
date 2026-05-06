@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.integrations.langchain.tool import LirixSecurityValidator
 
 
@@ -21,7 +20,7 @@ def test_test_langchain_tool_invoke_guardian_plain_string_result_policy_merge(
         captured["kwargs"] = kwargs
         return "ok"
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
         rpc_urls=["https://example.invalid"], default_intent="swap", security_policy={"base": 1}
     )
@@ -39,7 +38,7 @@ def test_test_langchain_tool_invoke_guardian_plain_string_result_policy_merge_2(
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return "ok-async"
 
-    monkeypatch.setattr(Lirix, "validate_and_simulate", fake_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     assert pytest.importorskip("asyncio")
     import asyncio

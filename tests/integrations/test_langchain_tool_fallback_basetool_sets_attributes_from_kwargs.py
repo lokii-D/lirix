@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from lirix import Lirix
 from lirix.core.exceptions import LirixSecurityException
 from lirix.integrations.langchain.tool import BaseTool, LirixSecurityValidator
 
@@ -26,7 +25,7 @@ async def test_ainvoke_guardian_success_uses_async_lirix(monkeypatch: pytest.Mon
         captured["kwargs"] = kwargs
         return {"ok": True, "path": "async"}
 
-    monkeypatch.setattr(Lirix, "async_validate_and_simulate", fake_async_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.async_validate_and_simulate", fake_async_validate_and_simulate)
 
     validator = LirixSecurityValidator(
         rpc_urls=["https://example.invalid"],
@@ -62,7 +61,7 @@ async def test_ainvoke_guardian_returns_remediation_on_exception(
             resolution_agent="Async simulation blocked. Use safer calldata and retry."
         )
 
-    monkeypatch.setattr(Lirix, "async_validate_and_simulate", fake_async_validate_and_simulate)
+    monkeypatch.setattr("lirix.Lirix.async_validate_and_simulate", fake_async_validate_and_simulate)
     validator = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
 
     result = await validator._ainvoke_guardian("unsafe")
