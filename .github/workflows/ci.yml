@@ -65,8 +65,8 @@ jobs:
         run: python tools/harness.py registry-authority-contract
       - name: Release notes gate
         run: |
-          rg -n "API Contract Delta" docs/release_notes.md
-          rg -n "additive and backward compatible" docs/release_notes.md
+          grep -nF "API Contract Delta" docs/release_notes.md
+          grep -nF "additive and backward compatible" docs/release_notes.md
       - name: Docs contract gate
         run: python tools/harness.py contract-manifest
       - name: Required checks policy gate
