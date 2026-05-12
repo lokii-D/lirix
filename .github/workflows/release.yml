@@ -1,5 +1,9 @@
-# Tag-only: build sdist+wheel, PyPI (trusted publishing), GitHub Release assets.
-# Push tags v* only — does not run on main or PRs.
+# Build sdist+wheel → PyPI (trusted publishing) → GitHub Release assets.
+#
+# Triggers:
+#   - push of tags v* (normal release path; does not run on main or PRs)
+#   - workflow_dispatch: re-run full pipeline for an *existing* tag (e.g. v2.0.0)
+#     after fixing PyPI / attaching assets without moving the tag.
 
 name: Release
 
@@ -7,9 +11,22 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. v2.0.0). Must match pyproject version."
+        required: true
+        type: string
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -17,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -70,7 +89,7 @@ jobs:
       - name: Create or update GitHub Release assets
         uses: softprops/action-gh-release@v2.6.2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Lirix ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Lirix ${{ env.RELEASE_TAG }}
           files: dist/**
           generate_release_notes: true
