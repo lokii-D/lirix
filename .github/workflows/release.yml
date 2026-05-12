@@ -1,30 +1,22 @@
-# SPDX-License-Identifier: MIT
-# Publishes to PyPI (OIDC) and attaches build artifacts to the *already published*
-# GitHub Release. Trigger is `release: published` only — no runs on `main` pushes
-# or bare tag pushes. PyPI Trusted Publisher must allow this workflow file + repo.
+# Tag-only: build sdist+wheel, PyPI (trusted publishing), GitHub Release assets.
+# Push tags v* only — does not run on main or PRs.
 
 name: Release
 
 on:
-  release:
-    types: [published]
-
-concurrency:
-  group: release-${{ github.event.release.tag_name }}
-  cancel-in-progress: false
+  push:
+    tags:
+      - "v*"
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
-  publish:
+  build:
+    name: Build distributions
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout release tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,14 +38,39 @@ jobs:
       - name: Twine check
         run: twine check --strict dist/*
 
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI and GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
           skip-existing: true
 
-      - name: Attach wheels and sdist to GitHub Release
-        uses: softprops/action-gh-release@v2
+      # v2: if a GitHub Release already exists for this tag (e.g. created from the
+      # web UI first), assets are merged/updated instead of failing like v1 often did.
+      - name: Create or update GitHub Release assets
+        uses: softprops/action-gh-release@v2.6.2
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: dist/*
+          tag_name: ${{ github.ref_name }}
+          name: Lirix ${{ github.ref_name }}
+          files: dist/**
+          generate_release_notes: true
