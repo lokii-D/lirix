@@ -1,15 +1,17 @@
 # Composite: shared checkout + Python + editable dev install (see docs/ci_gate_matrix.md § Duplicate step audit).
+# Path-based composite actions (uses: ./.github/actions/...) require the repo on disk before GitHub can read
+# this action.yml — callers must run actions/checkout first, then set checkout-repository: false (default).
 name: Lirix CI setup
-description: Checkout (optional), setup Python, and optionally install lirix editable with dev extras.
+description: Optional inner checkout, setup Python, and optionally install lirix editable with dev extras.
 
 inputs:
   python-version:
     description: Python version passed to actions/setup-python
     required: true
   checkout-repository:
-    description: When false, skip checkout (caller already checked out the repo).
+    description: When true, run actions/checkout inside this composite (only safe after a prior checkout loaded this action, e.g. reusable workflow). For normal jobs, run actions/checkout first and keep this false.
     required: false
-    default: "true"
+    default: "false"
   enable-pip-cache:
     description: When true, enable pip cache keyed on pyproject.toml.
     required: false

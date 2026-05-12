@@ -22,7 +22,6 @@ jobs:
       - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
-          checkout-repository: "false"
       - name: Start Anvil
         run: |
           anvil --port 8545 --silent &

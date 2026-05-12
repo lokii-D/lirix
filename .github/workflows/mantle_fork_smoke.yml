@@ -15,6 +15,7 @@ jobs:
     name: Mantle fork (Anvil + mantle_TT)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
