@@ -1,9 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Publishes to PyPI (OIDC) and attaches build artifacts to the *already published*
+# GitHub Release. Trigger is `release: published` only — no runs on `main` pushes
+# or bare tag pushes. PyPI Trusted Publisher must allow this workflow file + repo.
+
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -13,7 +21,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,10 +49,11 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          packages-dir: dist/
           skip-existing: true
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Attach wheels and sdist to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name }}
           files: dist/*
-          generate_release_notes: true

@@ -50,10 +50,10 @@ Before the composite existed, **≥4** workflows repeated the same **checkout �
 
 ### Release workflow regression checklist
 
-`release.yml` **does not** use `.github/actions/lirix-ci-setup` and does **not** install `.[dev]` — only `build` + `twine`. After **large changes** to the composite action, Python version pins, or packaging metadata, manually smoke the release path before tagging, for example:
+`release.yml` **does not** use `.github/actions/lirix-ci-setup` and does **not** install `.[dev]` — only `build` + `twine`. After **large changes** to the composite action, Python version pins, or packaging metadata, manually smoke the release path before **publishing a GitHub Release** (the workflow runs on `release: published` only), for example:
 
 - Local: `pip install build twine && python -m build --sdist --wheel && python -m twine check dist/*`
-- Or a dry-run tag workflow in a fork / branch where safe.
+- Or a dry-run workflow in a fork / branch where safe.
 
 This is intentionally separate from the mainline composite so publishing stays minimal; it also means **release is not covered** by the same `pip install -e ".[dev]"` + ruff/mypy block as `ci.yml` Fast Required.
 
@@ -177,11 +177,11 @@ No gate was removed from either workflow; `docs/branch_protection_required_check
 
 ## `.github/workflows/release.yml` — **Release**
 
-**Triggers:** push tags `v*`.
+**Triggers:** `release` **published** only (not `push` to `main`, not bare tag push). After you publish a GitHub Release from the UI (or API), this job checks out **`${{ github.event.release.tag_name }}`**, builds **sdist + wheel**, runs **`twine check`**, publishes to **PyPI** (OIDC), then **attaches `dist/*`** to that same Release via `softprops/action-gh-release` (does **not** regenerate release notes, so the description you entered stays intact).
 
 | Job | Steps |
 | --- | --- |
-| **publish** | `actions/checkout@v4` → `setup-python` + pip cache → `pip install build twine` → `python -m build --sdist --wheel` → `twine check` → PyPI publish action → GitHub release action |
+| **publish** | `actions/checkout@v4` (ref = release tag) → `setup-python` + pip cache → `pip install build twine` → `python -m build --sdist --wheel` → `twine check` → PyPI publish action → attach `dist/*` to the existing GitHub Release |
 
 ### Optional SBOM / Anvil E2E — procurement and release sign-off (manual)
 
@@ -189,7 +189,7 @@ These workflows are **optional** and **not** wired to external CD/SaaS. For **ve
 
 1. **SBOM (`sbom-optional.yml`):** In GitHub → **Actions** → **Optional SBOM (CycloneDX)** → **Run workflow** on the commit you are reviewing. Download **`lirix-sbom.json`** from the run summary. Store it with the ticket or release record; on upgrades, diff against the prior SBOM or run your org’s CycloneDX policy tooling locally.
 2. **Anvil E2E (`e2e-anvil-optional.yml`):** Run on demand or rely on the scheduled run; download uploaded **logs / artifacts** if the job records them. Use the outcome as **supplementary** chain-adjacent signal — mainline correctness remains **`ci.yml`** Fast Required + coverage policy.
-3. **Release tagging:** Before tagging `v*`, confirm `release.yml` expectations still match **`§ Release workflow regression checklist`** above; optional-lane artifacts do **not** block `release.yml` unless you explicitly add branch protection checks for those workflows.
+3. **Release publish:** Before publishing a GitHub **Release** for a version tag, confirm `release.yml` expectations still match **`§ Release workflow regression checklist`** above; optional-lane artifacts do **not** block `release.yml` unless you explicitly add branch protection checks for those workflows.
 
 This closes the **manual gap** called out in `docs/cv_rubric.yaml` → dimension **`security_sto`** (optional workflows indexed here; **consumption** is process, not SaaS).
 

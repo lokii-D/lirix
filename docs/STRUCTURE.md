@@ -42,7 +42,7 @@ lirix/
 │   ├── mantle_fork_smoke.yml       # EN: Optional Mantle fork tests (manual dispatch + secret). / 中文：可选 Mantle fork 测试（手动触发 + 密钥）。
 │   ├── e2e-anvil-optional.yml      # EN: Optional Anvil e2e lane. / 中文：可选 Anvil 端到端 lane。
 │   ├── sbom-optional.yml           # EN: Optional SBOM generation lane. / 中文：可选 SBOM 生成 lane。
-│   └── release.yml                 # EN: OIDC-based PyPI + GitHub Release pipeline. / 中文：基于 OIDC 的 PyPI/GitHub Release 流水线。
+│   └── release.yml                 # EN: On GitHub Release published: OIDC PyPI + attach dist to that release. / 中文：Release 发布时 OIDC 发 PyPI 并把 dist 挂到该 Release。
 ├── docs/
 │   └── STRUCTURE.md
 ├── examples/
