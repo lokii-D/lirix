@@ -27,7 +27,9 @@ from lirix.layers.l1_intent_validator import IntentValidator as IntentValidator 
 from lirix.layers.l2_schema_validator import SchemaValidator as SchemaValidator  # noqa: E402,F401
 from lirix.layers.l3_defi_parser import DeFiPayloadParser as DeFiPayloadParser  # noqa: E402,F401
 from lirix.layers.l4_rpc_manager import RPCManager as RPCManager  # noqa: E402,F401
-from lirix.layers.l5_sandbox_simulator import SandboxSimulator as SandboxSimulator  # noqa: E402,F401
+from lirix.layers.l5_sandbox_simulator import (
+    SandboxSimulator as SandboxSimulator,
+)  # noqa: E402,F401
 
 __all__ = [
     "Lirix",

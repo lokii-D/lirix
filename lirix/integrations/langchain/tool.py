@@ -98,8 +98,10 @@ def _format_security_exception(exc: LirixBaseException) -> str:
             f"{exc.resolution_for_agent}"
         )
     remediation = resolved_feedback.get("remediation")
-    base = remediation.strip() if isinstance(remediation, str) and remediation.strip() else str(
-        exc.resolution_for_agent
+    base = (
+        remediation.strip()
+        if isinstance(remediation, str) and remediation.strip()
+        else str(exc.resolution_for_agent)
     )
     hr = str(getattr(exc, "human_readable_reason", "") or "").strip()
     lines = [base]

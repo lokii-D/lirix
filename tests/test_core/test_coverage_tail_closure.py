@@ -701,7 +701,9 @@ def test_lirix_raise_with_failure_context_when_agent_feedback_is_mapping_but_not
         }
     )
 
-    monkeypatch.setattr("lirix.core.orchestrator.rejected_step_to_agent_feedback", lambda *_a, **_k: mf)
+    monkeypatch.setattr(
+        "lirix.core.orchestrator.rejected_step_to_agent_feedback", lambda *_a, **_k: mf
+    )
     trace = SecurityTrace.new(correlation_id="c", intent="swap", payload={"to": "0x1"})
     from lirix.core.exceptions import LirixSecurityException
     from lirix.core.orchestrator import LirixPipelineOrchestrator

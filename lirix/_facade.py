@@ -238,9 +238,9 @@ class Lirix:
 
         IntentValidator(self.config, hooks=self.hooks).validate(intent, draft)
         SchemaValidator(hooks=self.hooks).validate(draft)
-        DeFiPayloadParser(
-            self.config, hooks=self.hooks, chain_adapter=self.chain_adapter
-        ).validate(draft)
+        DeFiPayloadParser(self.config, hooks=self.hooks, chain_adapter=self.chain_adapter).validate(
+            draft
+        )
         return True
 
     @staticmethod

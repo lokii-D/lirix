@@ -27,7 +27,9 @@ def test_provenance_chain_present_in_resolved_config_tags_for_explicit_branch() 
     assert tags["__provenance_chain__"] == "explicit>profile>inferred>runtime_patch"
     assert "config:explicit" in tags["__provenance_decisions__"]
     assert "defaults:profile_overlay" in tags["__provenance_decisions__"]
-    assert cfg.config_source_tags["__provenance_chain__"] == "explicit>profile>inferred>runtime_patch"
+    assert (
+        cfg.config_source_tags["__provenance_chain__"] == "explicit>profile>inferred>runtime_patch"
+    )
 
 
 def test_governance_snapshot_exposes_stable_config_source_tags_matrix() -> None:

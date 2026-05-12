@@ -18,13 +18,16 @@ GOVERNANCE_GATE_EXPLICIT_STEP_NAME = "Governance gate (explicit)"
 
 _TOOLS_GATES_INDEX_MAIN_ROW_RE = re.compile(r"^\|\s*`([a-z0-9-]+)`\s*\|", re.MULTILINE)
 
+
 def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
+
 
 def _require_all(doc: str, name: str, needles: list[str], failures: list[str]) -> None:
     for needle in needles:
         if needle not in doc:
             failures.append(f"{name}: missing `{needle}`")
+
 
 def _extract_governance_gate_tests(ci_yml: str) -> list[str]:
     """
@@ -71,6 +74,7 @@ def _extract_governance_gate_tests(ci_yml: str) -> list[str]:
                 tests.append(token)
     return sorted(set(tests))
 
+
 # Floor on the **count** of `tests/...py` lines in the step `GOVERNANCE_GATE_EXPLICIT_STEP_NAME`.
 # Maintenance: when you add paths to that step in `ci.yml`, bump this constant to match the new
 # minimum count so accidental truncation cannot slip under the floor. Also extend
@@ -83,6 +87,7 @@ _GOVERNANCE_GATE_CI_YML_ANCHORS: tuple[str, ...] = (
     "tests/test_core/test_chain_adapter_profiles.py",
     "tests/test_core/test_cli_public_contract.py",
 )
+
 
 def _validate_governance_explicit_list(gated_tests: list[str], failures: list[str]) -> None:
     """Append failures when extracted list is empty, below floor, or missing anchor paths."""
@@ -101,6 +106,7 @@ def _validate_governance_explicit_list(gated_tests: list[str], failures: list[st
         if t not in gated_tests:
             failures.append(f"ci-governance-gate: missing gated test `{t}`")
 
+
 def _assert_governance_explicit_step_line_in_ci_yml(ci_yml: str, failures: list[str]) -> None:
     """Require a step line whose stripped form is exactly ``- name: {GOVERNANCE_GATE_EXPLICIT_STEP_NAME}``."""
 
@@ -115,10 +121,14 @@ def _assert_governance_explicit_step_line_in_ci_yml(ci_yml: str, failures: list[
         "— governance pytest SSOT."
     )
 
+
 def _count_harness_gate_modules() -> int:
     harness_src = (ROOT / "tools" / "harness.py").read_text(encoding="utf-8")
-    matches = re.findall(r'^\s+"([a-z0-9-]+)":\s+validators\.check_', harness_src, flags=re.MULTILINE)
+    matches = re.findall(
+        r'^\s+"([a-z0-9-]+)":\s+validators\.check_', harness_src, flags=re.MULTILINE
+    )
     return len(matches)
+
 
 def _count_tools_gates_index_main_table_rows(index_md: str) -> int:
     """Count ``| `<subcommand>` |`` data rows in the main table (content before ``## Related tools``)."""
@@ -126,6 +136,7 @@ def _count_tools_gates_index_main_table_rows(index_md: str) -> int:
     main, sep, _rest = index_md.partition("## Related tools")
     scan = main if sep else index_md
     return len(_TOOLS_GATES_INDEX_MAIN_ROW_RE.findall(scan))
+
 
 def _validate_tools_gates_index_row_parity(index_md: str, failures: list[str]) -> None:
     """Drift guard: main index table row count matches ``tools/*.py`` gate modules."""
@@ -139,6 +150,7 @@ def _validate_tools_gates_index_row_parity(index_md: str, failures: list[str]) -
             "Update the doc table (or remove a stale row) so contributors see every gate. "
             "Related-only scripts belong under § **Related tools (not harness subcommands)**."
         )
+
 
 # Assertions about exports / `__all__` / package surface may legitimately cite `lirix/__init__.py`.
 _AUDIT_MAP_INIT_PY_ALLOWLIST_SUBSTRINGS: tuple[str, ...] = (
@@ -159,6 +171,7 @@ _AUDIT_MAP_INIT_PY_PIPELINE_TRIGGER = re.compile(
     re.IGNORECASE,
 )
 
+
 def _audit_map_client_core_paths(rows: list[dict[str, str]], failures: list[str]) -> None:
     """D2 heuristic: pipeline rows must not cite ``lirix/__init__.py`` as implementation."""
 
@@ -177,6 +190,7 @@ def _audit_map_client_core_paths(rows: list[dict[str, str]], failures: list[str]
             "(replay helpers) — row assertion starts: "
             f"{assertion[:80]!r}"
         )
+
 
 def _extract_audit_map_rows(md: str) -> list[dict[str, str]]:
     """
@@ -216,9 +230,11 @@ def _extract_audit_map_rows(md: str) -> list[dict[str, str]]:
         )
     return rows
 
+
 def _extract_backticked_paths(cell: str) -> list[str]:
     # Backticked paths like `tests/foo.py`, allow multiple.
     return re.findall(r"`([^`]+)`", cell)
+
 
 def _require_paths_exist(paths: list[str], *, failures: list[str], context: str) -> None:
     for p in paths:
@@ -228,11 +244,9 @@ def _require_paths_exist(paths: list[str], *, failures: list[str], context: str)
             raw = raw.split("::", 1)[0]
         if ":" in raw and raw.endswith(".py") is False and raw.split(":", 1)[0].endswith(".py"):
             raw = raw.split(":", 1)[0]
-        if (
-            raw.startswith(("lirix/", "tests/", "docs/", "tools/"))
-            and not (ROOT / raw).exists()
-        ):
+        if raw.startswith(("lirix/", "tests/", "docs/", "tools/")) and not (ROOT / raw).exists():
             failures.append(f"{context}: missing path `{p}`")
+
 
 def _assert_exception_inheritance_contract(
     *, api_doc: str, exceptions_source: str, failures: list[str]
@@ -314,6 +328,7 @@ def _assert_exception_inheritance_contract(
     for marker in required_doc_markers:
         if marker not in api_doc:
             failures.append(f"api-reference-exception-contract: missing `{marker}`")
+
 
 def _assert_validate_and_simulate_return_contract(
     *, client_source: str, failures: list[str]
@@ -459,8 +474,7 @@ def _assert_validate_and_simulate_return_contract(
                         )
                     validated_node = kv_pairs.get("validated")
                     if not (
-                        isinstance(validated_node, ast.Constant)
-                        and validated_node.value is True
+                        isinstance(validated_node, ast.Constant) and validated_node.value is True
                     ):
                         failures.append(
                             "validate-and-simulate-contract: `validated` must be literal `True`"
@@ -489,13 +503,16 @@ def _assert_validate_and_simulate_return_contract(
             return
     failures.append("validate-and-simulate-contract: function not found")
 
+
 def _extract_python_blocks(doc: str) -> list[str]:
     return [m.group(1) for m in re.finditer(r"```python\s*\n(.*?)```", doc, re.DOTALL)]
+
 
 def _name_from_expr(expr: ast.expr) -> Optional[str]:
     if isinstance(expr, ast.Name):
         return expr.id
     return None
+
 
 def _assert_readme_broadcast_contract(*, readme: str, failures: list[str]) -> None:
     # Gate: sign_and_broadcast must consume semantic tx payload only.
@@ -561,9 +578,9 @@ def _assert_readme_broadcast_contract(*, readme: str, failures: list[str]) -> No
                 return False
             to_expr, data_expr, value_expr = kv["to"], kv["data"], kv["value"]
             for pal in payload_aliases:
-                if _is_payload_name_subscript(
-                    to_expr, pal, "to"
-                ) and _is_payload_name_subscript(data_expr, pal, "data"):
+                if _is_payload_name_subscript(to_expr, pal, "to") and _is_payload_name_subscript(
+                    data_expr, pal, "data"
+                ):
                     if (
                         isinstance(value_expr, ast.Call)
                         and isinstance(value_expr.func, ast.Attribute)
@@ -693,6 +710,7 @@ def _assert_readme_broadcast_contract(*, readme: str, failures: list[str]) -> No
                     )
                     return
 
+
 def main() -> int:
     failures: list[str] = []
     ci = _read(".github/workflows/ci.yml")
@@ -735,9 +753,7 @@ def main() -> int:
         exceptions_source=exceptions_source,
         failures=failures,
     )
-    _assert_validate_and_simulate_return_contract(
-        client_source=client_source, failures=failures
-    )
+    _assert_validate_and_simulate_return_contract(client_source=client_source, failures=failures)
     _assert_readme_broadcast_contract(readme=readme, failures=failures)
 
     _require_all(
@@ -801,7 +817,6 @@ def main() -> int:
             print(msg)
         return 1
     return 0
-
 
 
 def check_contract_manifest() -> int:

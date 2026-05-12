@@ -280,9 +280,7 @@ class LirixPipelineOrchestrator:
                 payload=draft,
                 timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
             )
-            self._raise_if_hook_blocked(
-                self._has_blocking_hook_result(pre), simulation=False
-            )
+            self._raise_if_hook_blocked(self._has_blocking_hook_result(pre), simulation=False)
             client._run_l1_l3_validation(intent=intent, payload=draft, recorder=recorder)
             post = await invoke_hooks(
                 HOOK_POST_VALIDATE,
@@ -290,9 +288,7 @@ class LirixPipelineOrchestrator:
                 payload=draft,
                 timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
             )
-            self._raise_if_hook_blocked(
-                self._has_blocking_hook_result(post), simulation=False
-            )
+            self._raise_if_hook_blocked(self._has_blocking_hook_result(post), simulation=False)
             client._mark_session_l1_l3_ok(sess)
             result = client._success_postlude_and_build_result(
                 sess=sess,
@@ -354,9 +350,7 @@ class LirixPipelineOrchestrator:
                 payload=draft,
                 timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
             )
-            self._raise_if_hook_blocked(
-                self._has_blocking_hook_result(pre), simulation=True
-            )
+            self._raise_if_hook_blocked(self._has_blocking_hook_result(pre), simulation=True)
             rpc = client._build_rpc_manager()
             block_number = await reconcile(rpc)
             l4_details = client._l4_orchestration_details(rpc=rpc, block_number=block_number)
@@ -383,9 +377,7 @@ class LirixPipelineOrchestrator:
                 simulation=out,
                 timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
             )
-            self._raise_if_hook_blocked(
-                self._has_blocking_hook_result(post), simulation=True
-            )
+            self._raise_if_hook_blocked(self._has_blocking_hook_result(post), simulation=True)
             result = client._success_postlude_and_build_result(
                 sess=sess,
                 kind=kind,

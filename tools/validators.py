@@ -1,5 +1,6 @@
 # ruff: noqa
 from __future__ import annotations
+
 # mypy: ignore-errors
 
 
@@ -568,9 +569,9 @@ def check_plan_to_pr_exit_metrics() -> int:
             and _as_number(main["value"]) <= _as_number(main["target_leq"])
             and int(failures["total"]) <= int(failures["target_leq"])
         )
-        assert (status == "pass") == computed_pass, (
-            "admission status is inconsistent with metric thresholds"
-        )
+        assert (
+            status == "pass"
+        ) == computed_pass, "admission status is inconsistent with metric thresholds"
         print("Plan-to-PR exit metrics contract OK")
         return 0
 
@@ -1444,9 +1445,10 @@ def check_failure_surface_triage() -> int:
             target = root / rel_path
             assert target.exists(), f"missing evidence file: {rel_path}"
             if sep:
-                assert target.suffix.lower() in {".md", ".markdown"}, (
-                    f"anchor pointer requires markdown target: {pointer}"
-                )
+                assert target.suffix.lower() in {
+                    ".md",
+                    ".markdown",
+                }, f"anchor pointer requires markdown target: {pointer}"
                 anchors = _extract_markdown_anchors(target.read_text(encoding="utf-8"))
                 assert anchor.strip().lower() in anchors, f"missing markdown anchor: {pointer}"
 

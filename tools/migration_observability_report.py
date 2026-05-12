@@ -16,7 +16,11 @@ TESTS_DIR = ROOT / "tests"
 PACKAGE_DIR = ROOT / "lirix"
 WORKFLOWS_DIR = ROOT / ".github" / "workflows"
 
-OUT_DIR = Path(os.environ.get("MIGRATION_OBS_OUT_DIR", str(ROOT / "audit_artifacts" / "migration_observability")))
+OUT_DIR = Path(
+    os.environ.get(
+        "MIGRATION_OBS_OUT_DIR", str(ROOT / "audit_artifacts" / "migration_observability")
+    )
+)
 PREVIOUS_JSON = Path(os.environ.get("MIGRATION_OBS_PREVIOUS_PATH", str(OUT_DIR / "previous.json")))
 EXCLUDED_SOURCE_PARTS = (
     ".git",
@@ -28,9 +32,7 @@ EXCLUDED_SOURCE_PARTS = (
 
 
 def _is_source_path(path: Path) -> bool:
-    return not any(
-        part.startswith(".venv") or part in EXCLUDED_SOURCE_PARTS for part in path.parts
-    )
+    return not any(part.startswith(".venv") or part in EXCLUDED_SOURCE_PARTS for part in path.parts)
 
 
 def _collect_python_files(root: Path, *, source_only: bool) -> list[Path]:
@@ -163,7 +165,9 @@ def _load_previous_payload() -> dict[str, Any] | None:
         return None
 
 
-def _trend(curr: dict[str, Any], prev: dict[str, Any] | None, keys: Iterable[str]) -> dict[str, int]:
+def _trend(
+    curr: dict[str, Any], prev: dict[str, Any] | None, keys: Iterable[str]
+) -> dict[str, int]:
     out: dict[str, int] = {}
     for key in keys:
         current = int(curr.get(key, 0))
@@ -184,13 +188,13 @@ def _integrity_snapshot(
 ) -> dict[str, Any]:
     previous_integrity = (previous or {}).get("integrity")
     previous_has_integrity = isinstance(previous_integrity, dict)
-    previous_digest = _payload_digest(
-        {k: v for k, v in (previous or {}).items() if k != "integrity"}
-    ) if previous else None
-    previous_claimed = (
-        str(previous_integrity.get("snapshot_payload_sha256"))
-        if previous_has_integrity
+    previous_digest = (
+        _payload_digest({k: v for k, v in (previous or {}).items() if k != "integrity"})
+        if previous
         else None
+    )
+    previous_claimed = (
+        str(previous_integrity.get("snapshot_payload_sha256")) if previous_has_integrity else None
     )
     return {
         "snapshot_payload_sha256": _payload_digest(payload_without_integrity),
@@ -273,7 +277,10 @@ def main() -> int:
                 compat["source_only"]["counts"].keys(),
             ),
             "tests": _trend(
-                {"test_files": tests_snapshot["test_files"], "micro_files": tests_snapshot["micro_files"]},
+                {
+                    "test_files": tests_snapshot["test_files"],
+                    "micro_files": tests_snapshot["micro_files"],
+                },
                 (previous or {}).get("tests") if previous else None,
                 ["test_files", "micro_files"],
             ),

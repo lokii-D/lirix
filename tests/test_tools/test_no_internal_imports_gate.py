@@ -42,4 +42,3 @@ def test_no_internal_imports_gate_rejects_new_import(tmp_path) -> None:
         },
     )
     assert proc.returncode != 0
-

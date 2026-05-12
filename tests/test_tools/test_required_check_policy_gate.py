@@ -46,7 +46,11 @@ jobs:
 
 
 def _minimal_policy_doc_fragment(*, mention_governance_gates: bool = True) -> str:
-    tail = "Non-PR lane: see Governance Gates job vs steps." if mention_governance_gates else "Non-PR lane: see Other Gates job vs steps."
+    tail = (
+        "Non-PR lane: see Governance Gates job vs steps."
+        if mention_governance_gates
+        else "Non-PR lane: see Other Gates job vs steps."
+    )
     return f"""
 ## Required on Pull Requests
 

@@ -16,7 +16,9 @@ def _module_ast(rel: str) -> ast.AST:
 
 def _python_files_under(rel_dir: str) -> list[str]:
     root = Path(__file__).resolve().parents[2] / rel_dir
-    return sorted(str(p.relative_to(Path(__file__).resolve().parents[2])) for p in root.rglob("*.py"))
+    return sorted(
+        str(p.relative_to(Path(__file__).resolve().parents[2])) for p in root.rglob("*.py")
+    )
 
 
 def _imported_modules(tree: ast.AST) -> set[str]:
@@ -104,6 +106,8 @@ def test_examples_and_tools_do_not_import_client_core_package() -> None:
     violations: list[str] = []
     for rel in scanned:
         imports = _imported_modules(_module_ast(rel))
-        if any(mod == "lirix._client_core" or mod.startswith("lirix._client_core.") for mod in imports):
+        if any(
+            mod == "lirix._client_core" or mod.startswith("lirix._client_core.") for mod in imports
+        ):
             violations.append(rel)
     assert not violations, f"direct _client_core imports are forbidden: {violations}"

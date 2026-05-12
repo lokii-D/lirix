@@ -40,12 +40,33 @@ def test_migration_observability_report_fail_closed_on_tampered_previous(tmp_pat
     previous.write_text(
         json.dumps(
             {
-                "entry_surface": {"canonical_module": "lirix", "root_export_count": 1, "root_exports": []},
-                "compat_import_hits": {"source_only": {"counts": {}}, "artifact_noise": {"counts": {}}, "scan_policy": {"excluded_path_parts": []}},
-                "ci_workflows": {"main_ci_has_schedule": False, "compatibility_marker_expression": "", "slow_lane_workflows": []},
+                "entry_surface": {
+                    "canonical_module": "lirix",
+                    "root_export_count": 1,
+                    "root_exports": [],
+                },
+                "compat_import_hits": {
+                    "source_only": {"counts": {}},
+                    "artifact_noise": {"counts": {}},
+                    "scan_policy": {"excluded_path_parts": []},
+                },
+                "ci_workflows": {
+                    "main_ci_has_schedule": False,
+                    "compatibility_marker_expression": "",
+                    "slow_lane_workflows": [],
+                },
                 "test_markers": {"slow": 0, "e2e": 0, "network": 0, "perf": 0, "migration": 0},
-                "tests": {"test_files": 1, "micro_files": 0, "micro_ratio": 0.0, "micro_file_examples": []},
-                "trends": {"entry_surface": {"root_export_count": 0}, "compat_import_hits": {}, "tests": {"test_files": 0, "micro_files": 0}},
+                "tests": {
+                    "test_files": 1,
+                    "micro_files": 0,
+                    "micro_ratio": 0.0,
+                    "micro_file_examples": [],
+                },
+                "trends": {
+                    "entry_surface": {"root_export_count": 0},
+                    "compat_import_hits": {},
+                    "tests": {"test_files": 0, "micro_files": 0},
+                },
                 "generated_at_utc": "2000-01-01T00:00:00+00:00",
                 "integrity": {"snapshot_payload_sha256": "deadbeef"},
             }

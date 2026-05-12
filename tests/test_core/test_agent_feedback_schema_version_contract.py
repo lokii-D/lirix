@@ -29,4 +29,3 @@ def _schema_version(payload: Dict[str, Any]) -> str:
     v = payload.get("schema_version")
     assert isinstance(v, str)
     return v
-

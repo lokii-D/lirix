@@ -23,8 +23,8 @@ class SupportsIsolatedHookInvoke(Protocol):
         *args: Any,
         timeout_sec: Optional[float] = None,
         **kwargs: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
+
 
 _PK_SUFFIX = re.compile(r"pk$", re.IGNORECASE)
 # 键名子串匹配（大小写不敏感）：防止用户 context 中的凭据泄漏到 stdout / hook

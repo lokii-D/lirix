@@ -27,4 +27,3 @@ def test_branch_protection_drift_gate_cli_passes_without_token() -> None:
     payload = json.loads(proc.stdout.strip() or "{}")
     assert payload.get("ok") is True
     assert isinstance(payload.get("required_checks"), list)
-

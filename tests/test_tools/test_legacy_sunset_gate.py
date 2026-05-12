@@ -16,4 +16,3 @@ def test_legacy_sunset_gate_cli_passes() -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-
