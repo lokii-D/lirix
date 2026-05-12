@@ -5,8 +5,11 @@
 
 from __future__ import annotations
 
+import copy
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping, cast
+from unittest.mock import MagicMock
 
 import pytest
 from lirix import Lirix
@@ -15,14 +18,38 @@ from lirix.core.canonical_taxonomy import (
     canonical_reason_from_rpc_reason,
     lookup_reason_taxon,
 )
+from lirix.core.client_components import pipeline_orchestrator, request_normalization
 from lirix.core.config import LirixConfig
-from lirix.core.constants import HOOK_WARN_PATCH_TARGET_SHADOW, LIRIX_ERR_LEGACY_ERROR
-from lirix.core.evidence import SecurityTrace
-from lirix.core.exceptions import ConfigurationGuardException
-from lirix.core.failure_protocol import resolve_failure_protocol_to_agent_feedback
+from lirix.core.constants import (
+    AGENT_FEEDBACK_REASON_OK,
+    AGENT_FEEDBACK_SCHEMA_VERSION,
+    HOOK_LAYER_L5,
+    HOOK_PRE_VALIDATE,
+    HOOK_WARN_PATCH_TARGET_SHADOW,
+    LIRIX_ERR_LEGACY_ERROR,
+    LIRIX_ERR_POLICY_BLOCKED,
+)
+from lirix.core.evidence import (
+    AgentFeedbackEnvelope,
+    PolicyDecision,
+    QuorumVerdict,
+    SecurityTrace,
+    build_agent_feedback_success,
+)
+from lirix.core.exceptions import (
+    ConfigurationGuardException,
+    LirixPolicyViolationException,
+    LirixSecurityException,
+    MaliciousPayloadException,
+)
+from lirix.core.failure_protocol import (
+    build_failure_protocol,
+    resolve_failure_protocol_to_agent_feedback,
+)
 from lirix.core.forensic_verifier import verify_forensic_bundle
-from lirix.core.hook_contract import HookPatch
+from lirix.core.hook_contract import HookDecision, HookPatch
 from lirix.core.hook_manager import HookManager
+from lirix.core.registry_authority import assert_registry_authority_contract
 from lirix.core.session import (
     FORENSIC_BUNDLE_VERSION,
     REPLAY_BUNDLE_VERSION,
@@ -30,8 +57,17 @@ from lirix.core.session import (
     verify_replay_bundle,
 )
 from lirix.core.session_fsm import SessionEvent, SessionFSM
-from lirix.integrations.langchain.tool import LirixSecurityValidator
+from lirix.integrations.autogen.tool import alirix_validate_intent, lirix_validate_intent
+from lirix.integrations.langchain.tool import (
+    LirixSecurityValidator,
+    _format_security_exception,
+    _merge_raw_intent_overlay,
+    _serialize_guardian_success,
+)
+from lirix.layers.l3_defi_parser import DeFiPayloadParser
+from lirix.layers.l3_proxy_piercer import AbiLRUCache
 from lirix.layers.l4_rpc_manager import RPCManager
+from lirix.layers.l5_sandbox_simulator import SandboxSimulator
 
 
 def _minimal_forensic_bundle() -> dict[str, Any]:
@@ -733,3 +769,744 @@ def test_lirix_raise_with_failure_context_when_agent_feedback_is_mapping_but_not
             blocked_note="n",
             recorder=recorder,
         )
+
+
+def test_lirix_main_module_import_exposes_cli_entrypoint() -> None:
+    import lirix.__main__ as lirix_main
+
+    assert callable(lirix_main.main)
+
+
+def test_lirix_main_exec_invokes_cli_main(monkeypatch: pytest.MonkeyPatch) -> None:
+    import lirix.cli as cli_mod
+
+    called: dict[str, bool] = {}
+
+    def fake_main() -> None:
+        called["ok"] = True
+
+    monkeypatch.setattr(cli_mod, "main", fake_main)
+    p = Path(__file__).resolve().parents[2] / "lirix" / "__main__.py"
+    ns: dict[str, Any] = {"__name__": "__main__", "__builtins__": __builtins__}
+    exec(compile(p.read_text(encoding="utf-8"), str(p), "exec"), ns)
+    assert called.get("ok") is True
+
+
+def test_multicall_resolve_mainnet_default_address() -> None:
+    from lirix._multicall_facade import _resolve_multicall3_address
+
+    class _Cfg:
+        multicall3_address = ""
+        chain_id = 1
+
+    addr = _resolve_multicall3_address(_Cfg())
+    assert addr.startswith("0x")
+
+
+def test_request_normalization_deepcopy_error_raises_configuration_guard() -> None:
+    class _NoCopy:
+        def __deepcopy__(self, memo: dict[int, Any]) -> Any:
+            raise copy.Error("not copyable")
+
+    sess = ValidationSession()
+    with pytest.raises(ConfigurationGuardException) as exc:
+        request_normalization(
+            session=sess,
+            manage_session_lifecycle=False,
+            correlation_id="c1",
+            intent="swap",
+            payload={"x": _NoCopy()},
+        )
+    assert exc.value.context.get("reason") == "payload_deepcopy_failed"
+
+
+def test_pipeline_orchestrator_dict_wrapper() -> None:
+    out = pipeline_orchestrator(
+        chain_context={"a": 1},
+        runtime_semantics={"b": 2},
+        quorum_verdict={"c": 3},
+    )
+    assert out == {
+        "chain_context": {"a": 1},
+        "runtime_semantics": {"b": 2},
+        "quorum_verdict": {"c": 3},
+    }
+
+
+def test_canonicalize_failure_type_uses_reason_fallback_mapping() -> None:
+    ft = lirix_constants.canonicalize_failure_type(
+        "not_a_known_failure_token_xyz",
+        fallback_reason_code="LIRIX_REASON_TIMEOUT",
+    )
+    assert ft == lirix_constants.FAILURE_TYPE_TIMEOUT
+
+
+def test_evidence_datatypes_to_dict_and_success_builder() -> None:
+    qd = QuorumVerdict(
+        block_number=1,
+        selected_rpc_url="http://x",
+        quorum_ok=False,
+        required_votes=None,
+        observed_votes=3,
+        details={},
+    ).to_dict()
+    assert "required_votes" not in qd and qd["observed_votes"] == 3
+
+    pd = PolicyDecision(
+        policy_id="p",
+        policy_version="1",
+        environment="e",
+        verdict="v",
+        details={"k": 1},
+    ).to_dict()
+    assert pd["policy_id"] == "p"
+
+    af = AgentFeedbackEnvelope(
+        failure_type="t",
+        layer="L1",
+        reason_code="LIRIX_REASON_OK",
+        retry_allowed=False,
+        remediation="r",
+        details={},
+    ).to_dict()
+    assert af["schema_version"] == AGENT_FEEDBACK_SCHEMA_VERSION
+
+    ok_fb = build_agent_feedback_success(stage="s", intent="i", correlation_id="c")
+    assert ok_fb["reason_code"] == AGENT_FEEDBACK_REASON_OK
+
+
+def test_build_failure_protocol_wrapper() -> None:
+    fp = build_failure_protocol(
+        failure_layer="L1",
+        failure_type="timeout",
+        retryable=False,
+        repair_hint="h",
+        human_action_required=True,
+        details={"k": 1},
+    )
+    assert fp["failure_layer"] == "L1"
+    assert fp["details"] == {"k": 1}
+
+
+def test_registry_authority_contract_rejects_missing_required_field() -> None:
+    bad = {
+        "schema_version": "1.0",
+        "authority_source": "x",
+        "chain_registry_authority": "a",
+        "decoder_registry_authority": "b",
+        "chain_registry_keys": [],
+        "decoder_registry_keys": [],
+        "authority_digest": "0" * 64,
+    }
+    del bad["decoder_registry_keys"]
+    with pytest.raises(ConfigurationGuardException) as exc:
+        assert_registry_authority_contract(bad)
+    assert exc.value.context.get("reason") == "registry_authority_missing_fields"
+
+
+def test_strict_registry_skips_non_string_protocol_values() -> None:
+    Lirix(
+        rpc_urls=["https://example.invalid"],
+        runtime_patch={
+            "strict_mode": True,
+            "chain_profile": {"protocol_registry": {"lbl": 12345}},
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_hook_manager_ainvoke_mixed_async_sync_with_positive_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    mgr = HookManager(contract_mode="enforce")
+
+    async def async_ok(*_a: object, **_k: object) -> HookDecision:
+        return HookDecision(status="approved")
+
+    def sync_ok(*_a: object, **_k: object) -> HookDecision:
+        return HookDecision(status="approved")
+
+    mgr.register_hook(HOOK_PRE_VALIDATE, async_ok)
+    mgr.register_hook(HOOK_PRE_VALIDATE, sync_ok)
+    out = await mgr.ainvoke_hooks_isolated(
+        HOOK_PRE_VALIDATE,
+        intent="swap",
+        payload={"to": "0x1"},
+        timeout_sec=0.5,
+    )
+    assert len(out) == 2 and all(x.get("ok") for x in out)
+
+
+@pytest.mark.asyncio
+async def test_lirix_run_coroutine_sync_propagates_lirix_security_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    g = Lirix(rpc_urls=["https://example.invalid"])
+
+    async def boom() -> dict[str, Any]:
+        raise LirixSecurityException(
+            human_readable_reason="boom",
+            error_code="E_TEST_COVERAGE",
+            context={"layer": "L1"},
+        )
+
+    with pytest.raises(LirixSecurityException):
+        g._run_coroutine_sync(lambda: boom())
+
+
+@pytest.mark.asyncio
+async def test_lirix_run_coroutine_sync_thread_pool_propagates_plain_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With a running loop, _run_coroutine_sync uses a thread pool; non-Lirix errors
+    traverse the cause/context unwind and re-raise the outer exception (lirix/_facade).
+    """
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    g = Lirix(rpc_urls=["https://example.invalid"])
+
+    async def boom() -> dict[str, Any]:
+        raise ValueError("plain_sync_thread_pool")
+
+    with pytest.raises(ValueError, match="plain_sync_thread_pool"):
+        g._run_coroutine_sync(lambda: boom())
+
+
+def _exception_chain_depth(depth: int) -> BaseException:
+    """Build ``depth`` linked exceptions via __cause__ (deepest is ValueError)."""
+    cur: BaseException = ValueError("leaf")
+    for i in range(depth - 1):
+        nxt = RuntimeError(f"wrap_{i}")
+        nxt.__cause__ = cur
+        cur = nxt
+    return cur
+
+
+@pytest.mark.asyncio
+async def test_lirix_run_coroutine_sync_thread_pool_deep_chain_reraises_outer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unwind stops after 24 hops; if no LirixBaseException is found, the original outer
+    exception is re-raised (covers for-loop exhaustion path in _run_coroutine_sync).
+    """
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    g = Lirix(rpc_urls=["https://example.invalid"])
+    deep = _exception_chain_depth(30)
+
+    async def boom() -> dict[str, Any]:
+        raise deep
+
+    with pytest.raises(RuntimeError, match="wrap_28"):
+        g._run_coroutine_sync(lambda: boom())
+
+
+def test_lirix_resolve_failure_protocol_non_mapping_nested_uses_outer_context() -> None:
+    inner = resolve_failure_protocol_to_agent_feedback(
+        {
+            "schema_version": "1.0",
+            "failure_layer": "L1",
+            "failure_type": "timeout",
+            "retryable": False,
+            "repair_hint": "h",
+            "human_action_required": False,
+            "details": {},
+        }
+    )
+    outer = dict(inner)
+    outer["failure_protocol"] = "not-a-mapping"
+    out = Lirix.resolve_failure_protocol(outer)
+    assert isinstance(out, dict) and out.get("reason_code")
+
+
+def test_extract_broadcast_fields_bool_coercion_on_loose_path() -> None:
+    out = Lirix.extract_broadcast_fields(
+        {
+            "decision": "approved",
+            "status": "blocked",
+            "payload": {"to": "0x1", "data": "0x", "value": True},
+        }
+    )
+    assert out["value"] == 1
+
+
+def test_extract_broadcast_fields_approved_missing_data_raises() -> None:
+    with pytest.raises(LirixSecurityException) as excinfo:
+        Lirix.extract_broadcast_fields(
+            {
+                "decision": "approved",
+                "status": "approved",
+                "payload": {
+                    "to": "0x4200000000000000000000000000000000000006",
+                    "data": "",
+                    "value": 0,
+                },
+            }
+        )
+    assert excinfo.value.context.get("reason") == "approved_broadcast_fields_invariant"
+
+
+def test_lirix_decoder_mode_explicit_when_decoder_plugin_list_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    g = Lirix(
+        rpc_urls=["https://example.invalid"],
+        runtime_patch={
+            "chain_profile": {"decoder_plugins": [], "decoder_policy": "explicit_only"},
+        },
+    )
+    assert g._decoder_mode() == "explicit_only"
+
+
+def test_defi_parser_resolves_multicall_router_via_chain_adapter_on_non_mainnet() -> None:
+    class _CA:
+        def decoder_plugins(self) -> list[object]:
+            return []
+
+        def resolve_l3_targets(self) -> dict[str, str]:
+            return {
+                "multicall3_address": "0xcA11bde05977b3631167028862bE2a173976CA11",
+                "uniswap_v2_router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            }
+
+    cfg = LirixConfig(
+        chain_id=42161,
+        strict_mode=False,
+        rpc_urls=[],
+        multicall3_address=None,
+        uniswap_v2_router=None,
+    )
+    p = DeFiPayloadParser(cfg, chain_adapter=_CA())
+    assert p._multicall().startswith("0x")
+    assert p._router().startswith("0x")
+
+
+def test_abi_lru_cache_copy_cached_abi_falls_back_when_deepcopy_fails() -> None:
+    class _Bad:
+        def __deepcopy__(self, memo: dict[int, Any]) -> Any:
+            raise copy.Error("x")
+
+    bad = _Bad()
+    assert AbiLRUCache._copy_cached_abi(bad) is bad
+
+
+def test_sandbox_simulator_invokes_l5_hooks_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    hooks = HookManager(contract_mode="enforce")
+
+    def on_l5(*_a: object, **_k: object) -> HookDecision:
+        return HookDecision(status="approved")
+
+    hooks.register_hook(HOOK_LAYER_L5, on_l5)
+    w3 = MagicMock()
+    w3.eth.call.return_value = b"\x00" * 32
+    sim = SandboxSimulator(hooks=hooks, backend_profile={})
+    out = sim.simulate(
+        {"to": "0x4200000000000000000000000000000000000006", "data": "0x", "value": 0},
+        web3=w3,
+        block_number=1,
+    )
+    assert isinstance(out, dict)
+
+
+def test_autogen_lirix_validate_intent_returns_feedback_on_json_merge_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _G:
+        def validate_and_simulate(self, *_a: object, **_k: object) -> dict[str, Any]:
+            return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.integrations.autogen.tool.Lirix", lambda *_a, **_k: _G())
+    out = lirix_validate_intent('{"a":}', ["https://example.invalid"], intent="swap")
+    assert out.startswith("ACTION REQUIRED:")
+
+
+@pytest.mark.asyncio
+async def test_autogen_async_validate_intent_delegates_to_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "lirix.integrations.autogen.tool.lirix_validate_intent",
+        lambda *_a, **_k: '{"ok": true}',
+    )
+    got = await alirix_validate_intent("{}", ["https://example.invalid"], intent="swap")
+    assert got == '{"ok": true}'
+
+
+def test_langchain_merge_overlay_json_object_non_dict_branch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json as _json
+
+    def _loads(s: str, *_a: object, **_k: object) -> Any:
+        if s.strip() == '{"x": true}':
+            return [1, 2]
+        return _json.loads(s)
+
+    monkeypatch.setattr("lirix.integrations.langchain.tool.json.loads", _loads)
+    raw = '{"x": true}'
+    out = _merge_raw_intent_overlay(raw_intent_or_calldata=raw, overlay={})
+    assert out["raw_intent_or_calldata"] == raw and "x" not in out
+
+
+def test_langchain_serialize_model_dump_non_mapping() -> None:
+    class _M:
+        def model_dump(self, mode: str = "python") -> object:
+            return ["not", "mapping"]
+
+    assert _serialize_guardian_success(_M()) == '["not", "mapping"]'
+
+
+def test_langchain_serialize_model_dump_mapping_injects_tx_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+
+    class _M:
+        def model_dump(self, mode: str = "python") -> dict[str, Any]:
+            return {"decision": "approved", "status": "approved", "payload": {}}
+
+    text = _serialize_guardian_success(_M())
+    assert "tx_payload" in text
+
+
+def test_langchain_serialize_model_dump_json_invalid_returns_raw() -> None:
+    class _M:
+        def model_dump_json(self) -> str:
+            return "NOT_JSON{{"
+
+    assert _serialize_guardian_success(_M()) == "NOT_JSON{{"
+
+
+def test_langchain_serialize_model_dump_json_list_returns_raw() -> None:
+    class _M:
+        def model_dump_json(self) -> str:
+            return "[1, 2]"
+
+    assert _serialize_guardian_success(_M()) == "[1, 2]"
+
+
+def test_langchain_serialize_model_dump_json_object_adds_tx_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+
+    class _M:
+        def model_dump_json(self) -> str:
+            return '{"decision": "approved", "status": "approved", "payload": {}}'
+
+    text = _serialize_guardian_success(_M())
+    assert "tx_payload" in text
+
+
+def test_langchain_format_security_exception_reason_and_repair_lines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.resolve_failure_protocol",
+        lambda _ctx: {
+            "remediation": "BASE_REMED",
+            "reason_code": "LIRIX_REASON_TIMEOUT",
+        },
+    )
+    exc = LirixSecurityException(
+        human_readable_reason="HUMAN_DETAIL_NOT_EQUAL_BASE",
+        resolution_agent="fallback",
+        context={
+            "failure_protocol": {
+                "schema_version": "1.0",
+                "failure_layer": "L1",
+                "failure_type": "t",
+                "retryable": False,
+                "repair_hint": "UNIQUE_REPAIR_STEP",
+                "human_action_required": False,
+                "details": {},
+            }
+        },
+    )
+    text = _format_security_exception(exc)
+    assert "Reject detail:" in text
+    assert "Reason code:" in text
+    assert "Next step:" in text
+    assert "UNIQUE_REPAIR_STEP" in text
+
+
+def test_langchain_policy_blocked_branch_uses_canonical_policy_code() -> None:
+    exc = LirixPolicyViolationException(
+        error_code=LIRIX_ERR_POLICY_BLOCKED,
+        resolution_agent="stop",
+        context={"policy_key": "k", "expected": 1, "observed": 2},
+    )
+    text = _format_security_exception(exc)
+    assert "Transaction Blocked by Lirix Policy" in text
+
+
+def test_langchain_security_validator_validate_only_sync_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+
+    def fake_validate_only(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+        return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.Lirix.validate_only", fake_validate_only)
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+    tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
+    out = tool._run("{}", mode="validate_only")
+    assert "tx_payload" in out
+
+
+@pytest.mark.asyncio
+async def test_langchain_security_validator_ainvoke_guardian_validate_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+
+    async def fake_async(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+        return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.Lirix.async_validate_only", fake_async)
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+    tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
+    out = await tool._ainvoke_guardian("{}", mode="validate_only")
+    assert "tx_payload" in out
+
+
+@pytest.mark.asyncio
+async def test_langchain_security_validator_ainvoke_guardian_validate_and_simulate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+
+    async def fake_async(self: Any, intent: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
+        return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.Lirix.async_validate_and_simulate", fake_async)
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+    tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
+    out = await tool._ainvoke_guardian("{}", mode="validate_and_simulate")
+    assert "tx_payload" in out
+
+
+@pytest.mark.asyncio
+async def test_langchain_security_validator_ainvoke_guardian_value_error_overlay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+
+    async def fake_async(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+        return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.Lirix.async_validate_only", fake_async)
+    tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
+    # Braces on both ends force JSON parse attempt; invalid JSON raises ValueError in merge.
+    out = await tool._ainvoke_guardian('{"bad-json":}', mode="validate_only")
+    assert out.startswith("ACTION REQUIRED:")
+
+
+@pytest.mark.asyncio
+async def test_langchain_security_validator_ainvoke_guardian_merges_policies_on_parse_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise _ainvoke_guardian merge paths (state_delta + security_policy) before merge."""
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    tool = LirixSecurityValidator(
+        rpc_urls=["https://example.invalid"],
+        state_delta_assertions={"base_assert": 1},
+        security_policy={"base_policy": True},
+    )
+    out = await tool._ainvoke_guardian(
+        '{"trailing":}',
+        mode="validate_only",
+        state_delta_assertions={"call_assert": 2},
+        security_policy={"call_policy": False},
+    )
+    assert out.startswith("ACTION REQUIRED:")
+
+
+@pytest.mark.asyncio
+async def test_langchain_security_validator_ainvoke_guardian_lirix_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+
+    async def boom(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+        raise LirixSecurityException(
+            human_readable_reason="blocked",
+            error_code="E_TEST",
+            context={"layer": "L1"},
+        )
+
+    monkeypatch.setattr("lirix.Lirix.async_validate_only", boom)
+    tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
+    out = await tool._ainvoke_guardian("{}", mode="validate_only")
+    assert "blocked" in out
+
+
+@pytest.mark.asyncio
+async def test_lirix_run_coroutine_sync_unwraps_lirix_exception_via_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
+    g = Lirix(rpc_urls=["https://example.invalid"])
+
+    async def boom() -> dict[str, Any]:
+        inner = LirixSecurityException(
+            human_readable_reason="inner",
+            error_code="E_INNER",
+            context={"layer": "L1"},
+        )
+        raise RuntimeError("outer") from inner
+
+    with pytest.raises(LirixSecurityException) as exc:
+        g._run_coroutine_sync(lambda: boom())
+    assert exc.value.error_code == "E_INNER"
+
+
+def test_lirix_decoder_mode_explicit_when_decoder_plugins_not_a_list() -> None:
+    # build_chain_profile normalizes decoder_plugins to a list of strings; a dict would
+    # yield plugin names from keys. Use an empty dict so the adapter sees no plugins while
+    # config.chain_profile still carries a non-list for _decoder_mode().
+    g = Lirix(
+        rpc_urls=["https://example.invalid"],
+        runtime_patch={
+            "chain_profile": {
+                "decoder_plugins": {},
+                "decoder_policy": "explicit_only",
+            },
+        },
+    )
+    assert g._decoder_mode() == "explicit_only"
+
+
+def test_defi_parser_multicall_raises_when_adapter_resolves_empty_string() -> None:
+    class _CA:
+        def decoder_plugins(self) -> list[object]:
+            return []
+
+        def resolve_l3_targets(self) -> dict[str, str]:
+            return {
+                "multicall3_address": "",
+                "uniswap_v2_router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            }
+
+    cfg = LirixConfig(chain_id=42161, strict_mode=False, rpc_urls=[], multicall3_address=None)
+    p = DeFiPayloadParser(cfg, chain_adapter=_CA())
+    with pytest.raises(MaliciousPayloadException):
+        p._multicall()
+
+
+def test_defi_parser_router_raises_when_adapter_resolves_empty_string() -> None:
+    class _CA:
+        def decoder_plugins(self) -> list[object]:
+            return []
+
+        def resolve_l3_targets(self) -> dict[str, str]:
+            return {
+                "multicall3_address": "0xcA11bde05977b3631167028862bE2a173976CA11",
+                "uniswap_v2_router": "",
+            }
+
+    cfg = LirixConfig(chain_id=42161, strict_mode=False, rpc_urls=[], uniswap_v2_router=None)
+    p = DeFiPayloadParser(cfg, chain_adapter=_CA())
+    with pytest.raises(MaliciousPayloadException):
+        p._router()
+
+
+def test_canonicalize_failure_type_unknown_reason_without_failure_type_mapping() -> None:
+    ft = lirix_constants.canonicalize_failure_type(
+        "unlisted_failure_type_token",
+        fallback_reason_code="LIRIX_REASON_UNKNOWN",
+    )
+    assert ft == lirix_constants.FAILURE_TYPE_UNKNOWN
+
+
+def test_canonicalize_failure_type_unknown_without_fallback_reason() -> None:
+    """Covers canonicalize_failure_type when fallback_reason_code is omitted (branch to
+    FAILURE_TYPE_UNKNOWN without using _REASON_TO_FAILURE_TYPE).
+    """
+    ft = lirix_constants.canonicalize_failure_type("unmapped_failure_type_token_xyz")
+    assert ft == lirix_constants.FAILURE_TYPE_UNKNOWN
+
+
+def test_quorum_verdict_to_dict_omits_default_none_vote_fields() -> None:
+    d = QuorumVerdict(
+        block_number=1,
+        selected_rpc_url=None,
+        quorum_ok=True,
+        details={},
+    ).to_dict()
+    assert "required_votes" not in d and "observed_votes" not in d
+
+
+def test_autogen_lirix_validate_intent_lirix_security_exception_branch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _G:
+        def validate_and_simulate(self, *_a: object, **_k: object) -> dict[str, Any]:
+            raise LirixSecurityException(
+                human_readable_reason="blocked",
+                error_code="E_TEST",
+                context={"layer": "L1"},
+            )
+
+    monkeypatch.setattr("lirix.integrations.autogen.tool.Lirix", lambda *_a, **_k: _G())
+    out = lirix_validate_intent("{}", ["https://example.invalid"], intent="swap")
+    assert "blocked" in out
+
+
+def test_autogen_lirix_validate_intent_success_serializes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _G:
+        def validate_and_simulate(self, *_a: object, **_k: object) -> dict[str, Any]:
+            return {"decision": "approved", "status": "approved", "payload": {}}
+
+    monkeypatch.setattr("lirix.integrations.autogen.tool.Lirix", lambda *_a, **_k: _G())
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.extract_broadcast_fields",
+        lambda _r: {"to": "0x1", "data": "0x", "value": 0},
+    )
+    out = lirix_validate_intent("{}", ["https://example.invalid"], intent="swap")
+    assert "tx_payload" in out and "approved" in out
+
+
+def test_langchain_format_security_exception_blank_repair_hint_skips_next_step(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fp = {
+        "schema_version": "1.0",
+        "failure_layer": "L1",
+        "failure_type": "t",
+        "retryable": False,
+        "repair_hint": "   ",
+        "human_action_required": False,
+        "details": {},
+    }
+    monkeypatch.setattr(
+        "lirix.integrations.langchain.tool.Lirix.resolve_failure_protocol",
+        lambda _c: {"remediation": "REM_ONLY", "reason_code": ""},
+    )
+    exc = LirixSecurityException(
+        human_readable_reason="REM_ONLY",
+        resolution_agent="REM_ONLY",
+        context={"failure_protocol": fp},
+    )
+    text = _format_security_exception(exc)
+    assert "Next step:" not in text

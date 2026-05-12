@@ -254,7 +254,7 @@ class LirixPipelineOrchestrator:
             )
         finally:
             client.hooks.bind_trace_recorder(None)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable")  # pragma: no cover
 
     async def run_validate(
         self,

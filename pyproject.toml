@@ -115,6 +115,10 @@ filterwarnings = []
 [tool.coverage.run]
 branch = true
 source = ["lirix"]
+# Entry shim: branch coverage for ``if __name__ == "__main__"`` is split across
+# import vs ``-m`` execution contexts; omit from the denominator to keep fail-under
+# meaningful for the library surface.
+omit = ["**/lirix/__main__.py"]
 
 [tool.coverage.report]
 fail_under = 100
