@@ -9,12 +9,22 @@ import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, Final, Mapping, Optional, TextIO, cast
-
-if TYPE_CHECKING:
-    from lirix.core.hook_manager import HookManager
+from typing import Any, Dict, Final, Mapping, Optional, Protocol, TextIO, cast
 
 from lirix.core.constants import HOOK_ISOLATED_TIMEOUT_SEC, HOOK_ON_AUDIT_LOG
+
+
+class SupportsIsolatedHookInvoke(Protocol):
+    """Structural type for dispatching audit rows through hooks without importing HookManager."""
+
+    def invoke_hooks_isolated(
+        self,
+        hook_point: str,
+        *args: Any,
+        timeout_sec: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Any:
+        ...
 
 _PK_SUFFIX = re.compile(r"pk$", re.IGNORECASE)
 # 键名子串匹配（大小写不敏感）：防止用户 context 中的凭据泄漏到 stdout / hook
@@ -87,7 +97,7 @@ class AuditLogger:
         self,
         stream: TextIO = sys.stdout,
         *,
-        hook_manager: Optional[HookManager] = None,
+        hook_manager: Optional[SupportsIsolatedHookInvoke] = None,
     ) -> None:
         self._stream = stream
         self._hook_manager = hook_manager

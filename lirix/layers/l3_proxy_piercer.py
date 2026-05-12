@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import sqlite3
 import threading
@@ -13,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, cast
 from eth_typing import ChecksumAddress
 from web3 import Web3
 from web3.types import TxParams
+
+from lirix.core.exceptions import ConfigurationGuardException
 
 try:
     from eth_abi.abi import decode as _abi_decode
@@ -196,8 +199,8 @@ class AbiLRUCache:
     @staticmethod
     def _copy_cached_abi(abi: Any) -> Any:
         try:
-            return json.loads(json.dumps(abi, separators=(",", ":")))
-        except Exception:
+            return copy.deepcopy(abi)
+        except (TypeError, copy.Error):
             return abi
 
     def _ensure_open_locked(self, allow_closed: bool = False) -> None:
@@ -223,8 +226,15 @@ class ProxyPiercer:
     INSPECTION_CACHE_TTL_SECONDS: int = 60
     INSPECTION_CACHE_MAX_ENTRIES: int = 256
 
-    def __init__(self, *, abi_cache: Optional[AbiLRUCache] = None) -> None:
+    def __init__(
+        self,
+        *,
+        abi_cache: Optional[AbiLRUCache] = None,
+        strict_abi_decode: bool = False,
+    ) -> None:
+        """strict_abi_decode: if True and ``eth_abi`` is missing, raise (no codec fallback)."""
         self._cache = abi_cache or AbiLRUCache()
+        self._strict_abi_decode = strict_abi_decode
         self._inspection_cache: OrderedDict[str, tuple[float, Dict[str, Any]]] = OrderedDict()
         self._inspection_lock = threading.Lock()
         self._implementation_slot = int(EIP1967_IMPLEMENTATION_SLOT, 16)
@@ -424,8 +434,7 @@ class ProxyPiercer:
             return None
         return Web3.to_checksum_address("0x" + tail.hex())
 
-    @classmethod
-    def _resolve_diamond_facet(cls, web3: Web3, target: str) -> Optional[str]:
+    def _resolve_diamond_facet(self, web3: Web3, target: str) -> Optional[str]:
         payload = cast(
             TxParams, {"to": target, "data": bytes.fromhex(DIAMOND_FACET_ADDRESS_SELECTOR[2:])}
         )
@@ -443,11 +452,10 @@ class ProxyPiercer:
                 return None
         if not isinstance(raw, (bytes, bytearray)) or len(raw) < 32:
             return None
-        decoded_address = ProxyPiercer._decode_abi_address(web3, bytes(raw)[:32])
+        decoded_address = self._decode_abi_address(web3, bytes(raw)[:32])
         return decoded_address
 
-    @staticmethod
-    def _resolve_beacon_implementation(web3: Web3, beacon_address: str) -> Optional[str]:
+    def _resolve_beacon_implementation(self, web3: Web3, beacon_address: str) -> Optional[str]:
         payload = cast(TxParams, {"to": beacon_address, "data": BEACON_IMPLEMENTATION_SELECTOR})
         raw = web3.eth.call(payload)
         if not raw:
@@ -460,13 +468,23 @@ class ProxyPiercer:
                 return None
         if not isinstance(raw, (bytes, bytearray)) or len(raw) < 32:
             return None
-        decoded_address = ProxyPiercer._decode_abi_address(web3, bytes(raw)[:32])
+        decoded_address = self._decode_abi_address(web3, bytes(raw)[:32])
         if decoded_address is None:
             return None
         return decoded_address
 
-    @staticmethod
-    def _decode_abi_address(web3: Web3, raw: bytes) -> Optional[str]:
+    def _decode_abi_address(self, web3: Web3, raw: bytes) -> Optional[str]:
+        if self._strict_abi_decode and abi_decode is None:
+            raise ConfigurationGuardException(
+                human_readable_reason=(
+                    "strict_abi_decode requires eth_abi "
+                    "(install eth-abi or pip install lirix[simulation])."
+                ),
+                context={
+                    "reason": "missing_optional_dependency",
+                    "dependency": "eth_abi",
+                },
+            )
         try:
             if abi_decode is not None:
                 decoded = abi_decode(["address"], raw)

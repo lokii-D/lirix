@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "phases": [
+    {
+      "id": "A",
+      "name": "semantic-single-source",
+      "checks": [
+        {
+          "id": "single-source-agent-feedback-builder",
+          "evidence": [
+            "lirix/core/contracts.py::build_agent_feedback_envelope",
+            "tests/test_core/test_agent_feedback_schema_version_contract.py"
+          ]
+        },
+        {
+          "id": "single-source-digest-helpers",
+          "evidence": [
+            "lirix/core/contracts.py::stable_digest",
+            "lirix/core/session.py",
+            "lirix/core/forensic_verifier.py"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "provenance-consistency",
+      "checks": [
+        {
+          "id": "fix-provenance-chain-in-config-branch",
+          "evidence": ["lirix/core/config_authority.py"]
+        },
+        {
+          "id": "add-governance-provenance-matrix-tests",
+          "evidence": ["tests/test_core/test_governance_provenance_matrix.py"]
+        },
+        {
+          "id": "publish-provenance-spec-doc",
+          "evidence": ["docs/provenance_spec.md"]
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "name": "async-runner-templating",
+      "checks": [
+        {
+          "id": "extract-async-validate-template-runner",
+          "evidence": ["lirix/_facade.py", "lirix/core/orchestrator.py"]
+        },
+        {
+          "id": "extract-async-simulate-template-runner",
+          "evidence": ["lirix/_facade.py", "lirix/core/orchestrator.py"]
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "name": "schema-authority",
+      "checks": [
+        {
+          "id": "canonize-evidence-v2-entry-usage",
+          "evidence": [
+            "lirix/core/evidence.py",
+            "tests/test_core/test_evidence_schema_v2_snapshot_contract.py"
+          ]
+        },
+        {
+          "id": "strengthen-ast-contract-to-symbol-contract",
+          "evidence": ["tests/test_core/test_dependency_direction_contract.py"]
+        }
+      ]
+    },
+    {
+      "id": "E",
+      "name": "ci-governance-loop",
+      "checks": [
+        {
+          "id": "branch-protection-drift-gate",
+          "evidence": [
+            "tools/harness.py",
+            "tools/validators.py",
+            "tests/test_tools/test_branch_protection_drift_gate.py",
+            "docs/branch_protection_required_checks.md"
+          ]
+        },
+        {
+          "id": "ci-lane-responsibility-assertions",
+          "evidence": [
+            "tools/harness.py",
+            "tools/validators.py",
+            "docs/branch_protection_required_checks.md"
+          ]
+        },
+        {
+          "id": "phase-exit-checklists",
+          "evidence": [
+            "docs/phase_exit_checklists.json",
+            "tools/harness.py",
+            "tools/validators.py"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F",
+      "name": "examples-legacy-failure-triage",
+      "checks": [
+        {
+          "id": "examples-semantic-dedup",
+          "evidence": [
+            "examples/basic_usage.py",
+            "examples/async_usage.py",
+            "examples/validate_and_simulate_broadcast.py"
+          ]
+        },
+        {
+          "id": "legacy-sunset-automation-gates",
+          "evidence": [
+            "tools/harness.py",
+            "tools/validators.py",
+            "tests/test_tools/test_legacy_sunset_gate.py",
+            "docs/legacy_sunset_milestones.md"
+          ]
+        },
+        {
+          "id": "failure-surface-triage-framework",
+          "evidence": [
+            "docs/failure_surface_triage_57.json",
+            "tools/harness.py",
+            "tools/validators.py"
+          ]
+        },
+        {
+          "id": "plan-to-pr-exit-metrics",
+          "evidence": [
+            "docs/plan_to_pr_exit_metrics.json",
+            "tools/harness.py",
+            "tools/validators.py",
+            "tests/test_tools/test_plan_to_pr_exit_metrics_gate.py"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -14,4 +14,4 @@ def test_test_proxy_piercer_decode_abi_address_rejects_zero_bad_codec_output() -
     class _W3:
         codec = _Codec()
 
-    assert ProxyPiercer._decode_abi_address(_W3(), b"\x00" * 32) is None
+    assert ProxyPiercer()._decode_abi_address(_W3(), b"\x00" * 32) is None

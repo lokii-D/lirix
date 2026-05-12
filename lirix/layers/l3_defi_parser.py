@@ -8,6 +8,7 @@ from typing import Any, Iterable, Optional, Set
 from eth_abi import decode as eth_abi_decode  # type: ignore[attr-defined]
 from web3 import Web3
 
+from lirix.core.chain_adapter import ChainAdapter, normalize_decoder_plugins
 from lirix.core.config import LirixConfig
 from lirix.core.constants import HOOK_ISOLATED_TIMEOUT_SEC, HOOK_LAYER_L3
 from lirix.core.exceptions import DeFiSlippageMissingException, MaliciousPayloadException
@@ -30,18 +31,37 @@ class DeFiPayloadParser:
 
     _TYPE_HINTS: dict[str, Any] = {}
 
-    def __init__(self, config: LirixConfig, *, hooks: Optional[HookManager] = None) -> None:
+    def __init__(
+        self,
+        config: LirixConfig,
+        *,
+        hooks: Optional[HookManager] = None,
+        chain_adapter: Optional[ChainAdapter] = None,
+    ) -> None:
         self._config = config
         self._hooks = hooks
+        self._chain_adapter = chain_adapter
+        if self._chain_adapter is not None:
+            # Preferred path: plugins are resolved and governed by the chain adapter.
+            self._decoder_plugins = list(self._chain_adapter.decoder_plugins())
+        else:
+            # Legacy path: accept raw plugin objects from config (compatibility only).
+            self._decoder_plugins = normalize_decoder_plugins(config.decoder_plugins)
 
     def _multicall(self) -> str:
         if self._config.multicall3_address:
             return self._config.multicall3_address
         if self._config.chain_id == 1:
+            # Ethereum mainnet default (documented in LirixConfig).
             return Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
+        if self._chain_adapter is not None:
+            resolved = self._chain_adapter.resolve_l3_targets().get("multicall3_address")
+            if resolved:
+                return str(resolved)
         raise MaliciousPayloadException(
             human_readable_reason=(
-                "chain_id has no built-in Multicall3; configure multicall3_address."
+                "Multicall3 address (multicall3_address) is required after config "
+                "authority resolution."
             ),
             context={"layer": "L3", "chain_id": self._config.chain_id},
         )
@@ -50,10 +70,15 @@ class DeFiPayloadParser:
         if self._config.uniswap_v2_router:
             return self._config.uniswap_v2_router
         if self._config.chain_id == 1:
+            # Ethereum mainnet default (documented in LirixConfig).
             return Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+        if self._chain_adapter is not None:
+            resolved = self._chain_adapter.resolve_l3_targets().get("uniswap_v2_router")
+            if resolved:
+                return str(resolved)
         raise MaliciousPayloadException(
             human_readable_reason=(
-                "chain_id has no built-in Uniswap V2 router; configure uniswap_v2_router."
+                "uniswap_v2_router is required after config authority resolution."
             ),
             context={"layer": "L3", "chain_id": self._config.chain_id},
         )
@@ -102,8 +127,6 @@ class DeFiPayloadParser:
                 )
             return True
         sel, body = blob[:4], blob[4:]
-        rt = self._router()
-        mc = self._multicall()
         swap_selectors = {
             SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR,
             SWAP_EXACT_TOKENS_FOR_ETH_SELECTOR,
@@ -112,6 +135,21 @@ class DeFiPayloadParser:
             EXACT_OUTPUT_SELECTOR,
             MOE_SWAP_SELECTOR,
         }
+        for plugin in self._decoder_plugins:
+            if plugin.can_handle(selector=sel, to_address=outer_to):
+                plugin.decode_and_collect(selector=sel, body=body, payload=payload)
+                self._enforce_addresses({outer_to})
+                h = self._hooks
+                if h is not None:
+                    h.invoke_hooks_isolated(
+                        HOOK_LAYER_L3,
+                        layer="L3",
+                        payload=payload,
+                        timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
+                    )
+                return True
+        rt = self._router()
+        mc = self._multicall()
         if outer_to == rt and sel not in swap_selectors:
             raise MaliciousPayloadException(
                 human_readable_reason="Non-swap calldata directed at Uniswap router.",
@@ -234,7 +272,7 @@ class DeFiPayloadParser:
         rt = self._router()
         try:
             decoded = eth_abi_decode(["(address,bool,bytes)[]"], body)
-        except Exception as exc:  # noqa: BLE001 — eth_abi 多类型解码错误
+        except Exception as exc:
             raise MaliciousPayloadException(
                 human_readable_reason="Failed to decode Multicall3 aggregate3 arguments.",
                 context={"layer": "L3"},
@@ -305,7 +343,7 @@ class DeFiPayloadParser:
         rt = self._router()
         try:
             decoded = eth_abi_decode(["(address,bool,uint256,bytes)[]"], body)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise MaliciousPayloadException(
                 human_readable_reason="Failed to decode Multicall3 aggregate3Value arguments.",
                 context={"layer": "L3"},
@@ -362,7 +400,7 @@ class DeFiPayloadParser:
                 ["uint256", "uint256", "address[]", "address", "uint256"],
                 body,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise MaliciousPayloadException(
                 human_readable_reason="Failed to decode swap calldata.",
                 context={"layer": "L3", "selector": selector.hex()},
@@ -384,7 +422,7 @@ class DeFiPayloadParser:
                 ["bytes", "address", "uint256", "uint256", "uint256", "bytes"],
                 body,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise MaliciousPayloadException(
                 human_readable_reason="Failed to decode V3/Router swap calldata.",
                 context={"layer": "L3", "selector": selector.hex()},
@@ -435,7 +473,7 @@ class DeFiPayloadParser:
                 ["uint256", "uint256", "address[]", "address", "uint256"],
                 body,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise MaliciousPayloadException(
                 human_readable_reason=(
                     "Failed to decode Merchant Moe swap calldata as V2-style arguments."

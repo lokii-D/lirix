@@ -86,7 +86,7 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_3(
     monkeypatch.setattr(
         ProxyPiercer, "_read_slot_address", staticmethod(lambda *args, **kwargs: None)
     )
-    monkeypatch.setattr(ProxyPiercer, "_resolve_diamond_facet", classmethod(lambda cls, *_: None))
+    monkeypatch.setattr(piercer, "_resolve_diamond_facet", lambda w3, t: None)
 
     now = [100.0]
     monkeypatch.setattr(piercer_mod.time, "time", lambda: now[0])
@@ -135,18 +135,19 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_4() -
     ProxyPiercer._read_slot_address = staticmethod(slot_reader)  # type: ignore[method-assign]
     try:
         with pytest.MonkeyPatch.context() as m:
-            m.setattr(ProxyPiercer, "_resolve_beacon_implementation", staticmethod(lambda *_: None))
-            m.setattr(ProxyPiercer, "_resolve_diamond_facet", classmethod(lambda cls, *_: None))
+            m.setattr(piercer, "_resolve_beacon_implementation", lambda w3, b: None)
+            m.setattr(piercer, "_resolve_diamond_facet", lambda w3, t: None)
             out = piercer.inspect_target(_W3(_Eth()), target)
             assert out["proxy_kind"] == "beacon_unresolved"
             assert "fallback.eip1967_implementation" in out["resolution_path"]
 
         slot_reader = _Slots([None, None, beacon, None])
         ProxyPiercer._read_slot_address = staticmethod(slot_reader)  # type: ignore[method-assign]
+        piercer2 = ProxyPiercer()
         with pytest.MonkeyPatch.context() as m:
-            m.setattr(ProxyPiercer, "_resolve_beacon_implementation", staticmethod(lambda *_: None))
-            m.setattr(ProxyPiercer, "_resolve_diamond_facet", classmethod(lambda cls, *_: None))
-            out2 = ProxyPiercer().inspect_target(_W3(_Eth()), target)
+            m.setattr(piercer2, "_resolve_beacon_implementation", lambda w3, b: None)
+            m.setattr(piercer2, "_resolve_diamond_facet", lambda w3, t: None)
+            out2 = piercer2.inspect_target(_W3(_Eth()), target)
             assert out2["resolved_target"] == target
             assert "fallback.self" in out2["resolution_path"]
     finally:
@@ -166,19 +167,17 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_5(
             return b""
 
     assert ProxyPiercer._read_slot_address(_W3(_ZeroTailEth()), target, 1) is None
+    piercer = ProxyPiercer()
     assert (
-        ProxyPiercer._resolve_diamond_facet(_W3(_Eth(call_error=RuntimeError("boom"))), target)
-        is None
+        piercer._resolve_diamond_facet(_W3(_Eth(call_error=RuntimeError("boom"))), target) is None
     )
-    assert ProxyPiercer._resolve_diamond_facet(_W3(_Eth(call_result="zzzz")), target) is None
-    assert ProxyPiercer._resolve_diamond_facet(_W3(_Eth(call_result=object())), target) is None
-    assert (
-        ProxyPiercer._resolve_beacon_implementation(_W3(_Eth(call_result="zzzz")), target) is None
-    )
+    assert piercer._resolve_diamond_facet(_W3(_Eth(call_result="zzzz")), target) is None
+    assert piercer._resolve_diamond_facet(_W3(_Eth(call_result=object())), target) is None
+    assert piercer._resolve_beacon_implementation(_W3(_Eth(call_result="zzzz")), target) is None
 
-    monkeypatch.setattr(ProxyPiercer, "_decode_abi_address", staticmethod(lambda *_: None))
+    monkeypatch.setattr(piercer, "_decode_abi_address", lambda w3, raw: None)
     raw = "0x" + ("00" * 32)
-    assert ProxyPiercer._resolve_beacon_implementation(_W3(_Eth(call_result=raw)), target) is None
+    assert piercer._resolve_beacon_implementation(_W3(_Eth(call_result=raw)), target) is None
 
 
 def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_6() -> None:
@@ -193,7 +192,7 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_6() -
         class _CodecW3:
             codec = _Codec()
 
-        assert ProxyPiercer._decode_abi_address(_CodecW3(), b"\x00" * 32) is None
+        assert ProxyPiercer()._decode_abi_address(_CodecW3(), b"\x00" * 32) is None
 
         class _Codec2:
             def decode(self, _types, _raw):
@@ -202,6 +201,6 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_6() -
         class _CodecW32:
             codec = _Codec2()
 
-        assert ProxyPiercer._decode_abi_address(_CodecW32(), b"\x00" * 32) is None
+        assert ProxyPiercer()._decode_abi_address(_CodecW32(), b"\x00" * 32) is None
     finally:
         piercer_mod.abi_decode = original

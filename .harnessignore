@@ -1,0 +1,17 @@
+# Align with .gitignore / docs/repo_exclusions.md for harness-style local tooling (not Harness.io).
+tdsc/
+mantle_TT/
+.venv/
+.venv*/
+venv/
+env/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cursor/
+checklists/
+prompts/
+*.egg-info/
+dist/
+build/

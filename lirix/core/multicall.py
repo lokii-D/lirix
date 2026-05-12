@@ -112,7 +112,7 @@ class MulticallEncoder:
             ]
             try:
                 body = eth_abi_encode(["(address,bool,bytes)[]"], [calls_abi])
-            except Exception as exc:  # noqa: BLE001 — eth_abi 编码失败统一映射
+            except Exception as exc:
                 raise MulticallEncodingException(
                     human_readable_reason="ABI encode failed for aggregate3.",
                     context={"layer": "multicall"},
@@ -124,7 +124,7 @@ class MulticallEncoder:
             ]
             try:
                 body = eth_abi_encode(["(address,bool,uint256,bytes)[]"], [calls_val])
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 raise MulticallEncodingException(
                     human_readable_reason="ABI encode failed for aggregate3Value.",
                     context={"layer": "multicall"},

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 import pytest
@@ -38,8 +39,12 @@ def test_test_langchain_tool_format_security_exception_policy_context_2(
 
     monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
-    assert tool._run("swap 1 ETH for USDC") == '{"ok": true}'
-    assert asyncio.run(tool._arun("swap 1 ETH for USDC")) == '{"ok": true}'
+    sync_out = json.loads(tool._run("swap 1 ETH for USDC"))
+    assert sync_out["ok"] is True
+    assert sync_out["tx_payload"] == {"to": None, "data": None, "value": 0}
+    async_out = json.loads(asyncio.run(tool._arun("swap 1 ETH for USDC")))
+    assert async_out["ok"] is True
+    assert async_out["tx_payload"] == {"to": None, "data": None, "value": 0}
     assert calls == ["swap", "swap"]
 
 

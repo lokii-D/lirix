@@ -1,14 +1,17 @@
 # Security Policy for Lirix
 
-## The Triple-Zero Standard
+**EN:** Triple-Zero boundary, scope, and private disclosure process.  
+**中文：** 三重零信任边界、漏洞收录范围与私下报告流程。本文中的安全联系方式当前包含占位符（`security@lirix.invalid` / `example.com`）；维护者在获得真实投递渠道后，必须在发版前替换为正式邮箱与 PGP 地址。
+
+## The Triple-Zero Standard 🛡️
 
 Security is not a feature; it is the operating boundary.
 
 Lirix is built around the Triple-Zero Standard:
 
-- **Zero-Key** — Lirix never requests, stores, derives, encrypts, or transmits private keys, seed phrases, or signing secrets.
-- **Zero-Telemetry** — Lirix does not ship analytics, tracking beacons, or behavioral telemetry out of the trust boundary.
-- **Zero-Trust** — Every untrusted input must be validated, simulated, and rejected by default if confidence is insufficient.
+- 🛑 **Zero-Key** — Lirix never requests, stores, derives, encrypts, or transmits private keys, seed phrases, or signing secrets.
+- 👁️‍🗨️ **Zero-Telemetry** — Lirix does not ship analytics, tracking beacons, or behavioral telemetry out of the trust boundary.
+- 🛡️ **Zero-Trust** — Every untrusted input must be validated, simulated, and rejected by default if confidence is insufficient.
 
 These three principles are not slogans. They define the core security contract of the project.
 
@@ -48,6 +51,10 @@ If a problem depends on the model’s language quality rather than the Lirix bou
 Use the private disclosure path below instead.
 
 ### Reporting contact
+
+> **Note:** The addresses below are placeholders and must be replaced with real production contacts before public disclosure.
+
+> 🚨 **ACTION REQUIRED:** Placeholder address.
 
 - Email: `security@lirix.invalid` *(placeholder)*
 - PGP key: `https://example.com/lirix-security-pgp.asc` *(placeholder)*
@@ -90,3 +97,52 @@ If you are unsure whether your finding is in scope, report it privately and let 
 Lirix must fail closed.
 
 If a request cannot be verified with high confidence, it must not execute. If the boundary cannot be trusted, the safe outcome is rejection.
+
+---
+
+## 中文（完整对照）
+
+### 三重零边界 🛡️
+
+安全不是功能列表里的一行，而是**运行边界**。
+
+- 🛑 **Zero-Key（零密钥）**：Lirix 不索取、不保存、不推导、不加密传输私钥、助记词或签名材料。
+- 👁️‍🗨️ **Zero-Telemetry（零遥测）**：默认不把分析探针、行为埋点或跟踪信标送出信任域。
+- 🛡️ **Zero-Trust（零信任）**：凡不可信输入，必须经过校验与模拟；信心不足则**默认拒绝**。
+
+### 收录范围
+
+**属于安全议题：**
+
+- 私钥或秘密泄露
+- RPC / API / 模拟失败下的不安全回退
+- 授权或校验绕过
+- 影响交易完整性的缺陷
+- 不安全的解码、代理穿透或 ABI 解析
+- 意外遥测或数据外泄
+- 破坏 Lirix 核心边界内 **fail-closed** 保证的情形
+- 针对 **L4** 动态仲裁阈值的确定性操纵
+- 对 **L5** `ShadowPolicySchema` 的注入或模式投毒
+- 借助 **`lirix init` CLI** 的路径穿越、环境污染或信任域逃逸
+
+**不属于 Lirix 自身漏洞：**
+
+- 纯 LLM 文本质量
+- 提示词工程水平
+- 用户在验证边界之外的误操作
+- 超出项目控制的三方网络故障
+- 需要不当私有基础设施访问才能触发的情形
+
+### 报告流程
+
+**勿**为活跃 0-day 或可利用漏洞开公开 Issue。请使用上文 **Reporting contact**。如当前仅为占位邮箱 / PGP，维护者必须在生产披露前替换为真实渠道。若使用 PGP，请先加密再发送，主题行使用 `Lirix Security Report`。
+
+> **Note:** 上方地址在生产环境中不能继续作为占位符；正式发布前必须替换为可投递的安全邮箱与密钥 URL。
+
+### 响应期望
+
+与英文 **Response expectations** 一致：收悉确认（48 小时内）、初步分级（7 个工作日内）、对已确认问题协调修复与披露节奏。
+
+### 安全原则（中文）
+
+Lirix 必须 **fail-closed**：无法高置信验证的请求，不得继续执行；边界不可信时，**安全出口是拒绝**。

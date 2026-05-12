@@ -1,0 +1,54 @@
+# --- Optional lane header (see docs/ci_gate_matrix.md) ---
+# Quality dimension: E2E / fork integration (mantle_TT + Anvil fork; secrets-gated).
+# Blocks mainline PR merges: no.
+# Matrix anchor: docs/ci_gate_matrix.md → workflow "mantle_fork_smoke.yml".
+# ---
+# Optional Mantle fork integration (mantle_TT). Kept out of the default PR matrix so
+# core package CI stays representative of contributors without fork secrets.
+name: Mantle fork smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mantle-fork:
+    name: Mantle fork (Anvil + mantle_TT)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/lirix-ci-setup
+        with:
+          python-version: "3.12"
+          with-dev-install: "false"
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: "v1.6.0-rc1"
+          cache: true
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run Mantle fork test
+        shell: bash
+        env:
+          MANTLE_MAINNET_RPC: ${{ secrets.MANTLE_MAINNET_RPC }}
+        run: |
+          if [ -z "$MANTLE_MAINNET_RPC" ]; then
+            echo "Skipping: MANTLE_MAINNET_RPC secret is not configured for this repo/fork."
+            exit 0
+          fi
+          anvil --fork-url "$MANTLE_MAINNET_RPC" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
+          ANVIL_PID=$!
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8546 >/dev/null; then
+              python -m pytest mantle_TT/tests/mantle/ -v
+              kill $ANVIL_PID || true
+              exit 0
+            fi
+            if ! kill -0 $ANVIL_PID 2>/dev/null; then
+              cat mantle-anvil.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat mantle-anvil.log
+          exit 1

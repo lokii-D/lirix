@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -66,7 +67,9 @@ def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model_4(
         extra_flag=True,
     )
 
-    assert result == "{'ok': True}"
+    decoded = json.loads(result)
+    assert decoded["ok"] is True
+    assert decoded["tx_payload"] == {"to": None, "data": None, "value": 0}
     assert captured["intent"] == "swap"
     assert captured["payload"]["raw_intent_or_calldata"] == "swap 1 ETH for USDC"
     assert captured["payload"]["expected"] == 1
@@ -121,4 +124,6 @@ async def test_validator_async_path_serializes_model_output(
     monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     output = await tool._arun("swap 1 ETH for USDC")
-    assert output == '{"async": true}'
+    decoded = json.loads(output)
+    assert decoded["async"] is True
+    assert decoded["tx_payload"] == {"to": None, "data": None, "value": 0}

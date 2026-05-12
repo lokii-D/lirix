@@ -4,20 +4,27 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Code Quality & Linting
+  fast_required:
+    name: Fast Required
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
+          with-dev-install: "false"
+      - name: Hygiene gate (repo cleanliness + sign-off allowlist)
+        run: python tools/harness.py hygiene
+      - name: Repo exclusions alignment gate
+        run: python tools/harness.py check-exclusions
+      - name: Import topology drift gate
+        run: python tools/gen_lirix_import_graph.py --check
       - name: Install lint dependencies
         run: |
           python -m pip install --upgrade pip
@@ -28,123 +35,116 @@ jobs:
         run: python -m black --check .
       - name: Run MyPy
         run: python -m mypy --strict lirix
-      - name: Run pytest
-        run: python -m pytest -q
+      - name: Governance gate (explicit)
+        run: |
+          python -m pytest -q \
+            tests/test_core/test_canonical_semantics.py \
+            tests/test_core/test_agent_feedback_reason_taxonomy_closure.py \
+            tests/test_core/test_session.py \
+            tests/test_core/test_session_replay_verifier_malformed_shapes.py \
+            tests/test_core/test_session_workflow_strict_happy_path.py \
+            tests/test_core/test_replay_registry_closure_binding.py \
+            tests/test_core/test_replay_registry_closure_parity_all_entrypoints.py \
+            tests/test_core/test_chain_adapter_profiles.py \
+            tests/test_core/test_hook_manager.py \
+            tests/test_core/test_hook_governance_async_contract_mode_parity.py \
+            tests/test_core/test_status_aggregation.py \
+            tests/test_core/test_config_governance_overlap_guards.py \
+            tests/test_core/test_simulate_only_prior_validate_config.py \
+            tests/test_core/test_entrypoints.py \
+            tests/test_core/test_entrypoint_symbol_binding_contract.py \
+            tests/test_core/test_public_exports_contract.py \
+            tests/test_core/test_cli_public_contract.py \
+            tests/test_core/test_readme_envelope_contract.py \
+            tests/test_core/test_governance_provenance_matrix.py \
+            tests/test_layers/test_l4_rpc_manager_disagreement_report.py \
+            tests/test_layers/test_shadow_auditor_policy_bundle.py \
+            tests/test_integrations/test_langchain_tool_run_arun_delegate_to_guardian_paths.py
+      - name: Registry authority contract gate
+        run: python tools/harness.py registry-authority-contract
+      - name: Release notes gate
+        run: |
+          rg -n "API Contract Delta" docs/release_notes.md
+          rg -n "additive and backward compatible" docs/release_notes.md
+      - name: Docs contract gate
+        run: python tools/harness.py contract-manifest
+      - name: Required checks policy gate
+        run: python tools/harness.py required-check-policy
+      - name: CI lane responsibility gate
+        run: python tools/harness.py ci-lane-responsibility
+      - name: Compat switch expiry gate
+        run: python tools/harness.py compat-switch-expiry
+      - name: Plan-to-PR exit metrics gate
+        run: python tools/harness.py plan-to-pr-exit-metrics
+      - name: Audit internal doc links
+        run: python tools/harness.py audit-internal-link
+      - name: Doc preamble hygiene gate (warn-only)
+        run: python tools/harness.py doc-preamble-hygiene
+      - name: No internal imports gate (anti-regression)
+        run: python tools/harness.py no-internal-imports
+      - name: Root import surface gate
+        run: python tools/harness.py root-import-surface
+      - name: Monkeypatch convention gate (strict)
+        run: python tools/harness.py test-monkeypatch-convention --strict
+      - name: Test topology admission gate
+        run: python tools/harness.py test-topology-admission
+        env:
+          TEST_TOPOLOGY_MAX_COST_SECONDS: "320"
+          TEST_TOPOLOGY_MAX_FAILURE_DENSITY: "0.02"
+      - name: Migration observability report (truth source)
+        run: python tools/migration_observability_report.py
+  coverage_required:
+    name: Coverage Required (Single Authority)
+    if: github.event_name != 'pull_request'
+    needs: fast_required
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/lirix-ci-setup
+        with:
+          python-version: "3.12"
+      - name: Run full suite with coverage fail-under=100
+        run: |
+          python -m pytest -q --cov=lirix --cov-report=term-missing:skip-covered --cov-report=xml
 
-  test:
-    name: Test (${{ matrix.os }}, ${{ matrix.tox-env }})
-    needs: lint
+  pr_compat_smoke:
+    name: PR Compatibility Smoke (${{ matrix.os }}, py${{ matrix.python-version }})
+    if: github.event_name == 'pull_request'
+    needs: fast_required
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      max-parallel: 2 # MANDATORY: Prevents Thundering Herd DDoS
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.14"]
+    steps:
+      - uses: ./.github/actions/lirix-ci-setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-pip-cache: "true"
+      - name: Run PR compatibility smoke subset
+        run: |
+          python -m pytest -q tests/test_core/test_entrypoints.py tests/test_core/test_sync_async_contract_consistency.py tests/test_core/test_registry_authority_contract.py
+
+  compatibility_matrix:
+    name: Compatibility Matrix (${{ matrix.os }}, py${{ matrix.python-version }})
+    if: github.event_name != 'pull_request'
+    needs: fast_required
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        include:
-          - python-version: "3.9"
-            tox-env: py39
-          - python-version: "3.10"
-            tox-env: py310
-          - python-version: "3.11"
-            tox-env: py311
-          - python-version: "3.12"
-            tox-env: py312
-          - python-version: "3.13"
-            tox-env: py313
-          - python-version: "3.14"
-            tox-env: py314
-    continue-on-error: ${{ matrix.python-version == '3.13' || matrix.python-version == '3.14' }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: 'v1.6.0-rc1'
-          cache: true
-
-      - name: Run Mantle fork test
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        shell: bash
-        env:
-          MANTLE_MAINNET_RPC: ${{ secrets.MANTLE_MAINNET_RPC }}
-        run: |
-          if [ -z "$MANTLE_MAINNET_RPC" ]; then
-            echo "Skipping Mantle fork test because MANTLE_MAINNET_RPC is not set."
-            exit 0
-          fi
-          anvil --fork-url "$MANTLE_MAINNET_RPC" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
-          ANVIL_PID=$!
-          for i in {1..30}; do
-            if curl -s http://127.0.0.1:8546 >/dev/null; then
-              python -m pytest mantle_TT/tests/mantle/ -v
-              kill $ANVIL_PID || true
-              exit 0
-            fi
-            if ! kill -0 $ANVIL_PID 2>/dev/null; then
-              cat mantle-anvil.log
-              exit 1
-            fi
-            sleep 1
-          done
-          cat mantle-anvil.log
-          exit 1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
+          enable-pip-cache: "true"
 
-      - name: Install dependencies
+      - name: Run compatibility test subset
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-
-      - name: Start Anvil and Verify
-        shell: bash
-        run: |
-          # Ubuntu runner hardening: ensure anvil binary is executable.
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            chmod +x "$(command -v anvil)"
-          fi
-
-          # 1. Ensure anvil command exists
-          command -v anvil >/dev/null 2>&1 || { echo "FATAL: anvil command not found"; exit 1; }
-
-          # 2. Start anvil and redirect logs
-          anvil --host 127.0.0.1 --port 8545 > anvil.log 2>&1 &
-          ANVIL_PID=$!
-          echo "Anvil PID: $ANVIL_PID"
-
-          # 3. Fast health check with crash detection
-          echo "Checking Anvil node health..."
-          for i in {1..30}; do
-            if curl -s http://127.0.0.1:8545 > /dev/null; then
-              echo "Anvil is ready!"
-              exit 0
-            fi
-
-            if ! kill -0 $ANVIL_PID 2>/dev/null; then
-              echo "Anvil process crashed. Dumping logs:"
-              cat anvil.log
-              exit 1
-            fi
-
-            echo "Waiting for Anvil response ($i/30)..."
-            sleep 1
-          done
-
-          echo "Timeout after 30s: Anvil did not respond. Last logs:"
-          cat anvil.log
-          exit 1
-
-      - name: Run tests
-        run: |
-          # Explicitly scope collection to tests only.
-          python -m pytest tests/
+          python -m pytest -q -m "not slow and not e2e and not network and not perf and not migration"
         env:
           PYTHONIOENCODING: "utf-8"
           PYTHONLEGACYWINDOWSSTDIO: "0"

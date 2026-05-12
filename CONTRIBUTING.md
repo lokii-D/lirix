@@ -1,84 +1,100 @@
-# Contributing to Lirix
+# 🛠️ Contributing to Lirix
 
-Lirix welcomes contributions from people who respect deterministic systems, security boundaries, and production-grade engineering discipline. We are friendly, but we are exacting: if a change weakens the trust model, slips on quality, or introduces ambiguity, it will not be merged.
+**EN:** Contribution workflow, quality bar, and the single harness router (`tools/harness.py`) for policy gates. Bilingual Markdown conventions: [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md) (SSOT).
 
-## The 1000% Standard
+Lirix welcomes contributors who respect deterministic systems, security boundaries, and production-grade engineering discipline. We are friendly, but we are exacting: if a change weakens the trust model, slips on quality, or introduces ambiguity, it will not be merged.
 
-Every pull request must satisfy all of the following before review can proceed:
+## The 1000% 极客标准
 
-- `pytest` must pass at 100% for the touched surface, with no regression in overall coverage.
-- `mypy` must pass in strict mode.
-- `black` must pass with no formatting drift.
-- `ruff` must pass with zero lint violations.
-- Changes must preserve the Zero-Key, Zero-Telemetry, Zero-Trust boundary.
-- Any behavior change must be accompanied by tests that prove the new behavior and protect the old one.
-- Pull requests that break CLI idempotency are auto-rejected, including any change that causes `lirix init` to corrupt, overwrite, or leak `.env` files.
-- Pull requests that weaken L4 BFT concurrency guarantees are auto-rejected, including any change that fails strict async-mocking coverage for HTTP 429 handling, timeouts, and retry-safe failure paths.
-- Release-facing documentation must stay synchronized with the published version, including v1.6.0 terminology, examples, and user-facing wording.
+Every pull request must satisfy **all** of the following before review can proceed:
 
-If a PR misses any of these requirements, it is auto-rejected until corrected.
+- `pytest` passes with `[tool.coverage.report].fail_under = 100` on `lirix/` and no regression on touched surfaces.
+- `mypy --strict lirix` is clean — no `Any` escape hatches for new public contracts.
+- `ruff check .` reports zero violations; `black --check .` is clean.
+- The Zero-Key, Zero-Telemetry, Zero-Trust boundary stays intact.
+- Behavior changes ship with tests that prove the new path and guard the old one.
+- PRs that break `lirix init` idempotency, including `.env` hygiene, are rejected.
+- PRs that weaken L4 concurrency or retry semantics under `429` or timeout paths are rejected.
+- Release-facing docs stay aligned with `pyproject.toml` `[project].version` and `docs/api_reference.md`.
 
-## PR Lifecycle
+Missing any item above is an auto-reject until fixed.
 
-The expected workflow is intentionally simple:
+## Harness router
 
-1. **Fork** the repository.
-2. **Create a feature branch** with a narrow, reviewable scope.
-3. **Implement and test** the change locally.
-4. **Run the full validation suite** before opening the PR.
-5. **Request review** only after the branch is clean and reproducible.
-
-Suggested validation commands:
+All repository policy gates are invoked through one front door:
 
 ```bash
-black .
-ruff check .
-mypy .
-pytest
-pytest tests/test_v15_cli_ignition.py tests/test_v15_intelligence.py tests/test_quorum_bft.py tests/test_v15_vivisection_e2e.py
-anvil
+python tools/harness.py <subcommand>
 ```
 
-If your change affects the L5 path, run the relevant Foundry / Anvil-backed integration tests as well.
+The subcommand map is `COMMANDS` in `tools/harness.py`; implementations live in `tools/validators.py`. `python tools/harness.py contract-manifest` wraps `tools/contract_manifest_gate.py` and enforces the docs / audit-table / README broadcast contract.
 
-## Quality Expectations
-
-We review for more than correctness. We also look for:
-
-- Clear, deterministic behavior
-- Strong typing and explicit failure modes
-- Security-aware edge cases
-- Minimal, readable diffs
-- Documentation updates when user-facing behavior changes
-
-We prefer a smaller change that is correct over a larger change that is clever.
-
-## What We Do Not Merge
-
-Do not submit code that:
-
-- Handles private keys inside the library
-- Adds hidden telemetry or analytics
-- Introduces non-deterministic safety checks
-- Weakens validation to make tests pass faster
-- Bypasses strict typing or formatting rules
-- Relaxes security boundaries without a compelling, reviewed design
-- Breaks `lirix init` path confinement, environment isolation, or `.env` hygiene
-- Reduces the resilience of L4 quorum selection under concurrent retries, 429 responses, or timeout conditions
-
-## Recommended Local Setup
+**Fast Required parity for a typical PR:**
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-anvil
-
+python -m black --check .
+python -m ruff check .
+python -m mypy --strict lirix
 pytest
-pytest tests/test_v15_cli_ignition.py tests/test_v15_intelligence.py tests/test_quorum_bft.py tests/test_v15_vivisection_e2e.py
+pytest -o addopts= tests --pyargs lirix
+pytest tests/test_cli_ignition_coverage.py tests/test_intelligence_coverage_batch.py tests/test_quorum_bft.py tests/test_vivisection_e2e.py
+python tools/harness.py contract-manifest
+python tools/harness.py audit-internal-link
+python tools/harness.py doc-preamble-hygiene
+python tools/harness.py no-internal-imports
+python tools/harness.py root-import-surface
+python tools/harness.py test-monkeypatch-convention --strict
 ```
 
-If you are touching documentation, preserve the project’s bilingual clarity and keep the technical tone sharp, precise, and consistent.
+Add `--enforce` to `doc-preamble-hygiene` locally if you need CI-warn paths to fail closed. Optional anvil / Foundry steps apply when you touch L5 integration surfaces — see `docs/contributing_local_tests.md`.
+
+Full subcommand inventory and exit codes: `docs/tools_gates_index.md`. Workflow wiring: `docs/ci_gate_matrix.md`.
+
+## Public surface & architecture truth
+
+Keep these aligned with `docs/audit_path_map.md`, `docs/migration_legacy_to_v2.md`, and `docs/api_reference.md`:
+
+- **Single orchestrated DAG:** `Lirix` in `lirix/_facade.py` delegates to `LirixPipelineOrchestrator` — do not fork parallel client stacks for the same contracts.
+- **Frozen root exports:** `lirix.__all__` matches `tests/test_core/test_public_exports_contract.py` — no third “shadow” export list in prose-only docs.
+- **Monkeypatch discipline:** `python tools/harness.py test-monkeypatch-convention --strict` plus `docs/api_reference.md` — prefer `lirix._facade.Lirix`, `lirix._client_core.<pipeline symbols>`, `lirix.core.session.*`, `lirix.layers.*`, `lirix.integrations.*`; never patch the bare `lirix` package object.
+- **`chain_validate`:** bool sugar on the same path as `validate_only` — use full entrypoints when you need evidence payloads.
+- **Audit table edits:** changing `docs/audit_path_map.md` § Core Assertions Map requires `python tools/harness.py contract-manifest` locally.
+
+## PR lifecycle
+
+1. Fork → narrow feature branch.
+2. Implement and test locally with the gates above.
+3. Open PR only when the branch is clean and reproducible.
+4. Release and sign-off PRs: `docs/release_pr_checklist.md` plus `audit_artifacts/release_signoff/README.md`.
+
+## What we do not merge
+
+- Private-key handling inside the library
+- Hidden telemetry
+- Non-deterministic safety checks
+- Typing or lint shortcuts to greenwash CI
+- Security boundary relaxations without reviewed design
+- `lirix init` path confinement or `.env` hygiene regressions
+- L4 resilience regressions on `429`, timeout, or concurrent retry paths
+
+## Dependency security
+
+- Run `pip-audit` on the release virtualenv after `pip install -e ".[dev]"`.
+- Enable Dependabot or equivalent. Merging bumps still requires the normal CI bar.
+- Optional SBOM: `docs/sbom_optional.md`, `.github/workflows/sbom-optional.yml`.
+
+---
+
+## 中文导读（贡献者摘要）
+
+**中文：** 贡献流程与质量标准；权威体例见 [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md)。
+
+- **单点路由门禁：** 所有策略门闸统一走 **`python tools/harness.py <subcommand>`**。映射在 **`tools/harness.py` → `tools/validators.py`**。`contract-manifest` 负责文档、审计表与 README 广播契约的校验。
+- **质量门槛：** `pytest`（`lirix/` 行覆盖率 100%）、`mypy --strict lirix`、`ruff`、`black --check` 全绿；不得削弱零密钥 / 零遥测 / 零信任边界；行为变更必须带测试双锁。
+- **架构事实：** 对外 `Lirix` 在 `lirix/_facade.py`，编排内核在 `lirix/core/orchestrator.py`；不要再造第二套并行客户端栈。根导出以 `tests/test_core/test_public_exports_contract.py` 为冻结真相源。
+- **Monkeypatch 纪律：** 见 `docs/api_reference.md` 和 `python tools/harness.py test-monkeypatch-convention --strict`。
+- **审计表：** 修改 `docs/audit_path_map.md` 的 Core Assertions Map 后，必须本地跑 `python tools/harness.py contract-manifest`。
+- **不合并项：** 库内触钥、隐蔽遥测、非确定性安检、为提速放松校验等。
+- **依赖安全：** 发布前建议 `pip-audit` / Dependabot；可选 SBOM 见 `docs/sbom_optional.md`。
+
+> **中文硬核版：** 我们很友好，但我们不讲情面——`pytest` 覆盖率必须 100%，`mypy --strict` 不接受任何投机性 `Any` 漏洞，`ruff` 必须全绿；谁要是想靠放水把 CI 染绿，门禁会直接把它挡回去。

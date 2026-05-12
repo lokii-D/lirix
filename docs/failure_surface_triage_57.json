@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "summary": {
+    "target_failure_count": 57,
+    "categories": ["historical", "regression", "environment"]
+  },
+  "cases": [
+    {"id": "FS-001", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-001"},
+    {"id": "FS-002", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-002"},
+    {"id": "FS-003", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-003"},
+    {"id": "FS-004", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-004"},
+    {"id": "FS-005", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-005"},
+    {"id": "FS-006", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-006"},
+    {"id": "FS-007", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-007"},
+    {"id": "FS-008", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-008"},
+    {"id": "FS-009", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-009"},
+    {"id": "FS-010", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-010"},
+
+    {"id": "FS-011", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-011"},
+    {"id": "FS-012", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-012"},
+    {"id": "FS-013", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-013"},
+    {"id": "FS-014", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-014"},
+    {"id": "FS-015", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-015"},
+    {"id": "FS-016", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-016"},
+    {"id": "FS-017", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-017"},
+    {"id": "FS-018", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-018"},
+    {"id": "FS-019", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-019"},
+    {"id": "FS-020", "category": "regression", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-020"},
+
+    {"id": "FS-021", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-021"},
+    {"id": "FS-022", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-022"},
+    {"id": "FS-023", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-023"},
+    {"id": "FS-024", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-024"},
+    {"id": "FS-025", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-025"},
+    {"id": "FS-026", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-026"},
+    {"id": "FS-027", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-027"},
+    {"id": "FS-028", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-028"},
+    {"id": "FS-029", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-029"},
+    {"id": "FS-030", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-030"},
+
+    {"id": "FS-031", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-031"},
+    {"id": "FS-032", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-032"},
+    {"id": "FS-033", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-033"},
+    {"id": "FS-034", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-034"},
+    {"id": "FS-035", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-035"},
+    {"id": "FS-036", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-036"},
+    {"id": "FS-037", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-037"},
+    {"id": "FS-038", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-038"},
+    {"id": "FS-039", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-039"},
+    {"id": "FS-040", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-040"},
+
+    {"id": "FS-041", "category": "regression", "owner": "core", "status": "triaged", "evidence": "docs/failure_surface_triage.md#fs-041"},
+    {"id": "FS-042", "category": "regression", "owner": "core", "status": "triaged", "evidence": "docs/failure_surface_triage.md#fs-042"},
+    {"id": "FS-043", "category": "regression", "owner": "release", "status": "triaged", "evidence": "docs/failure_surface_triage.md#fs-043"},
+    {"id": "FS-044", "category": "regression", "owner": "release", "status": "triaged", "evidence": "docs/failure_surface_triage.md#fs-044"},
+    {"id": "FS-045", "category": "regression", "owner": "release", "status": "triaged", "evidence": "docs/failure_surface_triage.md#fs-045"},
+
+    {"id": "FS-046", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-046"},
+    {"id": "FS-047", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-047"},
+    {"id": "FS-048", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-048"},
+    {"id": "FS-049", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-049"},
+    {"id": "FS-050", "category": "environment", "owner": "release", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-050"},
+
+    {"id": "FS-051", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-051"},
+    {"id": "FS-052", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-052"},
+    {"id": "FS-053", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-053"},
+    {"id": "FS-054", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-054"},
+    {"id": "FS-055", "category": "historical", "owner": "core", "status": "fixed", "evidence": "docs/failure_surface_triage.md#fs-055"},
+    {"id": "FS-056", "category": "historical", "owner": "core", "status": "wont_fix", "evidence": "docs/failure_surface_triage.md#fs-056"},
+    {"id": "FS-057", "category": "historical", "owner": "release", "status": "open", "evidence": "docs/failure_surface_triage.md#fs-057"}
+  ]
+}

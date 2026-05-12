@@ -27,7 +27,7 @@ def get_type_hints(
     localns: dict[str, Any] | None = None,
     include_extras: bool = False,
 ) -> dict[str, Any]:
-    """Python 3.8–3.14+ compatible wrapper for runtime reflection helpers."""
+    """Python 3.9–3.14+ compatible wrapper for runtime reflection helpers."""
     return _get_type_hints(
         obj,
         globalns=globalns,

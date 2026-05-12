@@ -3,4 +3,4 @@
 
 from __future__ import annotations
 
-__all__ = ["langchain"]
+__all__ = ["langchain", "autogen"]

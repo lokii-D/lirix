@@ -1,0 +1,23 @@
+# --- Optional lane header (see docs/ci_gate_matrix.md) ---
+# Quality dimension: perf / slow / e2e / network markers (pytest marker suite).
+# Blocks mainline PR merges: no (scheduled + manual dispatch).
+# Matrix anchor: docs/ci_gate_matrix.md → workflow "slow-lane-schedule.yml".
+# ---
+name: Slow Lane Schedule
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"
+
+jobs:
+  slow_lane:
+    name: Slow/E2E/Network/Perf
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/lirix-ci-setup
+        with:
+          python-version: "3.12"
+      - name: Run slow marker suite
+        run: |
+          python -m pytest -q -m "slow or e2e or network or perf"

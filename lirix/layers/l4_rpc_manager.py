@@ -16,8 +16,15 @@ from web3 import AsyncWeb3, Web3
 from web3.providers import HTTPProvider
 from web3.providers.rpc import AsyncHTTPProvider
 
+from lirix.core.canonical_taxonomy import canonical_reason_from_rpc_reason, lookup_reason_taxon
 from lirix.core.config import LirixConfig
-from lirix.core.constants import HOOK_ISOLATED_TIMEOUT_SEC, HOOK_LAYER_L4
+from lirix.core.constants import (
+    AGENT_FEEDBACK_REASON_UNKNOWN,
+    HOOK_ISOLATED_TIMEOUT_SEC,
+    HOOK_LAYER_L4,
+    canonicalize_error_code,
+)
+from lirix.core.evidence import RPCDisagreementReport, build_layer_evidence_v2
 from lirix.core.exceptions import (
     CircuitBreakerOpenException,
     LirixRPCError,
@@ -25,6 +32,14 @@ from lirix.core.exceptions import (
     RPCUnavailableException,
 )
 from lirix.core.hook_manager import HookManager
+
+
+def _dual_emit_error_context(ctx: Dict[str, Any], *, error_code: str) -> Dict[str, Any]:
+    raw_error_code = str(error_code)
+    out = dict(ctx)
+    out["raw_error_code"] = raw_error_code
+    out["canonical_error_code"] = canonicalize_error_code(raw_error_code)
+    return out
 
 
 class LirixRPCTimeoutException(LirixRPCError):
@@ -83,6 +98,124 @@ class RPCManager:
             self._last_selected_latency = None
             self._last_error = None
 
+    def evidence_snapshot(self) -> Dict[str, Any]:
+        """Return structured L4 evidence for trace/audit export."""
+        with self._lock:
+            disagreement = None
+            if self._last_error is not None:
+                disagreement = self._build_disagreement_report(
+                    reason=str(self._last_error.get("reason", "unknown")),
+                    errors=(
+                        self._last_error.get("failed")
+                        if isinstance(self._last_error, dict)
+                        else None
+                    ),
+                    classified=(
+                        self._last_error.get("classified")
+                        if isinstance(self._last_error, dict)
+                        else None
+                    ),
+                    heights=(
+                        self._last_error.get("heights")
+                        if isinstance(self._last_error, dict)
+                        else None
+                    ),
+                ).to_dict()
+            base = {
+                "layer": "L4",
+                "selected_rpc_url": self._last_url,
+                "last_selected_latency": self._last_selected_latency,
+                "health": self._snapshot_health_locked(),
+                "last_error": dict(self._last_error) if self._last_error is not None else None,
+                "rpc_disagreement_report": disagreement,
+            }
+            base["rpc_evidence_v2"] = build_layer_evidence_v2(
+                layer="L4",
+                status="ok" if self._last_error is None else "degraded",
+                details={
+                    "selected_rpc_url": self._last_url,
+                    "health": self._snapshot_health_locked(),
+                    "last_error": dict(self._last_error) if self._last_error else None,
+                    "rpc_disagreement_report": disagreement,
+                },
+            )
+            return {"layer": "L4", "rpc_evidence_v2": base["rpc_evidence_v2"]}
+
+    def _build_disagreement_report(
+        self,
+        *,
+        reason: str,
+        errors: Optional[Dict[str, Any]] = None,
+        classified: Optional[Dict[str, Any]] = None,
+        heights: Optional[Dict[str, Any]] = None,
+    ) -> RPCDisagreementReport:
+        classified_dict = classified if isinstance(classified, dict) else {}
+        timeout_nodes = classified_dict.get("timeout", [])
+        transport_nodes = classified_dict.get("transport", [])
+        malformed_nodes = classified_dict.get("other", [])
+        suspicious_nodes = classified_dict.get("suspicious_consistency", [])
+        stale_nodes: List[str] = []
+        inconsistent_nodes: List[str] = []
+        if isinstance(heights, dict) and heights:
+            vals: List[int] = [int(v) for v in heights.values() if isinstance(v, int)]
+            if vals:
+                head = max(vals)
+                stale_nodes = [k for k, v in heights.items() if isinstance(v, int) and v < head]
+                if len(set(vals)) > 1:
+                    inconsistent_nodes = list(heights.keys())
+
+        def _entry(reason_code: str, nodes: List[str]) -> Dict[str, Any]:
+            canonical_reason = canonical_reason_from_rpc_reason(reason_code)
+            if canonical_reason is None:
+                canonical_reason = AGENT_FEEDBACK_REASON_UNKNOWN
+            taxon = lookup_reason_taxon(canonical_reason)
+            return {
+                "reason_code": reason_code,
+                "rpc_reason_code": reason_code,
+                "raw_reason_code": reason_code,
+                "canonical_reason_code": canonical_reason,
+                "nodes": list(nodes),
+                "severity": str(taxon.severity),
+                "remediation": str(taxon.default_remediation),
+            }
+
+        return RPCDisagreementReport(
+            reason=reason,
+            taxonomy={
+                "transport": _entry(
+                    "transport_error" if transport_nodes else "none",
+                    list(transport_nodes),
+                ),
+                "rpc_protocol": _entry("timeout" if timeout_nodes else "none", list(timeout_nodes)),
+                "consensus": _entry(
+                    "inconsistent_result" if inconsistent_nodes else "none",
+                    list(inconsistent_nodes),
+                ),
+                "integrity": _entry(
+                    "malformed_response" if malformed_nodes else "none",
+                    list(malformed_nodes),
+                ),
+                "latency_budget": _entry(
+                    "timeout" if timeout_nodes else "none", list(timeout_nodes)
+                ),
+                "suspicious_consistency": _entry(
+                    "suspicious_consistency" if suspicious_nodes else "none",
+                    list(suspicious_nodes),
+                ),
+            },
+            unreachable_nodes=list(transport_nodes),
+            timeout_nodes=list(timeout_nodes),
+            stale_nodes=stale_nodes,
+            malformed_nodes=list(malformed_nodes),
+            inconsistent_nodes=inconsistent_nodes,
+            suspiciously_consistent_nodes=list(suspicious_nodes),
+            details={
+                "errors": dict(errors) if isinstance(errors, dict) else {},
+                "classified": classified_dict,
+                "heights": dict(heights) if isinstance(heights, dict) else {},
+            },
+        )
+
     def _eligible_urls(self) -> List[str]:
         return [u for u in self._config.rpc_urls if not self._open.get(u, False)]
 
@@ -104,6 +237,17 @@ class RPCManager:
                 self._record_transport_success(u)
             else:
                 self._record_transport_failure(u)
+
+    def _required_successes(self, eligible_count: int) -> int:
+        cfg_count = self._config.l4_min_success_count
+        cfg_ratio = self._config.l4_min_success_ratio
+        if self._config.strict_mode or (cfg_count is None and cfg_ratio is None):
+            return eligible_count
+        required_by_count = int(cfg_count) if cfg_count is not None else 1
+        required_by_ratio = (
+            int(math.ceil(float(cfg_ratio) * eligible_count)) if cfg_ratio is not None else 1
+        )
+        return max(1, min(eligible_count, max(required_by_count, required_by_ratio)))
 
     def _classify_errors(self, errors: Dict[str, BaseException]) -> Dict[str, List[str]]:
         classified: Dict[str, List[str]] = {
@@ -140,15 +284,25 @@ class RPCManager:
         reason: str,
         errors: Optional[Dict[str, BaseException]] = None,
         extra: Optional[Dict[str, Any]] = None,
+        error_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         context: Dict[str, Any] = {
             "layer": "L4",
             "reason": reason,
             "health": self._health_context(),
         }
+        if error_code is not None:
+            raw_error_code = str(error_code)
+            context["raw_error_code"] = raw_error_code
+            context["canonical_error_code"] = canonicalize_error_code(raw_error_code)
         if errors:
             context["failed"] = {k: str(v) for k, v in errors.items()}
             context["classified"] = self._classify_errors(errors)
+            context["rpc_disagreement_report"] = self._build_disagreement_report(
+                reason=reason,
+                errors=context["failed"],
+                classified=context["classified"],
+            ).to_dict()
         if extra:
             context.update(extra)
         return context
@@ -174,6 +328,11 @@ class RPCManager:
             return
         self._failures[url] = 0
         self._open[url] = False
+
+    @staticmethod
+    def _select_best_endpoint(heights: Dict[str, int]) -> str:
+        # Prefer freshest block height first, then deterministic URL order.
+        return max(heights.items(), key=lambda item: (item[1], item[0]))[0]
 
     def _prepare_reconcile_locked(self) -> List[str]:
         if not self._config.rpc_urls:
@@ -219,7 +378,7 @@ class RPCManager:
                 try:
                     u, bn = fut.result()
                     heights[u] = bn
-                except BaseException as exc:  # noqa: BLE001 — 传输层
+                except BaseException as exc:
                     errors[url] = exc
 
         with self._lock:
@@ -245,15 +404,20 @@ class RPCManager:
                     "failed": {k: str(v) for k, v in errors.items()},
                 }
 
-            if len(heights) != len(eligible):
+            required_successes = self._required_successes(len(eligible))
+            if len(heights) < required_successes:
                 raise RPCUnavailableException(
                     human_readable_reason=(
-                        "One or more RPC endpoints failed during block height reconciliation."
+                        "RPC reconciliation failed to meet required healthy endpoint threshold."
                     ),
                     context=self._failure_context(
                         reason="reconcile_failed",
                         errors=errors,
-                        extra={"ok_count": len(heights), "expected": len(eligible)},
+                        extra={
+                            "ok_count": len(heights),
+                            "expected": len(eligible),
+                            "required_successes": required_successes,
+                        },
                     ),
                 )
 
@@ -266,6 +430,12 @@ class RPCManager:
                     "heights": dict(heights),
                     "spread": spread,
                     "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                    "classified": {
+                        "timeout": [],
+                        "transport": [],
+                        "other": [],
+                        "quota_exhausted": [],
+                    },
                 }
                 raise RPCUnavailableException(
                     human_readable_reason=(
@@ -282,12 +452,24 @@ class RPCManager:
                     ),
                 )
 
-            chosen = min(eligible, key=lambda url: (heights.get(url, 10**18), url))
+            chosen = self._select_best_endpoint(heights)
             self._last_url = chosen
             self._last_selected_latency = None
             self._sync_web3 = Web3(HTTPProvider(chosen, request_kwargs={"timeout": self._timeout}))
             self._async_web3 = None
+            tolerance_enabled = required_successes < len(eligible)
             bn = max(values)
+            if tolerance_enabled:
+                self._last_error = {
+                    "layer": "L4",
+                    "reason": "reconcile_tolerated_partial_success",
+                    "ok_count": len(heights),
+                    "expected": len(eligible),
+                    "required_successes": required_successes,
+                    "classified": self._classify_errors(errors) if errors else {},
+                }
+            else:
+                self._last_error = None
             h = self._hooks
             if h is not None:
                 h.invoke_hooks_isolated(
@@ -342,15 +524,20 @@ class RPCManager:
 
             self._record_outcome(eligible, heights, errors)
 
-            if len(heights) != len(eligible):
+            required_successes = self._required_successes(len(eligible))
+            if len(heights) < required_successes:
                 raise RPCUnavailableException(
                     human_readable_reason=(
-                        "One or more RPC endpoints failed during block height reconciliation."
+                        "RPC reconciliation failed to meet required healthy endpoint threshold."
                     ),
                     context=self._failure_context(
                         reason="reconcile_failed",
                         errors=errors,
-                        extra={"ok_count": len(heights), "expected": len(eligible)},
+                        extra={
+                            "ok_count": len(heights),
+                            "expected": len(eligible),
+                            "required_successes": required_successes,
+                        },
                     ),
                 )
 
@@ -363,6 +550,12 @@ class RPCManager:
                     "heights": dict(heights),
                     "spread": spread,
                     "threshold": self.HEALTH_SPREAD_THRESHOLD,
+                    "classified": {
+                        "timeout": [],
+                        "transport": [],
+                        "other": [],
+                        "quota_exhausted": [],
+                    },
                 }
                 raise RPCUnavailableException(
                     human_readable_reason=(
@@ -379,14 +572,26 @@ class RPCManager:
                     ),
                 )
 
-            chosen = min(eligible, key=lambda url: (heights.get(url, 10**18), url))
+            chosen = self._select_best_endpoint(heights)
             self._last_url = chosen
             self._last_selected_latency = None
             self._async_web3 = AsyncWeb3(
                 AsyncHTTPProvider(chosen, request_kwargs={"timeout": self._timeout})
             )
             self._sync_web3 = None
+            tolerance_enabled = required_successes < len(eligible)
             bn = max(values)
+            if tolerance_enabled:
+                self._last_error = {
+                    "layer": "L4",
+                    "reason": "reconcile_tolerated_partial_success",
+                    "ok_count": len(heights),
+                    "expected": len(eligible),
+                    "required_successes": required_successes,
+                    "classified": self._classify_errors(errors) if errors else {},
+                }
+            else:
+                self._last_error = None
             h = self._hooks
             if h is not None:
                 h.invoke_hooks_isolated(
@@ -423,7 +628,17 @@ class RPCManager:
 
 
 class AsyncQuorumProvider:
-    """L4: Multi-source RPC quorum with anti-staleness routing."""
+    """Internal experimental quorum helper (non-primary L4 path).
+
+    Primary runtime path is ``RPCManager``. Keep this class for compatibility
+    and focused tests, but avoid wiring new production call flows to it.
+    """
+
+    PATH_ROLE = "secondary_non_primary"
+    USAGE_WARNING = (
+        "AsyncQuorumProvider is a secondary compatibility path; "
+        "use RPCManager for primary L4 runtime flows."
+    )
 
     _RETRYABLE_ERRORS = (ConnectionError, TimeoutError)
     _MAX_RETRIES = 3
@@ -482,6 +697,8 @@ class AsyncQuorumProvider:
     def snapshot(self) -> Dict[str, Any]:
         with self._lock:
             return {
+                "path_role": self.PATH_ROLE,
+                "usage_warning": self.USAGE_WARNING,
                 "timeout": self._timeout,
                 "best_url": self._best_url,
                 "best_height": self._best_height,
@@ -501,7 +718,7 @@ class AsyncQuorumProvider:
             provider = AsyncHTTPProvider(self._best_url, request_kwargs={"timeout": self._timeout})
             aw3 = AsyncWeb3(provider)
             return await aw3.eth.call(cast(Any, tx), block_identifier=cast(Any, block))
-        except BaseException as exc:  # noqa: BLE001
+        except BaseException as exc:
             best_url = cast(str, self._best_url)
             self._raise_quorum_failed(
                 "selected endpoint eth_call failed", failures={best_url: str(exc)}
@@ -563,7 +780,7 @@ class AsyncQuorumProvider:
         for attempt in range(self._MAX_RETRIES):
             try:
                 return await coro_factory()
-            except BaseException as exc:  # noqa: BLE001
+            except BaseException as exc:
                 retryable = self._is_quota_exhausted(exc) or isinstance(exc, self._RETRYABLE_ERRORS)
                 elapsed = time.perf_counter() - start
                 if (
@@ -593,7 +810,10 @@ class AsyncQuorumProvider:
                 resolution_dev=(
                     "Provide at least one healthy RPC endpoint before invoking quorum_eth_call."
                 ),
-                context={"layer": "L4", "reason": "rpc_urls_empty"},
+                context=_dual_emit_error_context(
+                    {"layer": "L4", "reason": "rpc_urls_empty"},
+                    error_code="LRX_L4_CONSENSUS_FAILED",
+                ),
             )
         head = await self.refresh_quorum()
         target_block = head - 1
@@ -633,6 +853,12 @@ class AsyncQuorumProvider:
         best_hash, nodes = max(hashes.items(), key=lambda item: len(item[1]))
         required_votes = math.ceil(len(self._rpc_urls) * (2 / 3))
         if len(nodes) < required_votes:
+            self._last_error = {
+                "layer": "L4",
+                "reason": "consensus_failure",
+                "classified": {"other": list(self._rpc_urls), "timeout": [], "transport": []},
+                "hashes": url_to_digest,
+            }
             raise LirixConsensusFailureException(
                 error_code="LRX_L4_CONSENSUS_FAILED",
                 value_protected="RPC Simulation Consistency",
@@ -643,13 +869,17 @@ class AsyncQuorumProvider:
                 resolution_dev=(
                     "Inspect state divergence, endpoint integrity, and latest-block pinning."
                 ),
-                context={
-                    "layer": "L4",
-                    "block_number": target_block,
-                    "required_votes": required_votes,
-                    "observed_votes": len(nodes),
-                    "hashes": url_to_digest,
-                },
+                context=_dual_emit_error_context(
+                    {
+                        "layer": "L4",
+                        "reason": "consensus_failure",
+                        "block_number": target_block,
+                        "required_votes": required_votes,
+                        "observed_votes": len(nodes),
+                        "hashes": url_to_digest,
+                    },
+                    error_code="LRX_L4_CONSENSUS_FAILED",
+                ),
             )
         primary_block_hash = None
         if self._best_url is not None:
@@ -660,6 +890,15 @@ class AsyncQuorumProvider:
             block_obj = await primary_w3.eth.get_block(target_block)
             primary_block_hash = getattr(block_obj, "hash", None)
         winner_url = nodes[0]
+        with self._lock:
+            self._last_url = winner_url
+            self._last_selected_latency = None
+            self._last_error = {
+                "layer": "L4",
+                "reason": "quorum_eth_call_ok",
+                "classified": {"timeout": [], "transport": [], "other": []},
+                "hashes": url_to_digest,
+            }
         return {
             "block_number": target_block,
             "block_hash": primary_block_hash,
@@ -682,11 +921,14 @@ class AsyncQuorumProvider:
         *,
         failures: Optional[Dict[str, str]] = None,
     ) -> None:
-        context = {
-            "layer": "L4",
-            "reason": reason,
-            "failures": failures or {},
-        }
+        context = _dual_emit_error_context(
+            {
+                "layer": "L4",
+                "reason": reason,
+                "failures": failures or {},
+            },
+            error_code="LRX_RPC_QUORUM_FAILED",
+        )
         with self._lock:
             self._last_error = dict(context)
         raise LirixRPCError(

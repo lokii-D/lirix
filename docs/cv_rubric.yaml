@@ -1,0 +1,119 @@
+# Lirix “control-plane verifiability” rubric — dimension weights sum to 100.
+# Scored by tools/cv_score_report.py (automatable checks; vetoes with missing_path are enforced when --enforce).
+version: 2
+
+dimensions:
+  - id: auditability
+    name: Architecture auditability & table-driven mapping
+    weight: 25
+    description: Single audit map, supporting subtrees mapped, exclusions SSOT, evidence-flow doc, import topology.
+    scoring_rules: >
+      Award full automated sub-score when audit_path_map, repo_exclusions, pipeline_evidence_flow, and import topology
+      artifact (plus generator) are present on disk. Manual gap: whether prose assertions match runtime semantics.
+    veto_if:
+      - name: audit_map_missing
+        missing_path: docs/audit_path_map.md
+    automated_checks:
+      - id: audit_path_map
+        points: 8
+        require_paths: [docs/audit_path_map.md]
+      - id: repo_exclusions_ssot
+        points: 5
+        require_paths: [docs/repo_exclusions.md]
+      - id: audit_evidence_flow_doc
+        points: 6
+        require_paths: [docs/pipeline_evidence_flow.md]
+      - id: import_topology_artifact
+        points: 6
+        require_paths: [docs/lirix_import_topology.md, tools/gen_lirix_import_graph.py]
+
+  - id: ci_alignment
+    name: CI / GitHub Actions alignment
+    weight: 25
+    description: Gate matrix 1:1 with workflows; shared composite setup; governance lane logs CV trace.
+    scoring_rules: >
+      Full points when ci_gate_matrix documents workflows, composite action exists, governance-lane invokes
+      cv_score_report, and tools_gates_index.md exists (indexed from the matrix § Tool gates). Manual gap:
+      branch-protection required-check set vs documented policy.
+    veto_if:
+      - name: ci_matrix_missing
+        missing_path: docs/ci_gate_matrix.md
+      - name: composite_setup_missing
+        missing_path: .github/actions/lirix-ci-setup/action.yml
+    automated_checks:
+      - id: ci_gate_matrix
+        points: 9
+        require_paths: [docs/ci_gate_matrix.md]
+      - id: composite_ci_setup
+        points: 8
+        require_paths: [.github/actions/lirix-ci-setup/action.yml]
+      - id: governance_cv_trace
+        points: 6
+        require_strings_in_file:
+          file: .github/workflows/governance-lane.yml
+          needles: ["python tools/cv_score_report.py"]
+      - id: tools_gates_index_doc
+        points: 2
+        require_paths: [docs/tools_gates_index.md]
+
+  - id: test_change_safety
+    name: Tests & change-safety authority
+    weight: 20
+    description: Frozen root exports and CLI scaffold contracts guarded by pytest on the PR/main fast path.
+    scoring_rules: >
+      Full points when public export and CLI contract tests exist (same files referenced from audit_path_map / README),
+      and contributor pytest / addopts guidance is present so local runs stay aligned with CI defaults.
+    veto_if: []
+    automated_checks:
+      - id: public_exports_contract_test
+        points: 9
+        require_paths: [tests/test_core/test_public_exports_contract.py]
+      - id: cli_contract_test
+        points: 9
+        require_paths: [tests/test_core/test_cli_public_contract.py]
+      - id: contributing_local_tests_doc
+        points: 2
+        require_paths: [docs/contributing_local_tests.md]
+
+  - id: security_sto
+    name: Security / STO expression
+    weight: 15
+    description: Optional SBOM and Anvil e2e workflows indexed in the matrix; rubric versioned in-repo.
+    scoring_rules: >
+      Automated band checks that the matrix names optional STO/e2e workflows and this rubric file exists.
+      Manual consumption steps (download artifacts, attach to sign-off) are documented in docs/ci_gate_matrix.md
+      § Optional SBOM / Anvil E2E — procurement and release sign-off (manual).
+    veto_if: []
+    automated_checks:
+      - id: optional_workflows_documented
+        points: 8
+        require_strings_in_file:
+          file: docs/ci_gate_matrix.md
+          needles: ["sbom-optional.yml", "e2e-anvil-optional.yml"]
+      - id: cv_rubric_present
+        points: 7
+        require_paths: [docs/cv_rubric.yaml]
+
+  - id: cv_metering
+    name: CV metering & engineering artifacts
+    weight: 15
+    description: Score script, architecture action list, evolution narrative for harness-style alignment.
+    scoring_rules: >
+      Full points when cv_score_report.py and architecture_evolution_action_list.md exist.
+    veto_if: []
+    automated_checks:
+      - id: cv_score_script
+        points: 8
+        require_paths: [tools/cv_score_report.py]
+      - id: architecture_action_list
+        points: 7
+        require_paths: [docs/architecture_evolution_action_list.md]
+
+manual_review_note: >
+  Runtime quality and human architecture judgement are not fully automatable;
+  this rubric’s automated band targets ≥95 when repository docs/CI artifacts are complete.
+  Treat automated 100/100 as an existence band (files, strings, indexed workflows present)—not
+  proof that semantics, threat models, or architecture reviews are finished. See
+  docs/architecture_evolution_action_list.md (top, including Post-`r5-*` semantic ceiling line),
+  docs/ci_gate_matrix.md § CV automation score,
+  and README “Audit entrypoint” links for the same boundary. Tool script index: docs/tools_gates_index.md.

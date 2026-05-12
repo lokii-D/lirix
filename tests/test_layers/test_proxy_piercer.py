@@ -130,7 +130,5 @@ def test_test_proxy_piercer_4(
         )
     )
     piercer = ProxyPiercer()
-    monkeypatch.setattr(
-        ProxyPiercer, "_resolve_diamond_facet", classmethod(lambda cls, w3, t: None)
-    )
+    monkeypatch.setattr(piercer, "_resolve_diamond_facet", lambda w3, t: None)
     assert piercer.resolve_implementation(web3, target) == target

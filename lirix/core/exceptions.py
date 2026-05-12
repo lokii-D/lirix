@@ -1,6 +1,8 @@
 import json
 from typing import Any, Optional
 
+from lirix.core.constants import canonicalize_error_code
+
 
 class LirixBaseException(Exception):
     """Base exception that adapts legacy v1.0.0 fields to the v1.1.2+ contract.
@@ -29,6 +31,8 @@ class LirixBaseException(Exception):
             kwargs.setdefault("context", context)
         adapter_state = self._adapt_legacy_kwargs(**kwargs)
         self.error_code = str(adapter_state["error_code"])
+        # Governance-only canonicalization. Keep legacy error_code + context unchanged.
+        self.canonical_error_code = canonicalize_error_code(self.error_code)
         self.value_protected = str(adapter_state["value_protected"])
         self.resolution_for_agent = str(adapter_state["resolution_for_agent"])
         self.resolution_for_developer = str(adapter_state["resolution_for_developer"])
@@ -66,6 +70,7 @@ class LirixBaseException(Exception):
     def to_dict(self) -> dict[str, Any]:
         return {
             "error_code": self.error_code,
+            "canonical_error_code": self.canonical_error_code,
             "resolution_for_agent": self.resolution_for_agent,
             "resolution_for_developer": self.resolution_for_developer,
             "value_protected": self.value_protected,
@@ -87,6 +92,12 @@ class LirixCircuitBreakerError(LirixBaseException):
     pass
 
 
+class CircuitBreakerOpenException(LirixCircuitBreakerError):
+    """RPC / timeout circuit open; same lattice as LirixCircuitBreakerError for L4 parity."""
+
+    pass
+
+
 class LirixStateAssertionError(LirixBaseException):
     pass
 
@@ -95,28 +106,81 @@ class LirixRPCError(LirixBaseException):
     pass
 
 
-# Backward-compatible aliases for imports across the codebase.
 class LirixSecurityException(LirixBaseException):
     pass
 
 
-LirixDependencyError = LirixBaseException
-CircuitBreakerOpenException = LirixBaseException
-InvalidIntentException = LirixSecurityException
-ConfigurationGuardException = LirixBaseException
-HookExecutionException = LirixBaseException
-RPCUnavailableException = LirixBaseException
-ValidationFailedException = LirixBaseException
-HookUnknownPointException = LirixBaseException
-HookAsyncContextException = LirixBaseException
-AddressChecksumException = LirixBaseException
-SchemaValidationException = LirixBaseException
-SimulationFailedException = LirixBaseException
-MulticallEncodingException = LirixBaseException
-MaliciousPayloadException = LirixBaseException
-DeFiSlippageMissingException = LirixBaseException
-RPCQuotaExhaustedException = LirixBaseException
-InsufficientFeeException = LirixBaseException
-NonceDesyncException = LirixBaseException
-ContractPausedException = LirixBaseException
-LirixPolicyViolationException = LirixBaseException
+class InvalidIntentException(LirixSecurityException):
+    pass
+
+
+class LirixDependencyError(LirixBaseException):
+    pass
+
+
+class ConfigurationGuardException(LirixBaseException):
+    pass
+
+
+class HookExecutionException(LirixBaseException):
+    pass
+
+
+class RPCUnavailableException(LirixBaseException):
+    pass
+
+
+class ValidationFailedException(LirixBaseException):
+    pass
+
+
+class HookUnknownPointException(LirixBaseException):
+    pass
+
+
+class HookAsyncContextException(LirixBaseException):
+    pass
+
+
+class AddressChecksumException(LirixBaseException):
+    pass
+
+
+class SchemaValidationException(LirixBaseException):
+    pass
+
+
+class SimulationFailedException(LirixBaseException):
+    pass
+
+
+class MulticallEncodingException(LirixBaseException):
+    pass
+
+
+class MaliciousPayloadException(LirixBaseException):
+    pass
+
+
+class DeFiSlippageMissingException(LirixBaseException):
+    pass
+
+
+class RPCQuotaExhaustedException(LirixBaseException):
+    pass
+
+
+class InsufficientFeeException(LirixBaseException):
+    pass
+
+
+class NonceDesyncException(LirixBaseException):
+    pass
+
+
+class ContractPausedException(LirixBaseException):
+    pass
+
+
+class LirixPolicyViolationException(LirixBaseException):
+    pass

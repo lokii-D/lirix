@@ -26,16 +26,17 @@ class _Web3:
 
 
 def test_proxy_piercer_returns_none_on_diamond_beacon_and_decode_failures() -> None:
+    piercer = ProxyPiercer()
     assert (
-        ProxyPiercer._resolve_diamond_facet(
+        piercer._resolve_diamond_facet(
             _Web3(b""), Web3.to_checksum_address("0x0000000000000000000000000000000000000001")
         )
         is None
     )
     assert (
-        ProxyPiercer._resolve_beacon_implementation(
+        piercer._resolve_beacon_implementation(
             _Web3("0x1234"), Web3.to_checksum_address("0x0000000000000000000000000000000000000002")
         )
         is None
     )
-    assert ProxyPiercer._decode_abi_address(_Web3(), b"\x00" * 32) is None
+    assert piercer._decode_abi_address(_Web3(), b"\x00" * 32) is None

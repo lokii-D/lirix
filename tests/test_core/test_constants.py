@@ -3,10 +3,21 @@
 
 from __future__ import annotations
 
+import pytest
 from lirix.core.constants import PREDEFINED_HOOK_POINTS, build_agent_resolution
 
 
-def test_test_constants() -> None:
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("action", "repair"),
+        ("target_field", "rpc_urls"),
+        ("hook_point", "pre_validate"),
+        ("notes", "retry after fix"),
+        ("extra_flag", 1),
+    ],
+)
+def test_build_agent_resolution_fields(field: str, expected: object) -> None:
     payload = build_agent_resolution(
         action="repair",
         target_field="rpc_urls",
@@ -15,11 +26,16 @@ def test_test_constants() -> None:
         notes="retry after fix",
         extra_flag=1,
     )
-    assert payload["action"] == "repair"
+    assert payload[field] == expected
+
+
+def test_build_agent_resolution_schema_and_hook_points_contract() -> None:
+    payload = build_agent_resolution(
+        action="repair",
+        target_field="rpc_urls",
+        retry=True,
+        hook_point="pre_validate",
+    )
     assert payload["schema_version"] == 1
-    assert payload["target_field"] == "rpc_urls"
     assert payload["retry"] is True
-    assert payload["hook_point"] == "pre_validate"
-    assert payload["notes"] == "retry after fix"
-    assert payload["extra_flag"] == 1
     assert "pre_validate" in PREDEFINED_HOOK_POINTS

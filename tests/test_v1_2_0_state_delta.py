@@ -48,6 +48,7 @@ def test_test_v1_2_0_state_delta_2() -> None:
         assert exc_info.value.error_code == "LRX_HONEYPOT_DETECTED"
         assert exc_info.value.to_dict() == {
             "error_code": "LRX_HONEYPOT_DETECTED",
+            "canonical_error_code": "LIRIX_ERR_MALICIOUS_PAYLOAD",
             "resolution_for_agent": ("Return data 100 is less than expected 150."),
             "resolution_for_developer": "Check slippage or state override configurations.",
             "value_protected": "State Integrity",

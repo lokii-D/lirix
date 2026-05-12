@@ -18,6 +18,7 @@ def test_test_exceptions() -> None:
 
     assert set(payload) == {
         "error_code",
+        "canonical_error_code",
         "resolution_for_agent",
         "resolution_for_developer",
         "value_protected",

@@ -1,5 +1,8 @@
 # Contributor Covenant Code of Conduct v2.1
 
+**EN:** Contributor Covenant **2.1** English text below is the canonical community rules for this repository.  
+**中文：** 以下为 **Contributor Covenant 2.1** 英文权威正文；文末 **中文摘要** 为便于理解的非法律释义，冲突时以英文条文为准。体例见 [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md)。
+
 ## Preamble
 
 Lirix is a security and systems project. Our collaboration model is built on objective code review, reproducible evidence, and mathematical truth. We reject ad-hominem attacks, ego-driven debate, and performative conflict. Critique the artifact, not the author. Disagree with precision. Prove claims with data.
@@ -76,11 +79,30 @@ Community leaders will follow these Community Impact Guidelines in determining t
 
 **Consequence**: A permanent ban from any sort of public interaction within the community.
 
-## Project Specific Rules
+## ⚔️ Project Specific Rules
 
-Lirix is infrastructure for security-critical Web3 systems. We maintain zero tolerance for ad-hominem attacks, harassment, and debate tactics that replace evidence with ego.
+Lirix is infrastructure for security-critical Web3 systems.
 
-Technical disagreement is welcome. Personal attack is not.
+**Project-specific boundary:**
+
+- Technical disagreement is welcome.
+- Evidence-backed debate is encouraged.
+- Ego-driven fighting is not tolerated.
+- Harassment, ad-hominem attacks, and personal humiliation are treated as immediate boundary violations.
+- Code review must stay on code, logic, and reproducible proof.
+
+In short: we welcome brutal precision in engineering arguments, but we enforce a zero-tolerance circuit breaker on personal attacks.
+
+## 中文摘要（行为准则）
+
+本仓库采用 [Contributor Covenant](https://www.contributor-covenant.org) 2.1 作为协作规范：欢迎基于证据的技术争论，禁止人身攻击、骚扰与将代码审查工具化为人身攻击场所。不当行为可向维护者按英文 **Enforcement** 一节所列邮箱报告。执行分级（提醒、警告、临时封禁、永久封禁）与英文 **Enforcement Guidelines** 一致。若本摘要与上方英文正文有任何不一致，**以英文正文为准**。
+
+### 项目专属规则（中文高亮）
+
+- 欢迎围绕代码、架构、逻辑和证据展开“残酷但专业”的辩论。
+- 严禁 Ego 驱动的争吵、辱骂、讽刺性羞辱与人身攻击。
+- Code review 只讨论实现与证据，不讨论人格。
+- 一旦越过边界，维护者会直接执行**零容忍熔断**。
 
 ## Attribution
 

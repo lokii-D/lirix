@@ -9,9 +9,29 @@ from web3 import Web3
 
 from lirix.core.config import LirixConfig
 from lirix.core.constants import HOOK_ISOLATED_TIMEOUT_SEC, HOOK_LAYER_L1
-from lirix.core.exceptions import InvalidIntentException
+from lirix.core.exceptions import HookExecutionException, InvalidIntentException
 from lirix.core.hook_manager import HookManager
 from lirix.core.signatures import INTENT_TO_ALLOWED_SELECTORS
+
+
+def _first_blocking_hook_result(results: list[dict[str, Any]]) -> Optional[Mapping[str, Any]]:
+    for item in results:
+        if not bool(item.get("ok", True)) and str(item.get("failure_level", "")) == "fatal":
+            return item
+    return None
+
+
+def _raise_if_blocking_hook_on_payload(blocking: Optional[Mapping[str, Any]]) -> None:
+    if blocking is None:
+        return
+    raise HookExecutionException(
+        human_readable_reason="Blocking hook decision rejected payload.",
+        context={
+            "layer": "hooks",
+            "reason": "hook_blocked",
+            "hook_result": dict(blocking),
+        },
+    )
 
 
 class IntentValidator:
@@ -124,13 +144,14 @@ class IntentValidator:
         self._reconcile_intent_with_method_id(intent, payload)
         h = self._hooks
         if h is not None:
-            h.invoke_hooks_isolated(
+            hook_results = h.invoke_hooks_isolated(
                 HOOK_LAYER_L1,
                 layer="L1",
                 intent=intent,
                 payload=payload,
                 timeout_sec=HOOK_ISOLATED_TIMEOUT_SEC,
             )
+            _raise_if_blocking_hook_on_payload(_first_blocking_hook_result(hook_results))
         return True
 
     def validate_mapping(self, intent: str, payload: Mapping[str, Any]) -> bool:

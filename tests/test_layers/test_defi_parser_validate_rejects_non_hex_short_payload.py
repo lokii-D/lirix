@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 from lirix.core.config import LirixConfig
-from lirix.core.exceptions import DeFiSlippageMissingException, MaliciousPayloadException
+from lirix.core.exceptions import MaliciousPayloadException
 from lirix.layers.l3_defi_parser import DeFiPayloadParser
 
 
@@ -32,7 +32,7 @@ def test_test_defi_parser_validate_rejects_non_hex_short_payload() -> None:
 
 def test_test_defi_parser_validate_rejects_non_hex_short_payload_2() -> None:
     parser = DeFiPayloadParser(_cfg())
-    with pytest.raises(DeFiSlippageMissingException):
+    with pytest.raises(MaliciousPayloadException, match="Failed to decode swap calldata"):
         parser.validate(
             {"to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", "data": "0x38ed1739" + "00" * 100}
         )

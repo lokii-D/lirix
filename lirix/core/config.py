@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, List, Optional, Sequence
+import warnings
+from typing import Any, ClassVar, Dict, List, Literal, Mapping, Optional, Sequence
 
 from pydantic import (
     BaseModel,
@@ -15,6 +16,7 @@ from pydantic import (
 )
 from web3 import Web3
 
+from lirix.core.config_governance import validate_governance_modes
 from lirix.core.exceptions import ConfigurationGuardException
 
 MANTLE_MAINNET_RPC_URLS: tuple[str, ...] = (
@@ -61,6 +63,13 @@ class LirixConfig(BaseModel):
         description="RPC 端点列表（核心不得强绑定外网；断网场景由部署方提供本地 URL）",
     )
     allowed_intents: List[str] = Field(default_factory=list)
+    simulate_only_requires_prior_validate: bool = Field(
+        default=False,
+        description=(
+            "When True, simulate_only (sync/async) requires a prior successful validate_only "
+            "on the same ValidationSession (marks session.state['l1_l3_ok'])."
+        ),
+    )
     strict_mode: bool = True
     blacklisted_addresses: List[str] = Field(default_factory=list)
     whitelisted_addresses: List[str] = Field(default_factory=list)
@@ -79,6 +88,53 @@ class LirixConfig(BaseModel):
     uniswap_v2_router: Optional[str] = Field(
         default=None,
         description="L3：Uniswap V2 Router；None 且 chain_id==1 时使用以太坊主网常量",
+    )
+    hook_contract_mode: Literal["legacy", "warn", "shadow", "enforce"] = Field(
+        default="legacy",
+        description=(
+            "Hook contract execution mode. legacy is migration-only; shadow/enforce are the "
+            "stable operational modes."
+        ),
+    )
+    policy_lifecycle_mode: Literal["digest_verified"] = Field(
+        default="digest_verified",
+        description=(
+            "Stable policy lifecycle mode. digest_verified enforces SHA256(policy JSON) integrity."
+        ),
+    )
+    rpc_evidence_mode: Literal["v2_only"] = Field(
+        default="v2_only",
+        description="Stable RPC evidence mode. v2_only is the canonical runtime setting.",
+    )
+    l4_min_success_count: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="L4 非 strict 容错阈值：至少成功节点数（strict 下必须为 None）。",
+    )
+    l4_min_success_ratio: Optional[float] = Field(
+        default=None,
+        gt=0.0,
+        le=1.0,
+        description="L4 非 strict 容错阈值：最小成功比例（strict 下必须为 None）。",
+    )
+    chain_profile: Optional[Mapping[str, Any]] = Field(
+        default=None,
+        description="多链配置档案（MVP，兼容扩展）。",
+    )
+    decoder_plugins: List[Any] = Field(
+        default_factory=list,
+        description="L3 解码插件列表（MVP）。",
+    )
+    config_source_tags: Mapping[str, str] = Field(
+        default_factory=dict,
+        description="配置字段来源标签（explicit/profile/inferred/preset）。",
+    )
+    runtime_patch_allowlist: List[str] = Field(
+        default_factory=list,
+        description=(
+            "允许 runtime_patch 覆盖已存在显式配置的字段白名单。默认 fail-closed，"
+            "即 runtime_patch 只能补空，不可覆盖。"
+        ),
     )
 
     @field_validator("rpc_urls", mode="before")
@@ -109,6 +165,39 @@ class LirixConfig(BaseModel):
                 )
             out.append(item.strip())
         return out
+
+    @field_validator("policy_lifecycle_mode", mode="before")
+    @classmethod
+    def _normalize_policy_lifecycle_mode(cls, v: Any) -> str:
+        mode = str(v or "digest_verified").strip()
+        if mode == "signed_only":
+            warnings.warn(
+                "policy_lifecycle_mode=signed_only is deprecated; use digest_verified.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return "digest_verified"
+        if mode == "legacy":
+            warnings.warn(
+                "policy_lifecycle_mode=legacy is retired; coercing to digest_verified.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return "digest_verified"
+        return mode
+
+    @field_validator("rpc_evidence_mode", mode="before")
+    @classmethod
+    def _normalize_rpc_evidence_mode(cls, v: Any) -> str:
+        mode = str(v or "v2_only").strip()
+        if mode in {"legacy", "v2_dual"}:
+            warnings.warn(
+                f"rpc_evidence_mode={mode} is retired; coercing to v2_only.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return "v2_only"
+        return mode
 
     @field_validator("allowed_intents", mode="before")
     @classmethod
@@ -222,25 +311,23 @@ class LirixConfig(BaseModel):
 
     @model_validator(mode="after")
     def _guard_lists(self) -> LirixConfig:
-        if self.strict_mode:
-            overlap = set(self.blacklisted_addresses) & set(self.whitelisted_addresses)
-            if overlap:
-                raise ConfigurationGuardException(
-                    human_readable_reason=(
-                        "strict_mode forbids overlapping blacklist and whitelist."
-                    ),
-                    context={"reason": "overlap_blacklist_whitelist", "overlap": sorted(overlap)},
-                )
-            bad_to = set(self.blacklisted_addresses) & set(self.allowed_to_addresses)
-            if bad_to:
-                raise ConfigurationGuardException(
-                    human_readable_reason=(
-                        "strict_mode forbids addresses in both blacklisted_addresses "
-                        "and allowed_to_addresses."
-                    ),
-                    context={"reason": "overlap_blacklist_allowed_to", "overlap": sorted(bad_to)},
-                )
+        validate_governance_modes(self)
         return self
+
+    def with_source_tags(self, tags: Mapping[str, str]) -> LirixConfig:
+        normalized: Dict[str, str] = {str(k): str(v) for k, v in tags.items()}
+        merged = dict(self.config_source_tags)
+        merged.update(normalized)
+        return self.model_copy(update={"config_source_tags": merged})
+
+    @staticmethod
+    def governance_defaults() -> Dict[str, str]:
+        """Stable governance defaults for new integrations."""
+        return {
+            "hook_contract_mode": "shadow",
+            "policy_lifecycle_mode": "digest_verified",
+            "rpc_evidence_mode": "v2_only",
+        }
 
     @staticmethod
     def for_mantle(*, testnet: bool = False, strict_mode: bool = True) -> LirixConfig:
@@ -257,7 +344,7 @@ class LirixConfig(BaseModel):
                 "0x000000000000000000000000000000000000dEaD",
             }
         )
-        return LirixConfig(
+        config = LirixConfig(
             chain_id=chain_id,
             rpc_urls=rpc_urls,
             strict_mode=strict_mode,
@@ -275,4 +362,18 @@ class LirixConfig(BaseModel):
             blacklisted_addresses=["0x000000000000000000000000000000000000bEEF"],
             multicall3_address="0xcA11bde05977b3631167028862bE2a173976CA11",
             uniswap_v2_router="0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
+        )
+        return config.with_source_tags(
+            {
+                "profile_preset": "mantle_testnet" if testnet else "mantle_mainnet",
+                "chain_id": "preset",
+                "rpc_urls": "preset",
+                "allowed_intents": "preset",
+                "allowed_function_names": "preset",
+                "allowed_to_addresses": "preset",
+                "whitelisted_addresses": "preset",
+                "blacklisted_addresses": "preset",
+                "multicall3_address": "preset",
+                "uniswap_v2_router": "preset",
+            }
         )

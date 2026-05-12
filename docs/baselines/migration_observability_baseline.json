@@ -1,0 +1,43 @@
+{
+  "version": "1",
+  "source": "frozen_main_baseline",
+  "ci_workflows": {
+    "main_ci_has_schedule": false,
+    "compatibility_marker_expression": "python -m pytest -q -m \"not slow and not e2e and not network and not perf and not migration\"",
+    "slow_lane_workflows": [
+      ".github/workflows/slow-lane-schedule.yml"
+    ]
+  },
+  "entry_surface": {
+    "canonical_module": "lirix",
+    "root_export_count": 9
+  },
+  "compat_import_hits": {
+    "source_only_counts": {
+      "lirix._client_core": 6,
+      "lirix.core": 158
+    },
+    "scan_policy": {
+      "excluded_path_parts": [
+        ".git",
+        ".tox",
+        "build",
+        "dist",
+        "site-packages",
+        ".venv*"
+      ]
+    }
+  },
+  "tests": {
+    "test_files": 189,
+    "micro_files": 79,
+    "micro_ratio": 0.418
+  },
+  "test_markers": {
+    "slow": 10,
+    "e2e": 4,
+    "network": 4,
+    "perf": 6,
+    "migration": 0
+  }
+}

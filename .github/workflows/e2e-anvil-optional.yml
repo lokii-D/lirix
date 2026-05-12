@@ -1,0 +1,37 @@
+# --- Optional lane header (see docs/ci_gate_matrix.md) ---
+# Quality dimension: E2E / integration (Anvil-backed RPC paths).
+# Blocks mainline PR merges: no (optional; enable only via branch protection if desired).
+# Matrix anchor: docs/ci_gate_matrix.md → workflow "e2e-anvil-optional.yml".
+# ---
+# Non-required workflow: real Anvil-backed paths (does not block PR merges unless made required in repo settings).
+name: Optional Anvil E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+jobs:
+  anvil-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - uses: ./.github/actions/lirix-ci-setup
+        with:
+          python-version: "3.12"
+          checkout-repository: "false"
+      - name: Start Anvil
+        run: |
+          anvil --port 8545 --silent &
+          sleep 5
+      - name: Run test_real_e2e_paths
+        run: |
+          python -m pytest -o addopts= -v tests/test_integration/test_real_e2e_paths.py 2>&1 | tee pytest-e2e.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: optional-anvil-e2e-pytest-log
+          path: pytest-e2e.log

@@ -17,6 +17,15 @@ def test_defaults_are_initialized_when_only_chain_id_provided() -> None:
     assert cfg.strict_mode is True
 
 
+def test_governance_defaults_return_shadow_single_stack_profile() -> None:
+    defaults = LirixConfig.governance_defaults()
+    assert defaults == {
+        "hook_contract_mode": "shadow",
+        "policy_lifecycle_mode": "digest_verified",
+        "rpc_evidence_mode": "v2_only",
+    }
+
+
 def test_model_validate_none_allowed_function_names_coerces_to_empty_list() -> None:
     cfg = LirixConfig.model_validate(
         {"chain_id": 1, "strict_mode": False, "allowed_function_names": None}
@@ -276,3 +285,30 @@ def test_for_mantle_factory_populates_chain_defaults() -> None:
     assert {
         Web3.to_checksum_address(addr) for addr in LirixConfig.MANTLE_ALLOWED_TO_ADDRESSES
     }.issubset(set(cfg.allowed_to_addresses))
+
+
+@pytest.mark.filterwarnings(
+    "ignore:policy_lifecycle_mode=legacy is retired:DeprecationWarning",
+    "ignore:rpc_evidence_mode=legacy is retired:DeprecationWarning",
+)
+def test_retired_governance_labels_coerce_under_non_strict_config() -> None:
+    cfg = LirixConfig(
+        chain_id=1,
+        rpc_urls=["https://rpc.example"],
+        strict_mode=False,
+        policy_lifecycle_mode="legacy",
+        rpc_evidence_mode="legacy",
+    )
+    assert cfg.policy_lifecycle_mode == "digest_verified"
+    assert cfg.rpc_evidence_mode == "v2_only"
+
+
+@pytest.mark.filterwarnings("ignore:rpc_evidence_mode=v2_dual is retired:DeprecationWarning")
+def test_retired_rpc_evidence_v2_dual_coerces() -> None:
+    cfg = LirixConfig(
+        chain_id=1,
+        rpc_urls=["https://rpc.example"],
+        strict_mode=False,
+        rpc_evidence_mode="v2_dual",
+    )
+    assert cfg.rpc_evidence_mode == "v2_only"

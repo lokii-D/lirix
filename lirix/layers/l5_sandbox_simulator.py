@@ -82,7 +82,7 @@ def _decode_error_string(body: bytes) -> str:
         if isinstance(msg, str) and msg:
             return f"Contract reverted with message: {msg}"
         return "Contract reverted with an empty Error(string) message."
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "Contract reverted with Error(string), but the message could not be decoded."
 
 
@@ -91,7 +91,7 @@ def _decode_panic(body: bytes) -> str:
         code = int(eth_abi_decode(["uint256"], body)[0])
         detail = _PANIC_REASONS.get(code, f"unknown panic code 0x{code:x}.")
         return f"Solidity panic (0x{code:x}): {detail}"
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "Solidity panic revert; panic code could not be decoded."
 
 
@@ -105,11 +105,25 @@ def _translate_revert_signature(reason: str) -> Optional[ContractPausedException
     return None
 
 
+def _extract_simulation_metrics(payload: Mapping[str, Any], return_data: str) -> Dict[str, Any]:
+    # Contract-level slippage is protocol specific; keep explicit nullable metric.
+    return {
+        "slippage_bps": payload.get("slippage_bps"),
+        "return_data_len": len(return_data),
+    }
+
+
 class SandboxSimulator:
     """L5：基于 eth_call 的零 Gas 回滚模拟（不签名、不广播）。"""
 
-    def __init__(self, *, hooks: Optional[HookManager] = None) -> None:
+    def __init__(
+        self,
+        *,
+        hooks: Optional[HookManager] = None,
+        backend_profile: Optional[Mapping[str, Any]] = None,
+    ) -> None:
         self._hooks = hooks
+        self._backend_profile = dict(backend_profile or {})
 
     def simulate(
         self,
@@ -197,11 +211,14 @@ class SandboxSimulator:
                 human_readable_reason=f"RPC error during eth_call simulation: {exc!s}",
                 context={"layer": "L5", "block_number": block_number, "reason": "rpc_error"},
             ) from exc
+        return_data = "0x" + result.hex() if result else "0x"
         out = {
             "layer": "L5",
             "simulation_ok": True,
             "block_number": block_number,
-            "return_data": "0x" + result.hex() if result else "0x",
+            "return_data": return_data,
+            "metrics": _extract_simulation_metrics(payload, return_data),
+            "backend_profile": dict(self._backend_profile),
         }
         h = self._hooks
         if h is not None:
@@ -214,13 +231,15 @@ class SandboxSimulator:
             )
         return out
 
-    @staticmethod
-    def _build_result(*, block_number: int, result: Any) -> Dict[str, Any]:
+    def _build_result(self, *, block_number: int, result: Any) -> Dict[str, Any]:
+        return_data = "0x" + result.hex() if result else "0x"
         return {
             "layer": "L5",
             "simulation_ok": True,
             "block_number": block_number,
-            "return_data": "0x" + result.hex() if result else "0x",
+            "return_data": return_data,
+            "metrics": {"slippage_bps": None, "return_data_len": len(return_data)},
+            "backend_profile": dict(self._backend_profile),
         }
 
     @staticmethod

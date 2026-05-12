@@ -404,17 +404,17 @@ def test_test_l5_sandbox_25(
     )
     lix = Lirix(cfg)
 
-    def fake_reconcile(self: RPCManager) -> int:
+    async def fake_async_reconcile(self: RPCManager) -> int:
         return 1
 
-    def fake_web3(self: RPCManager) -> Web3:
+    def fake_async_web3(self: RPCManager) -> Web3:
         w = MagicMock()
         w.eth = MagicMock()
-        w.eth.call = MagicMock(return_value=b"")
+        w.eth.call = AsyncMock(return_value=b"")
         return w
 
-    monkeypatch.setattr(RPCManager, "sync_reconcile", fake_reconcile)
-    monkeypatch.setattr(RPCManager, "sync_web3", fake_web3)
+    monkeypatch.setattr(RPCManager, "async_reconcile", fake_async_reconcile)
+    monkeypatch.setattr(RPCManager, "async_web3", fake_async_web3)
 
     out = lix.validate_and_simulate(
         "swap",
@@ -577,20 +577,20 @@ def test_test_l5_sandbox_29(
     lix = Lirix(cfg)
     captured: dict[str, object] = {}
 
-    def fake_reconcile(self: RPCManager) -> int:
+    async def fake_async_reconcile(self: RPCManager) -> int:
         return 1
 
-    def fake_web3(self: RPCManager) -> Web3:
+    def fake_async_web3(self: RPCManager) -> Web3:
         w = MagicMock()
         w.eth = MagicMock()
-        w.eth.call = MagicMock(return_value=b"")
+        w.eth.call = AsyncMock(return_value=b"")
         return cast(Web3, w)
 
-    def fake_simulate(
+    async def fake_simulate_async(
         self: object,
         payload: object,
         *,
-        web3: object,
+        async_web3: object,
         block_number: int,
         state_overrides: object = None,
     ) -> dict[str, object]:
@@ -602,9 +602,9 @@ def test_test_l5_sandbox_29(
             "return_data": "0x",
         }
 
-    monkeypatch.setattr(RPCManager, "sync_reconcile", fake_reconcile)
-    monkeypatch.setattr(RPCManager, "sync_web3", fake_web3)
-    monkeypatch.setattr(SandboxSimulator, "simulate", fake_simulate)
+    monkeypatch.setattr(RPCManager, "async_reconcile", fake_async_reconcile)
+    monkeypatch.setattr(RPCManager, "async_web3", fake_async_web3)
+    monkeypatch.setattr(SandboxSimulator, "simulate_async", fake_simulate_async)
 
     ov = {"0x1111111111111111111111111111111111111111": {"balance": "0xDE0B6B3A7640000"}}
     lix.validate_and_simulate(

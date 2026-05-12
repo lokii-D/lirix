@@ -6,13 +6,19 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from lirix.core.config import LirixConfig
+
 LOGGER = logging.getLogger("lirix.cli")
 ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+_GOVERNANCE_DEFAULTS = LirixConfig.governance_defaults()
 ENV_DEFAULTS: Dict[str, str] = {
     "LIRIX_RPC_URLS": '"url1,url2,url3"',
     "LIRIX_BFT_THRESHOLD": "2",
     "LIRIX_MAX_PROXY_DEPTH": "3",
+    "LIRIX_HOOK_CONTRACT_MODE": _GOVERNANCE_DEFAULTS["hook_contract_mode"],
+    "LIRIX_POLICY_LIFECYCLE_MODE": _GOVERNANCE_DEFAULTS["policy_lifecycle_mode"],
+    "LIRIX_RPC_EVIDENCE_MODE": _GOVERNANCE_DEFAULTS["rpc_evidence_mode"],
 }
 
 POLICY_TEMPLATE = """from typing import List, Optional
@@ -34,11 +40,10 @@ DEFAULT_STRICT_POLICY = ShadowPolicySchema(
 AGENT_TEMPLATE = """from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
-from typing import cast
+from typing import Dict, List, cast
 
-from lirix.integrations.autogen.tool import lirix_validate_intent
-from lirix.integrations.langchain import LirixSecurityValidator
+from lirix import Lirix
+from lirix.core.config import LirixConfig
 
 from lirix_policy import DEFAULT_STRICT_POLICY  # type: ignore[import-not-found]
 
@@ -50,34 +55,44 @@ def _rpc_urls() -> List[str]:
 
 def _security_policy() -> Dict[str, object]:
     result = DEFAULT_STRICT_POLICY.model_dump(mode="python")
+    result.update(_governance_modes_from_env())
     return cast(Dict[str, object], result)
 
 
-VALIDATOR = LirixSecurityValidator(
-    rpc_urls=_rpc_urls(),
-    default_intent="swap",
-    security_policy=_security_policy(),
-)
+def _governance_modes_from_env() -> Dict[str, str]:
+    defaults = LirixConfig.governance_defaults()
+    return {
+        "hook_contract_mode": os.getenv(
+            "LIRIX_HOOK_CONTRACT_MODE", defaults["hook_contract_mode"]
+        ).strip(),
+        "policy_lifecycle_mode": os.getenv(
+            "LIRIX_POLICY_LIFECYCLE_MODE", defaults["policy_lifecycle_mode"]
+        ).strip(),
+        "rpc_evidence_mode": os.getenv(
+            "LIRIX_RPC_EVIDENCE_MODE", defaults["rpc_evidence_mode"]
+        ).strip(),
+    }
 
 
-def run_langchain_dummy_agent(user_prompt: str) -> str:
-    \"\"\"Minimal agent loop stub for LangChain-style tool invocation.\"\"\"
-    return VALIDATOR._run(user_prompt, intent="swap")
+GUARDIAN = Lirix(rpc_urls=_rpc_urls())
 
 
-def run_autogen_dummy_agent(user_prompt: str, intent: Optional[str] = None) -> str:
-    \"\"\"Minimal AutoGen-style tool bridge using the same strict policy.\"\"\"
-    return lirix_validate_intent(
-        raw_intent_or_calldata=user_prompt,
-        rpc_urls=_rpc_urls(),
-        intent=intent or "swap",
-        security_policy=_security_policy(),
+def run_guardian(user_prompt: str, *, intent: str = "swap") -> Dict[str, object]:
+    \"\"\"Core-only scaffold path; optional integrations can wrap this function.\"\"\"
+    return cast(
+        Dict[str, object],
+        GUARDIAN.validate_and_simulate(
+            intent,
+            user_prompt,
+            security_policy=_security_policy(),
+        ),
     )
 
 
 def main() -> None:
     sample_prompt = "swap 1 ETH for USDC on Uniswap"
-    print(run_langchain_dummy_agent(sample_prompt))
+    result = run_guardian(sample_prompt, intent="swap")
+    print(result["decision"])
 
 
 if __name__ == "__main__":

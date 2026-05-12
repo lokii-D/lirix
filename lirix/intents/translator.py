@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from lirix.core.builder import CalldataBuilder
+from lirix.core.calldata_builder import CalldataBuilder
 from lirix.core.exceptions import ValidationFailedException
 from lirix.registry.bridges import resolve_bridge_route
 

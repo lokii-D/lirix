@@ -1,0 +1,36 @@
+# Internal import allowlist for `tools/no_internal_imports_gate.py`
+#
+# Format:
+#   <posix_relpath> | expires=YYYY-MM-DD | reason=<free text>
+#
+# Notes:
+# - Entries MUST expire.
+# - This file is audited: prefer deleting entries by migrating callers to public APIs.
+#
+
+tests/test_core/test_client_core_exports_contract.py | expires=2026-12-31 | reason=contract test pins internal compat surface
+tests/test_core/test_guard.py | expires=2026-12-31 | reason=legacy migration coverage; may still reference compat surface
+tests/test_core/test_coverage_fail_under_100_closure.py | expires=2026-12-31 | reason=legacy migration coverage; references legacy surface
+tests/test_core/test_coverage_tail_closure.py | expires=2026-12-31 | reason=legacy migration coverage; references compat surface
+tests/test_core/test_coverage_closure_v16.py | expires=2026-12-31 | reason=legacy migration coverage; references compat surface
+tests/test_core/test_entrypoint_symbol_binding_contract.py | expires=2026-12-31 | reason=contract test referencing compat surface symbols
+tests/test_core/test_governance_coverage_closure_adapter.py | expires=2026-12-31 | reason=governance closure coverage; legacy/compat references
+tests/test_core/test_plan_alignment_hardening_coverage.py | expires=2026-12-31 | reason=plan alignment coverage; legacy/compat references
+tests/test_core/test_replay_registry_closure_binding.py | expires=2026-12-31 | reason=replay closure coverage; compat surface references
+tests/test_core/test_replay_registry_closure_parity_all_entrypoints.py | expires=2026-12-31 | reason=replay closure coverage; compat surface references
+tests/test_core/test_session.py | expires=2026-12-31 | reason=session contract tests; compat references
+tests/test_core/test_simulate_only_prior_validate_config.py | expires=2026-12-31 | reason=compat coverage; references internal compat module
+tests/test_core/test_sync_async_contract_consistency.py | expires=2026-12-31 | reason=compat contract; references internal compat module
+tests/test_intelligence_coverage_batch.py | expires=2026-12-31 | reason=coverage batch includes legacy/compat references
+tests/test_legacy/test_lirix_guard_last_trace_documented_keys.py | expires=2026-12-31 | reason=legacy behavior contract; uses legacy module
+tests/test_v1_1_2_hardened_final.py | expires=2026-12-31 | reason=legacy baseline test; references legacy module
+tests/test_vivisection_e2e.py | expires=2026-12-31 | reason=e2e migration test; references legacy/compat modules
+docs/audit_path_map.md | expires=2026-12-31 | reason=migration documentation includes internal path references
+docs/api_reference.md | expires=2026-12-31 | reason=docs mention internal compat surface for migration guidance
+docs/adr_0001_architecture_convergence_baseline.md | expires=2026-12-31 | reason=historical ADR includes internal import references
+docs/legacy_sunset_milestones.md | expires=2026-12-31 | reason=migration documentation mentions legacy surface
+docs/migration_legacy_to_v2.md | expires=2026-12-31 | reason=migration documentation includes legacy references
+docs/release_notes.md | expires=2026-12-31 | reason=release notes may reference migration/internal module names
+README.md | expires=2026-12-31 | reason=README migration section mentions internal compat surface
+CONTRIBUTING.md | expires=2026-12-31 | reason=contributor docs reference legacy/compat during migration
+

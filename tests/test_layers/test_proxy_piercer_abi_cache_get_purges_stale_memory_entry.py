@@ -45,7 +45,9 @@ def test_test_proxy_piercer_abi_cache_get_purges_stale_memory_entry_2(tmp_path: 
 def test_test_proxy_piercer_abi_cache_get_purges_stale_memory_entry_3() -> None:
     payload = {"handler": lambda x: x}
     copied = AbiLRUCache._copy_cached_abi(payload)
-    assert copied is payload
+    # Standard deepcopy isolates the mapping; callables are carried by reference.
+    assert copied is not payload
+    assert copied["handler"] is payload["handler"]
 
 
 def test_test_proxy_piercer_abi_cache_get_purges_stale_memory_entry_4(tmp_path: Path) -> None:

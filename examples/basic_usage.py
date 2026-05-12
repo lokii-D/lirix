@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 lokii
 
-"""Minimal Lirix validation flow (no signing, no broadcast)."""
+"""Minimal Lirix validation flow (no signing, no broadcast).
+
+Audit/replay: use ``validate_only`` (returns ``replay_bundle``, ``evidence_v2``, …).
+If you only need a bool and discard evidence, ``chain_validate`` delegates to the same path.
+"""
 
 from __future__ import annotations
 
@@ -37,7 +41,7 @@ def main() -> None:
     )
     client = Lirix(cfg)
     data = _swap_calldata(path=[weth, usdc], recipient=recipient)
-    ok = client.chain_validate(
+    result = client.validate_only(
         "swap",
         {
             "to": router,
@@ -45,7 +49,8 @@ def main() -> None:
             "data": data,
         },
     )
-    print("chain_validate:", ok)
+    assert result["validated"] is True
+    print("validate_only: replay_bundle=", "bundle_digest" in result.get("replay_bundle", {}))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "window_days": 7,
+  "generated_at": "2026-05-11T00:00:00Z",
+  "metrics": {
+    "pr_required_latency_minutes": {
+      "value": 16.2,
+      "target_leq": 20.0,
+      "trend_vs_prev_window_minutes": -1.3
+    },
+    "main_full_coverage_latency_minutes": {
+      "value": 42.5,
+      "target_leq": 50.0,
+      "trend_vs_prev_window_minutes": -2.1
+    },
+    "gate_failures": {
+      "total": 11,
+      "target_leq": 15,
+      "trend_vs_prev_window_count": -4,
+      "by_category": {
+        "contract": 4,
+        "docs_drift": 3,
+        "test_flake": 2,
+        "infra": 2
+      }
+    }
+  },
+  "admission": {
+    "required": [
+      "pr_required_latency_minutes.value <= pr_required_latency_minutes.target_leq",
+      "main_full_coverage_latency_minutes.value <= main_full_coverage_latency_minutes.target_leq",
+      "gate_failures.total <= gate_failures.target_leq"
+    ],
+    "status": "pass"
+  }
+}

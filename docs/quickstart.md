@@ -1,6 +1,148 @@
 # Quickstart / 快速开始
 
+
+**EN:** Authoritative technical content in the sections below; repo-wide bilingual conventions: [`documentation_styleguide.md`](documentation_styleguide.md).
+
+## ⚡ Operator snapshot
+
+Lirix is an **EVM-grade airlock**: calldata and intent enter; either structured evidence leaves, or the call **fails closed**. **Zero keys in-library.** Treat security exceptions as telemetry you act on, not noise to swallow.
+
+- **Ship fast:** install (`bash` blocks below), then prove intent with `validate_only` or the full stack via `validate_and_simulate`.
+- **Ship safe:** minimize allowlists, keep signing out-of-process, align imports with **`docs/migration_legacy_to_v2.md`** (root export policy).
+- **Roll governance:** `hook_contract_mode` from shadow → enforce; keep single-stack targets explicit—alias labels are migration-only coercion shims.
+
+---
+
+## English
+
+### Install
+
+```bash
+pip install lirix
+```
+
+Editable install for development:
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Security notice (required reading)
+
+- **Zero private keys in-library**: Lirix does not accept, store, or process private keys or mnemonics; signing and broadcasting stay in your application.
+- **Fail-closed**: validation failures raise exceptions; do not swallow security exceptions in business code.
+- **No telemetry**: the SDK does not send usage analytics to third parties.
+
+Runtime dependencies are listed in `pyproject.toml` (e.g. `web3`, `eth-abi`, `pydantic`). This project does **not** claim to be dependency-free at runtime.
+
+### Minimal example
+
+```python
+from lirix import Lirix, LirixConfig
+from web3 import Web3
+
+cfg = LirixConfig(
+    chain_id=1,
+    strict_mode=False,
+    rpc_urls=[],
+    allowed_intents=["swap"],
+    allowed_function_names=["swapExactTokensForTokens"],
+    allowed_to_addresses=[
+        Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"),
+    ],
+    whitelisted_addresses=[
+        Web3.to_checksum_address("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"),
+        Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+    ],
+    blacklisted_addresses=[],
+)
+client = Lirix(cfg)
+_ = client.validate_only(
+    "swap",
+    {
+        "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "function_name": "swapExactTokensForTokens",
+        "data": "0x...",  # replace with real calldata from tests or tooling
+    },
+)
+```
+
+Further samples live under `examples/`.
+
+### Layer types (L4/L5)
+
+The root package keeps evidence-oriented entrypoints and `LirixSecurityException` only. Import pipeline types from subpackages:
+
+```python
+from lirix.layers import RPCManager, SandboxSimulator, ProxyPiercer
+from lirix.core import HookManager
+```
+
+See **`docs/migration_legacy_to_v2.md`** (Root export policy).
+
+### Entry Path Matrix
+
+- `validate_only`: L1-L3 validation only.
+- `simulate_only`: L4-L5 simulation facts only.
+- `validate_and_simulate`: full security pipeline.
+- `atomic_multicall`: batch packing with pre-validation.
+
+### LangChain (optional extra)
+
+```bash
+pip install lirix[langchain]
+# editable install with LangChain extras
+pip install -e ".[langchain]"
+```
+
+For `lirix.integrations.langchain.LirixSecurityValidator`, install the extra above. Default `optional_deps_mode="best_effort"` suits minimal installs; for production, pass `optional_deps_mode="fail_closed"` so missing `langchain_core` fails at construction time.
+
+### Progressive Migration Flags
+
+Use additive config flags to roll out stricter controls gradually:
+`hook_contract_mode`, `policy_lifecycle_mode`, `rpc_evidence_mode`.
+
+Production guidance (does not change defaults):
+
+- Prefer `hook_contract_mode="shadow"` first, then `hook_contract_mode="enforce"` once hooks are stable.
+- Treat `hook_contract_mode="legacy"` as migration-only. Do not add new production deployments that rely on legacy hook contract behavior.
+- For new integrations, use the single-stack targets (`policy_lifecycle_mode="digest_verified"`, `rpc_evidence_mode="v2_only"`) and avoid alias inputs (`legacy`, `signed_only`, `v2_dual`).
+
+#### Migration-only (deprecated aliases, coercion-only)
+
+State machine (aligned with `docs/migration_legacy_to_v2.md`):
+
+- **Removed**: runtime behavior for `rpc_evidence_mode=legacy|v2_dual` and `policy_lifecycle_mode=legacy`
+- **Migrating**: alias inputs (`legacy`, `v2_dual`, `signed_only`) are **coercion-only compatibility shims**
+- **Pending removal**: alias input acceptance in the next major release
+
+Hard constraints:
+
+- **Aliases are coercion-only compatibility shims** (accepted to unblock migrations; immediately coerced; do not enable legacy runtime)
+  - `rpc_evidence_mode=legacy|v2_dual` → `v2_only`
+  - `policy_lifecycle_mode=legacy|signed_only` → `digest_verified`
+- **Freeze**: do not add new `legacy` / `v2_dual` / `signed_only` usage
+- **Next major**: alias inputs removed (hard removal window)
+
+Example (migration-only; remove ASAP):
+
+```python
+cfg = LirixConfig(
+    chain_id=1,
+    rpc_urls=["https://..."],
+    hook_contract_mode="warn",
+    policy_lifecycle_mode="legacy",  # coerced → "digest_verified"
+    rpc_evidence_mode="v2_dual",     # coerced → "v2_only"
+)
+```
+
+See: `docs/migration_legacy_to_v2.md` (Single-stack convergence timeline / Migration state machine).
+
+---
+
 ## 中文
+
+**中文：** 正文为权威技术叙述；全仓双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ### 安装
 
@@ -46,7 +188,8 @@ cfg = LirixConfig(
     blacklisted_addresses=[],
 )
 client = Lirix(cfg)
-client.chain_validate(
+# 取证闭环优先用 validate_only；仅需 bool 时可用 chain_validate（内部等价）。
+_ = client.validate_only(
     "swap",
     {
         "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
@@ -58,32 +201,82 @@ client.chain_validate(
 
 更多示例见仓库 `examples/` 目录。
 
----
+### 分层类型（L4/L5 等）
 
-## English
+根包仅保留取证向入口与 `LirixSecurityException`；大件类型请从子包导入：
 
-### Install
-
-```bash
-pip install lirix
+```python
+from lirix.layers import RPCManager, SandboxSimulator, ProxyPiercer
+from lirix.core import HookManager  # 钩子调度
 ```
 
-Editable install for development:
+详见 **`docs/migration_legacy_to_v2.md`**（Root export policy）。
+
+### LangChain 集成（可选依赖）
 
 ```bash
-pip install -e ".[dev]"
+pip install lirix[langchain]
+# 开发环境（可编辑安装 + LangChain extras）
+pip install -e ".[langchain]"
 ```
 
-### Security notice (required reading)
+若使用 `lirix.integrations.langchain.LirixSecurityValidator`，请使用上述 extras（安装 `langchain` / `langchain-core`）。**默认 `optional_deps_mode="best_effort"`**：便于无 LangChain 的最小安装或本地测试（内置 stub）。**推荐在生产集成中显式传入 `optional_deps_mode="fail_closed"`**：缺少 `langchain_core` 时在构造阶段抛出 `ConfigurationGuardException`，避免静默分叉。
 
-- **Zero private keys in-library**: Lirix does not accept, store, or process private keys or mnemonics; signing and broadcasting stay in your application.
-- **Fail-closed**: validation failures raise exceptions; do not swallow security exceptions in business code.
-- **No telemetry**: the SDK does not send usage analytics to third parties.
+### 入口路径速览
 
-Runtime dependencies are listed in `pyproject.toml` (e.g. `web3`, `eth-abi`, `pydantic`). This project does **not** claim to be dependency-free at runtime.
+- `validate_only`：只做结构与语义校验（L1-L3）。
+- `simulate_only`：只做 RPC 对账与沙盒模拟（L4-L5）。
+- `validate_and_simulate`：完整路径（推荐默认）。
+- `atomic_multicall`：批量交易打包后统一校验。
 
-### Minimal example
+### 渐进式迁移开关
 
-See the Python block above; replace `"0x..."` with real calldata from your integration tests or tooling.
+```python
+cfg = LirixConfig(
+    chain_id=1,
+    rpc_urls=["https://..."],
+    hook_contract_mode="shadow",
+    policy_lifecycle_mode="digest_verified",
+    rpc_evidence_mode="v2_only",
+)
+```
 
-Further samples live under `examples/`.
+这些开关用于**渐进式 rollout**（不改变既有默认值），但对**新集成**的推荐值是 single-stack 目标：
+
+- `policy_lifecycle_mode="digest_verified"`
+- `rpc_evidence_mode="v2_only"`
+
+生产环境建议：
+
+- `hook_contract_mode`：优先用 `"shadow"` 观察与留证，稳定后切到 `"enforce"`；`"legacy"` 仅作为迁移期兼容（不要新增依赖 legacy 的生产部署）。
+- `policy_lifecycle_mode` / `rpc_evidence_mode`：不要新增 `legacy` / `signed_only` / `v2_dual` 输入；这些标签处于迁移窗口，仅用于下游存量迁移。
+
+#### Migration-only（deprecated aliases, coercion-only）
+
+迁移状态机（与 `docs/migration_legacy_to_v2.md` 一致）：
+
+- **Removed**：`rpc_evidence_mode=legacy|v2_dual`、`policy_lifecycle_mode=legacy` 的旧运行时行为已移除
+- **Migrating**：输入 alias（`legacy` / `v2_dual` / `signed_only`）是 **coercion-only compatibility shims**
+- **Pending removal**：下个 major 版本移除 alias 输入接受
+
+硬约束（迁移窗口纪律）：
+
+- **Aliases are coercion-only compatibility shims**（仅为兼容输入，**不会**开启旧运行时；会在配置归一阶段立即被 coercion）
+  - `rpc_evidence_mode=legacy|v2_dual` → `v2_only`
+  - `policy_lifecycle_mode=legacy|signed_only` → `digest_verified`
+- **Freeze**：不要新增任何 `legacy` / `v2_dual` / `signed_only` 使用
+- **Next major**：移除 alias 输入接受（hard removal）
+
+示例（仅迁移期可用；推荐尽快移除）：
+
+```python
+cfg = LirixConfig(
+    chain_id=1,
+    rpc_urls=["https://..."],
+    hook_contract_mode="warn",
+    policy_lifecycle_mode="legacy",  # coerced → "digest_verified"
+    rpc_evidence_mode="v2_dual",     # coerced → "v2_only"
+)
+```
+
+迁移细节与权威时间线见：`docs/migration_legacy_to_v2.md`（**Single-stack convergence timeline** / **Migration state machine**）。

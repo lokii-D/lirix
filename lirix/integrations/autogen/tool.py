@@ -2,11 +2,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Mapping, Optional, Sequence
 
-import lirix as lirix_pkg
+from lirix import Lirix
 from lirix.core.exceptions import LirixBaseException
-from lirix.integrations.langchain.tool import _format_security_exception
+from lirix.integrations.langchain.tool import (
+    _format_payload_parse_feedback,
+    _format_security_exception,
+    _merge_raw_intent_overlay,
+    _serialize_guardian_success,
+)
 
 
 def lirix_validate_intent(
@@ -18,6 +23,7 @@ def lirix_validate_intent(
 ) -> str:
     """Validate untrusted agent output through Lirix for AutoGen function calling.
 
+    **Prompt contract:** upstream agents MUST call this before any on-chain execution.
     This function is intentionally standalone so it can be registered with
     AutoGen's `register_for_llm` and `register_for_execution` protocols.
 
@@ -34,11 +40,16 @@ def lirix_validate_intent(
         A JSON-like string for safe results, or the remediation string from
         `LirixSecurityException.resolution_for_agent` when the payload is unsafe.
     """
-    guardian = lirix_pkg.Lirix(rpc_urls=rpc_urls)
-    merged_payload = {"raw_intent_or_calldata": raw_intent_or_calldata}
-    if state_delta_assertions is not None:
-        merged_payload.update(dict(state_delta_assertions))
     resolved_intent = intent or "unknown"
+    try:
+        merged_payload = _merge_raw_intent_overlay(
+            raw_intent_or_calldata=raw_intent_or_calldata,
+            overlay=dict(state_delta_assertions or {}),
+        )
+    except ValueError as exc:
+        return _format_payload_parse_feedback(exc)
+
+    guardian = Lirix(rpc_urls=rpc_urls)
     try:
         result = guardian.validate_and_simulate(
             resolved_intent,
@@ -47,9 +58,7 @@ def lirix_validate_intent(
         )
     except LirixBaseException as exc:
         return _format_security_exception(exc)
-    if hasattr(result, "model_dump_json"):
-        return str(cast(Any, result).model_dump_json())
-    return str(result)
+    return _serialize_guardian_success(result)
 
 
 async def alirix_validate_intent(

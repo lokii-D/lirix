@@ -10,14 +10,21 @@ from io import StringIO
 from typing import Any, cast
 
 import pytest
-from lirix import AuditLogger
-from lirix.core.constants import HOOK_LAYER_L2, HOOK_POST_VALIDATE, HOOK_PRE_VALIDATE
+from lirix.audit.logger import AuditLogger
+from lirix.core.canonical_taxonomy import lookup_reason_taxon
+from lirix.core.constants import (
+    AGENT_FEEDBACK_REASON_TIMEOUT,
+    HOOK_LAYER_L2,
+    HOOK_POST_VALIDATE,
+    HOOK_PRE_VALIDATE,
+)
 from lirix.core.exceptions import (
     HookAsyncContextException,
     HookExecutionException,
     HookUnknownPointException,
     InvalidIntentException,
 )
+from lirix.core.hook_contract import HookDecision, HookPatch, ReadonlyHookPayload
 from lirix.core.hook_manager import HookManager
 
 
@@ -209,6 +216,7 @@ def test_invoke_hooks_isolated_marks_timeout_result() -> None:
     out = mgr.invoke_hooks_isolated(HOOK_LAYER_L2, timeout_sec=0.2)
     assert out[0]["ok"] is False
     assert "timeout" in str(out[0].get("error", ""))
+    assert out[0]["retryable"] is lookup_reason_taxon(AGENT_FEEDBACK_REASON_TIMEOUT).retry_allowed
 
 
 def test_invoke_hooks_isolated_timeout_and_success_are_both_recorded() -> None:
@@ -253,6 +261,7 @@ def test_invoke_hooks_isolated_continues_after_nonfatal_errors() -> None:
     assert log == ["a", "c"]
     assert out[0]["ok"] is True
     assert out[1]["ok"] is False
+    assert out[1]["retryable"] is False
     assert out[2]["ok"] is True
 
 
@@ -304,6 +313,134 @@ def test_invoke_hooks_isolated_reports_async_hook_requires_ainvoke() -> None:
     out = mgr.invoke_hooks_isolated(HOOK_LAYER_L2, timeout_sec=None)
     assert out[0]["ok"] is False
     assert out[0].get("error") == "async_hook_requires_ainvoke"
+    assert "payload_contract" in out[0]
+    assert out[0]["payload_contract"]["version"] == "1.0"
+
+
+def test_invoke_hooks_isolated_enforce_mode_rejects_uncontrolled_return() -> None:
+    mgr = HookManager(contract_mode="enforce")
+
+    def bad(*args: object, **kwargs: object) -> object:
+        return object()
+
+    mgr.register_hook(HOOK_LAYER_L2, bad)
+    out = mgr.invoke_hooks_isolated(HOOK_LAYER_L2, payload={"a": 1})
+    assert out[0]["ok"] is False
+    assert out[0]["error_code"] == "LIRIX_HOOK_CONTRACT_VIOLATION"
+    assert out[0]["failure_level"] == "fatal"
+
+
+def test_invoke_hooks_isolated_enforce_mode_accepts_hook_decision() -> None:
+    mgr = HookManager(contract_mode="enforce")
+
+    def ok(*args: object, **kwargs: object) -> HookDecision:
+        return HookDecision(status="approved", failure_level="observe_only")
+
+    mgr.register_hook(HOOK_LAYER_L2, ok)
+    out = mgr.invoke_hooks_isolated(HOOK_LAYER_L2, payload={"a": 1})
+    assert out[0]["ok"] is True
+    assert out[0]["failure_level"] == "observe_only"
+
+
+def test_invoke_hooks_isolated_applies_hook_patch_to_mutable_payload() -> None:
+    mgr = HookManager(contract_mode="enforce")
+    payload = {"a": 1}
+
+    def patcher(*args: object, **kwargs: object) -> HookPatch:
+        return HookPatch(updates={"b": 2}, reason="enrich")
+
+    mgr.register_hook(HOOK_PRE_VALIDATE, patcher)
+    out = mgr.invoke_hooks_isolated(HOOK_PRE_VALIDATE, intent="swap", payload=payload)
+    assert out[0]["ok"] is True
+    assert payload["b"] == 2
+    assert out[0].get("patch_applied_fields") == ["b"]
+
+
+def test_invoke_hooks_isolated_enforce_mode_rejects_patch_on_post_validate() -> None:
+    mgr = HookManager(contract_mode="enforce")
+    payload = {"a": 1}
+
+    def patcher(*args: object, **kwargs: object) -> HookPatch:
+        return HookPatch(updates={"b": 2}, reason="should be blocked")
+
+    mgr.register_hook(HOOK_POST_VALIDATE, patcher)
+    out = mgr.invoke_hooks_isolated(HOOK_POST_VALIDATE, payload=payload)
+    assert out[0]["ok"] is False
+    assert out[0]["error_code"] == "LIRIX_HOOK_PATCH_FORBIDDEN"
+    assert "b" not in payload
+    assert "patch_applied_fields" not in out[0]
+
+
+def test_invoke_hooks_isolated_warn_mode_reports_patch_forbidden_warning_on_post_validate() -> None:
+    mgr = HookManager(contract_mode="warn")
+    payload = {"a": 1}
+
+    def patcher(*args: object, **kwargs: object) -> HookPatch:
+        return HookPatch(updates={"b": 2}, reason="should be warned")
+
+    mgr.register_hook(HOOK_POST_VALIDATE, patcher)
+    out = mgr.invoke_hooks_isolated(HOOK_POST_VALIDATE, payload=payload)
+    assert out[0]["ok"] is True
+    assert out[0]["error_code"] == "LIRIX_HOOK_PATCH_FORBIDDEN_WARNING"
+    assert out[0].get("patch_allowed") is False
+    assert payload == {"a": 1}
+    assert "patch_applied_fields" not in out[0]
+
+
+def test_invoke_hooks_isolated_shadow_mode_reports_patch_forbidden_shadow_warning_on_post_validate() -> (
+    None
+):
+    mgr = HookManager(contract_mode="shadow")
+    payload = {"a": 1}
+
+    def patcher(*args: object, **kwargs: object) -> HookPatch:
+        return HookPatch(updates={"b": 2}, reason="should be shadow-warned")
+
+    mgr.register_hook(HOOK_POST_VALIDATE, patcher)
+    out = mgr.invoke_hooks_isolated(HOOK_POST_VALIDATE, payload=payload)
+    assert out[0]["ok"] is True
+    assert out[0]["error_code"] == "LIRIX_HOOK_PATCH_FORBIDDEN_SHADOW_WARNING"
+    assert out[0].get("patch_allowed") is False
+    assert payload == {"a": 1}
+
+
+def test_invoke_hooks_isolated_enforce_mode_rejects_patch_target_not_payload() -> None:
+    mgr = HookManager(contract_mode="enforce")
+    payload = {"a": 1}
+
+    def patcher(*args: object, **kwargs: object) -> HookPatch:
+        return HookPatch(updates={"b": 2}, target="state", reason="bad target")
+
+    mgr.register_hook(HOOK_PRE_VALIDATE, patcher)
+    out = mgr.invoke_hooks_isolated(HOOK_PRE_VALIDATE, intent="swap", payload=payload)
+    assert out[0]["ok"] is False
+    assert out[0]["error_code"] == "LIRIX_HOOK_PATCH_TARGET_FORBIDDEN"
+    assert payload == {"a": 1}
+
+
+def test_invoke_hooks_isolated_warn_mode_reports_contract_warning() -> None:
+    mgr = HookManager(contract_mode="warn")
+
+    def bad(*args: object, **kwargs: object) -> object:
+        return object()
+
+    mgr.register_hook(HOOK_LAYER_L2, bad)
+    out = mgr.invoke_hooks_isolated(HOOK_LAYER_L2, payload={"a": 1})
+    assert out[0]["ok"] is True
+    assert out[0]["contract_warning"] is True
+
+
+def test_invoke_hooks_isolated_wraps_payload_as_readonly_view() -> None:
+    mgr = HookManager(contract_mode="enforce")
+    seen: dict[str, object] = {}
+
+    def inspect_payload(*args: object, **kwargs: object) -> HookDecision:
+        seen["payload"] = kwargs["payload"]
+        return HookDecision(status="approved")
+
+    mgr.register_hook(HOOK_LAYER_L2, inspect_payload)
+    mgr.invoke_hooks_isolated(HOOK_LAYER_L2, payload={"a": 1})
+    assert isinstance(seen["payload"], ReadonlyHookPayload)
 
 
 def test_ainvoke_hooks_isolated_reports_timeout_for_slow_sync_hook() -> None:
