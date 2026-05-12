@@ -21,6 +21,7 @@ venv/
 .venv_ci312/
 .python-version
 .env
+.env.release
 
 # Virtual Environments
 .lirix_audit_venv/

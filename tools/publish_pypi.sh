@@ -4,6 +4,9 @@
 # One command (token never belongs in git — use env for this shell only):
 #   PYPI_TOKEN='pypi-…' ./tools/publish_pypi.sh
 #
+# For Cursor/agent runs: copy `.env.release.example` → `.env.release`, fill values
+# (file is gitignored). This script loads `.env.release` if present.
+#
 # Equivalent explicit form:
 #   TWINE_USERNAME=__token__ TWINE_PASSWORD='pypi-…' ./tools/publish_pypi.sh
 #
@@ -13,10 +16,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+if [[ -f "${ROOT}/.env.release" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env.release"
+  set +a
+fi
+
 if [[ -n "${PYPI_TOKEN:-}" && -z "${TWINE_PASSWORD:-}" ]]; then
   export TWINE_PASSWORD="${PYPI_TOKEN}"
 fi
-: "${TWINE_PASSWORD:?Missing credentials. Set PYPI_TOKEN or TWINE_PASSWORD to your PyPI API token.}"
+: "${TWINE_PASSWORD:?Missing PyPI credentials. Export PYPI_TOKEN (or TWINE_PASSWORD), or create .env.release from .env.release.example.}"
 export TWINE_USERNAME="${TWINE_USERNAME:-__token__}"
 
 PYTHON="${ROOT}/.venv_ci312/bin/python"
