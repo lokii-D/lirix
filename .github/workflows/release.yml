@@ -32,13 +32,16 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.sha }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: "3.12"
           cache: pip
@@ -58,7 +61,7 @@ jobs:
         run: twine check --strict dist/*
 
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: dist
           path: dist/
@@ -68,26 +71,30 @@ jobs:
     name: Publish to PyPI and GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: py${{ 'pi' }}
+      url: https://pypi.org/project/lirix/
     permissions:
       contents: write
       id-token: write
+      actions: read
 
     steps:
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: dist
           path: dist
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
           skip-existing: true
 
       # v2: if a GitHub Release already exists for this tag (e.g. created from the
       # web UI first), assets are merged/updated instead of failing like v1 often did.
       - name: Create or update GitHub Release assets
-        uses: softprops/action-gh-release@v2.6.2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.6.2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: Lirix ${{ env.RELEASE_TAG }}

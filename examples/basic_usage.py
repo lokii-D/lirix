@@ -10,8 +10,7 @@ If you only need a bool and discard evidence, ``chain_validate`` delegates to th
 from __future__ import annotations
 
 from eth_abi import encode as abi_encode  # type: ignore[attr-defined]
-from lirix import Lirix, LirixConfig
-from lirix.core.signatures import SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR
+from lirix import SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR, Lirix, LirixConfig
 from web3 import Web3
 
 

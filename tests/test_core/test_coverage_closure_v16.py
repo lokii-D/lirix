@@ -16,13 +16,15 @@ from lirix.core.hook_contract import (
 )
 from lirix.core.hook_manager import HookManager
 
+from tests.conftest import LOCAL_ANVIL_RPC_URL
+
 
 def test_simulate_only_success_and_trace_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     guard = Lirix(
         LirixConfig(
             chain_id=1,
             strict_mode=False,
-            rpc_urls=["http://127.0.0.1:8545"],
+            rpc_urls=[LOCAL_ANVIL_RPC_URL],
         )
     )
 
@@ -82,7 +84,7 @@ def test_simulate_only_failure_attaches_agent_feedback_and_bundles(
         LirixConfig(
             chain_id=1,
             strict_mode=False,
-            rpc_urls=["http://127.0.0.1:8545"],
+            rpc_urls=[LOCAL_ANVIL_RPC_URL],
         )
     )
 

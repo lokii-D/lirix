@@ -28,6 +28,7 @@ from lirix.layers.l5_sandbox_simulator import (
     _normalize_revert_payload,
     evm_revert_to_natural_language,
 )
+from tests.conftest import LOCAL_ANVIL_ALT_RPC_URL
 from web3 import Web3
 from web3.exceptions import ContractLogicError, Web3Exception
 
@@ -341,7 +342,7 @@ def _anvil_json_rpc(url: str, method: str, params: list[object]) -> dict[str, ob
 
 def test_test_l5_sandbox_24() -> None:
     """集成：真实 eth_call 回滚与 Error(string) 解析一致（需本地 Anvil）。"""
-    rpc = "http://127.0.0.1:18545"
+    rpc = LOCAL_ANVIL_ALT_RPC_URL
     if shutil.which("anvil") is None:
         pytest.skip("anvil not found in PATH")
     artifact = _repo_root() / "out" / "Reverter.sol" / "Reverter.json"

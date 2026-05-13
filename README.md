@@ -189,7 +189,7 @@ flowchart LR
 - **`simulate_only` / `async_simulate_only`** — L4–L5, with optional prior validation gate.
 - **`validate_and_simulate` / `async_validate_and_simulate`** — full DAG.
 - **`atomic_multicall`** — multicall packing with L1–L3 alignment.
-- **Layer types** — import from **`lirix.layers`**; hooks and exceptions from **`lirix.core`**.
+- **Layer types** — prefer **`from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator`**; use **`lirix.layers`** / **`lirix.core`** when you need the full catalog (e.g. `ShadowAuditor`, `MulticallEncoder`).
 
 ### Progressive migration flags
 
@@ -216,10 +216,10 @@ Full tree: **`docs/STRUCTURE.md`**. Control plane table: **`docs/architecture_co
 - **General:** [Discussions](https://github.com/lokii-D/lirix/discussions) / [Issues](https://github.com/lokii-D/lirix/issues)
 - **Security:** do **not** open public issues; follow **`SECURITY.md`**.
 
-**Q: Why no private key?**  
+**Q: Why no private key?**<br>
 A: Lirix validates and simulates; **you** sign. Separation of duties is the model.
 
-**Q: `externally-managed-environment`?**  
+**Q: `externally-managed-environment`?**<br>
 A: Use a venv; never `pip install --break-system-packages`.
 
 ---
@@ -401,7 +401,7 @@ flowchart LR
 - **`simulate_only` / `async_simulate_only`** — L4–L5，可按配置在前面挂验证门。
 - **`validate_and_simulate` / `async_validate_and_simulate`** — 全 DAG 路径。
 - **`atomic_multicall`** — 与 L1–L3 对齐的 multicall 打包。
-- **Layer 类型** — 从 **`lirix.layers`** 导入；Hook 与异常从 **`lirix.core`** 导入。
+- **Layer 类型** — 优先 **`from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator`**；需要完整目录（如 `ShadowAuditor`、`MulticallEncoder`）时再用 **`lirix.layers`** / **`lirix.core`**。
 
 ### 渐进式迁移开关
 
@@ -428,10 +428,10 @@ lirix/
 - **普通讨论：** [Discussions](https://github.com/lokii-D/lirix/discussions) / [Issues](https://github.com/lokii-D/lirix/issues)
 - **安全问题：** 不要开公开 Issue；请遵循 **`SECURITY.md`**。
 
-**Q：为什么没有私钥？**  
+**Q：为什么没有私钥？**<br>
 A：Lirix 负责校验与模拟，**你** 负责签名。职责分离是设计本身。
 
-**Q：遇到 `externally-managed-environment` 怎么办？**  
+**Q：遇到 `externally-managed-environment` 怎么办？**<br>
 A：先建 venv，永远不要直接 `pip install --break-system-packages`。
 
 ---

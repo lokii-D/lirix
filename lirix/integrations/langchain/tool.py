@@ -25,6 +25,10 @@ from lirix.core.exceptions import (
 
 _LANGCHAIN_CORE_AVAILABLE: bool = False
 
+# Upper bound for untrusted agent text and re-parsed validator envelopes before
+# json.loads (Python ``len`` on str; 51200 matches the 50KB integration contract).
+_MAX_JSON_TEXT_BYTES = 51200
+
 if TYPE_CHECKING:
 
     class BaseTool:
@@ -69,6 +73,11 @@ def _merge_raw_intent_overlay(
     parsed: dict[str, Any] = {}
     raw_txt = raw_intent_or_calldata.strip()
     if raw_txt.startswith("{") and raw_txt.endswith("}"):
+        if len(raw_txt) > _MAX_JSON_TEXT_BYTES:
+            raise ValueError(
+                "Failed to parse payload: The generated intent string exceeds the "
+                "50KB maximum security bound."
+            )
         try:
             blob = json.loads(raw_txt)
         except json.JSONDecodeError as exc:
@@ -145,6 +154,11 @@ def _serialize_guardian_success(result: Any) -> str:
         return json.dumps(out, sort_keys=True, default=str)
     if hasattr(result, "model_dump_json"):
         raw = str(cast(Any, result).model_dump_json())
+        if len(raw) > _MAX_JSON_TEXT_BYTES:
+            raise ValueError(
+                "Failed to parse payload: The serialized validator output exceeds the "
+                "50KB maximum security bound."
+            )
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
@@ -325,7 +339,10 @@ class LirixSecurityValidator(BaseTool):
                 )
         except LirixBaseException as exc:
             return _format_security_exception(exc)
-        return _serialize_guardian_success(result)
+        try:
+            return _serialize_guardian_success(result)
+        except ValueError as exc:
+            return _format_payload_parse_feedback(exc)
 
     async def _ainvoke_guardian(
         self,
@@ -363,7 +380,10 @@ class LirixSecurityValidator(BaseTool):
                 )
         except LirixBaseException as exc:
             return _format_security_exception(exc)
-        return _serialize_guardian_success(result)
+        try:
+            return _serialize_guardian_success(result)
+        except ValueError as exc:
+            return _format_payload_parse_feedback(exc)
 
     def _run(
         self,

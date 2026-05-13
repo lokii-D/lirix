@@ -6,6 +6,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+LOCAL_ANVIL_RPC_URL = "http://127.0.0.1:8545"
+LOCAL_ANVIL_RPC_LOCALHOST_URL = "http://localhost:8545"
+RPC_URL_UNREACHABLE_HIGH_PORT = "http://127.0.0.1:59999"
+RPC_URL_TINY_PORT = "http://127.0.0.1:9"
+LOCAL_ANVIL_ALT_RPC_URL = "http://127.0.0.1:18545"
+
 warnings.filterwarnings(
     "ignore",
     message=(

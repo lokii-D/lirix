@@ -4,7 +4,7 @@ purpose: deterministic selection + rollback semantics for audit
 compatibility: additive-only documentation; no runtime behavior changes
 ---
 
-**EN:** Policy bundle selection and rollback semantics (audit companion); conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Policy bundle selection and rollback semantics (audit companion); conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 策略包选择与回滚语义（审计配套）；体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## Scope
@@ -103,4 +103,3 @@ Policy decision reports emitted by Lirix include the following auditable fields:
 - `policy_decision.bundle.conflicts[]`
 
 See: `tests/test_layers/test_shadow_auditor_policy_bundle.py` for executable proof.
-

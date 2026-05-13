@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Awaitable, Callable, Dict, Literal, Mapping, NoReturn, Optional, Protocol
 from uuid import uuid4
 
@@ -29,9 +30,9 @@ from lirix.core.evidence import (
 from lirix.core.exceptions import HookExecutionException, LirixBaseException
 from lirix.core.failure_protocol import build_failure_protocol_from_agent_feedback
 from lirix.core.hook_manager import HookManager
+from lirix.core.layer_ports import RpcEvidenceSource
 from lirix.core.session import ValidationSession, ensure_session
 from lirix.core.trace_recorder import TraceRecorder
-from lirix.layers import RPCManager
 
 HookResult: TypeAlias = list[dict[str, Any]]
 RunKind: TypeAlias = Literal[
@@ -42,6 +43,8 @@ RunKind: TypeAlias = Literal[
     "simulate_only",
     "async_simulate_only",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 class OrchestratorClient(Protocol):
@@ -91,10 +94,10 @@ class OrchestratorClient(Protocol):
 
     def _ensure_simulate_only_precondition(self, sess: ValidationSession) -> None: ...
 
-    def _build_rpc_manager(self) -> RPCManager: ...
+    def _build_rpc_manager(self) -> RpcEvidenceSource: ...
 
     def _l4_orchestration_details(
-        self, *, rpc: RPCManager, block_number: int
+        self, *, rpc: RpcEvidenceSource, block_number: int
     ) -> Mapping[str, Any]: ...
 
     def _build_sandbox_simulator(self) -> object: ...
@@ -114,7 +117,7 @@ class OrchestratorClient(Protocol):
         kind: RunKind,
         sess: ValidationSession,
         trace: SecurityTrace,
-        rpc: RPCManager,
+        rpc: RpcEvidenceSource,
         policy_decision: Mapping[str, Any],
     ) -> Dict[str, Any]: ...
 
@@ -211,6 +214,7 @@ class LirixPipelineOrchestrator:
         blocked_note: str,
         recorder: TraceRecorder,
     ) -> NoReturn:
+        logger.error(f"Lirix pipeline execution blocked/failed: {exc}", exc_info=True)
         failure_context = error_to_feedback_mapper(exc)
         recorder.record_step(
             ExecutionEvidence(
@@ -407,8 +411,8 @@ class LirixPipelineOrchestrator:
         state_overrides: Optional[StateOverride],
         session: Optional[ValidationSession],
         invoke_hooks: Callable[..., Awaitable[HookResult]],
-        reconcile: Callable[[RPCManager], Awaitable[int]],
-        get_web3: Callable[[RPCManager], Awaitable[Any]],
+        reconcile: Callable[[RpcEvidenceSource], Awaitable[int]],
+        get_web3: Callable[[RpcEvidenceSource], Awaitable[Any]],
         simulate: Callable[
             [Any, Mapping[str, Any], int, Optional[StateOverride]], Awaitable[Dict[str, Any]]
         ],
@@ -507,8 +511,8 @@ class LirixPipelineOrchestrator:
         security_policy: Optional[Mapping[str, Any]],
         session: Optional[ValidationSession],
         invoke_hooks: Callable[..., Awaitable[HookResult]],
-        reconcile: Callable[[RPCManager], Awaitable[int]],
-        get_web3: Callable[[RPCManager], Awaitable[Any]],
+        reconcile: Callable[[RpcEvidenceSource], Awaitable[int]],
+        get_web3: Callable[[RpcEvidenceSource], Awaitable[Any]],
         simulate: Callable[
             [Any, Mapping[str, Any], int, Optional[StateOverride]], Awaitable[Dict[str, Any]]
         ],

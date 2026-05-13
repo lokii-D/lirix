@@ -4,7 +4,7 @@ purpose: architecture -> code -> tests -> evidence -> CI gate
 compatibility: additive-only; single-stack runtime with legacy aliases as input-only compatibility
 ---
 
-**EN:** Single source of audit truth — each row links assertions to code, tests, evidence keys, and CI gates.  
+**EN:** Single source of audit truth — each row links assertions to code, tests, evidence keys, and CI gates.<br>
 **中文：** 审计单一事实来源：每行将断言映射到实现、测试、可观测证据键与 CI 门禁。双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ---
@@ -217,4 +217,3 @@ The repo uses tests as explicit governance gates. The minimum contract is:
 - [`adr_0002_ci_fast_required_minset_and_governance_lane.md`](adr_0002_ci_fast_required_minset_and_governance_lane.md) — Fast Required 与 governance lane 的 ADR。
 - [`major_hard_removal_plan.md`](major_hard_removal_plan.md) — 硬移除与收敛计划。
 - [`migration_observability_dashboard.md`](migration_observability_dashboard.md) — 迁移可观测看板说明（与 `tools/migration_observability_report.py` 产出配套）。
-

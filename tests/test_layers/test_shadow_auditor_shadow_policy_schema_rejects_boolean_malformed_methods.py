@@ -4,14 +4,15 @@
 from __future__ import annotations
 
 import pytest
+from lirix.core.exceptions import ConfigurationGuardException
 from lirix.layers.l5_shadow_auditor import ShadowAuditor, ShadowPolicySchema
 from web3 import Web3
 
 
 def test_test_shadow_auditor_shadow_policy_schema_rejects_boolean_malformed_methods() -> None:
-    with pytest.raises(ValueError, match="must be 'ANY' or a list"):
+    with pytest.raises(ConfigurationGuardException, match="must be 'ANY' or a list"):
         ShadowPolicySchema(allowed_target_contracts=True)
-    with pytest.raises(ValueError, match="non-empty strings"):
+    with pytest.raises(ConfigurationGuardException, match="non-empty strings"):
         ShadowPolicySchema(forbidden_methods=["   "])
 
 

@@ -16,6 +16,7 @@ from lirix.core.exceptions import (
 )
 from lirix.core.hook_manager import HookManager
 from lirix.layers.l4_rpc_manager import BLOCK_HEIGHT_SPREAD_THRESHOLD, RPCManager
+from tests.conftest import RPC_URL_TINY_PORT
 
 
 def _cfg(urls: list[str]) -> LirixConfig:
@@ -36,7 +37,7 @@ def test_test_l4_rpc_manager() -> None:
 
 
 def test_test_l4_rpc_manager_2() -> None:
-    mgr = RPCManager(_cfg(["http://127.0.0.1:9"]))
+    mgr = RPCManager(_cfg([RPC_URL_TINY_PORT]))
     with pytest.raises(RPCUnavailableException) as ei:
         mgr.sync_web3()
     assert ei.value.context.get("reason") == "web3_not_ready"

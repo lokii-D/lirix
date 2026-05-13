@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from lirix.core.exceptions import ConfigurationGuardException
 from lirix.layers.l5_shadow_auditor import ShadowAuditor, ShadowPolicySchema
 
 
 def test_shadow_policy_schema_rejects_invalid_target_address() -> None:
-    with pytest.raises(ValueError, match="invalid address"):
+    with pytest.raises(ConfigurationGuardException, match="invalid address"):
         ShadowPolicySchema(allowed_target_contracts=["not-an-address"])
 
 

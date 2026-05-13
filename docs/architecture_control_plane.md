@@ -1,6 +1,6 @@
 # Lirix Control Plane Architecture
 
-**EN:** Control-plane assertions (config, session, replay, hooks, chain profiles) mapped to code paths, tests, and evidence keys.  
+**EN:** Control-plane assertions (config, session, replay, hooks, chain profiles) mapped to code paths, tests, and evidence keys.<br>
 **中文：** 控制面断言（配置、会话、回放、钩子、链配置）与代码路径、测试与证据键的对照；审计入口见下。
 
 The control plane is the **auditable join** between configuration authority, layered validators, and typed evidence keys—nothing here is decorative prose.
@@ -8,6 +8,8 @@ The control plane is the **auditable join** between configuration authority, lay
 > Single audit entrypoint: **[`docs/audit_path_map.md`](audit_path_map.md)** (architecture → code → tests → evidence → CI)
 
 Authoritative semantics for `l1_l3_ok`: **[Session gate semantics (l1_l3_ok)](audit_path_map.md#session-gate-semantics-l1_l3_ok)** in `docs/audit_path_map.md`.
+
+**Core vs layers (dependency inversion):** `lirix/core/layer_ports.py` defines the `Protocol` contracts (`RpcEvidenceSource`, `PipelineLayerExecutor`) so `lirix.core` orchestration stays free of `lirix.layers` imports; `lirix/_layer_factories.py` holds the concrete L4/L5 factory wiring consumed from `lirix/_facade.py`.
 
 ---
 

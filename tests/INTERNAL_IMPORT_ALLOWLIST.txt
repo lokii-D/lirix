@@ -33,4 +33,3 @@ docs/migration_legacy_to_v2.md | expires=2026-12-31 | reason=migration documenta
 docs/release_notes.md | expires=2026-12-31 | reason=release notes may reference migration/internal module names
 README.md | expires=2026-12-31 | reason=README migration section mentions internal compat surface
 CONTRIBUTING.md | expires=2026-12-31 | reason=contributor docs reference legacy/compat during migration
-

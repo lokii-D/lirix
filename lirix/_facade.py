@@ -11,13 +11,13 @@ from typing import Any, Callable, Coroutine, Dict, Mapping, Optional, Sequence, 
 
 from web3.types import StateOverride
 
+from lirix._layer_factories import LirixPipelineLayerExecutor
 from lirix.audit.logger import AuditLogger
 from lirix.core.chain_adapter import ChainAdapter, build_chain_profile
 from lirix.core.client_components import (
     ClientPipelineProtocol,
     EvidenceAssembler,
     FailureContextEnricher,
-    PipelineExecutor,
     ResultBuilder,
 )
 from lirix.core.config import LirixConfig
@@ -39,6 +39,7 @@ from lirix.core.exceptions import (
 )
 from lirix.core.failure_protocol import resolve_failure_protocol_to_agent_feedback
 from lirix.core.hook_manager import HookManager
+from lirix.core.layer_ports import RpcEvidenceSource
 from lirix.core.orchestrator import LirixPipelineOrchestrator, RunKind
 from lirix.core.registry_profile_guard import validate_lirix_strict_registry
 from lirix.core.session import ValidationSession, verify_replay_bundle
@@ -46,7 +47,6 @@ from lirix.core.trace_recorder import TraceRecorder
 from lirix.layers.l1_intent_validator import IntentValidator
 from lirix.layers.l2_schema_validator import SchemaValidator
 from lirix.layers.l3_defi_parser import DeFiPayloadParser
-from lirix.layers.l4_rpc_manager import RPCManager
 from lirix.layers.l5_shadow_auditor import ShadowAuditor
 
 
@@ -82,7 +82,7 @@ class Lirix:
         rpc_policy = dict(profile.rpc_policy or {})
         rpc_timeout = int(rpc_policy.get("request_timeout", 30))
         self._pipeline = ClientPipelineProtocol(
-            executor=PipelineExecutor(
+            executor=LirixPipelineLayerExecutor(
                 request_timeout=rpc_timeout,
                 backend_profile=self.chain_adapter.simulation_backend_profile(),
             ),
@@ -464,13 +464,15 @@ class Lirix:
     async def _get_web3(self, rpc_manager: Any) -> Any:
         return rpc_manager.async_web3()
 
-    def _build_rpc_manager(self) -> RPCManager:
+    def _build_rpc_manager(self) -> RpcEvidenceSource:
         return self._pipeline.executor.build_rpc_manager(self.config, self.hooks)
 
     def _build_sandbox_simulator(self) -> Any:
         return self._pipeline.executor.build_sandbox_simulator(self.hooks)
 
-    def _l4_orchestration_details(self, *, rpc: RPCManager, block_number: int) -> Dict[str, Any]:
+    def _l4_orchestration_details(
+        self, *, rpc: RpcEvidenceSource, block_number: int
+    ) -> Dict[str, Any]:
         return {
             "block_number": block_number,
             "rpc_evidence": rpc.evidence_snapshot(),
@@ -565,7 +567,7 @@ class Lirix:
         kind: RunKind,
         sess: ValidationSession,
         trace: SecurityTrace,
-        rpc: RPCManager,
+        rpc: RpcEvidenceSource,
         policy_decision: Mapping[str, Any],
     ) -> Dict[str, Any]:
         _ = policy_decision

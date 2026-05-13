@@ -58,7 +58,10 @@ def lirix_validate_intent(
         )
     except LirixBaseException as exc:
         return _format_security_exception(exc)
-    return _serialize_guardian_success(result)
+    try:
+        return _serialize_guardian_success(result)
+    except ValueError as exc:
+        return _format_payload_parse_feedback(exc)
 
 
 async def alirix_validate_intent(

@@ -15,8 +15,11 @@ permissions:
 jobs:
   sbom:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
       - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
@@ -26,7 +29,7 @@ jobs:
       - name: Generate SBOM
         run: |
           cyclonedx-py environment -o lirix-sbom.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: lirix-cyclonedx-sbom
           path: lirix-sbom.json

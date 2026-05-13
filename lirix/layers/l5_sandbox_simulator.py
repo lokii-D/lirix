@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional, Union, cast
 
 from eth_abi import decode as eth_abi_decode  # type: ignore[attr-defined]
+from eth_abi.exceptions import DecodingError
 from web3 import AsyncWeb3, Web3
 from web3.exceptions import ContractLogicError, Web3Exception
 from web3.types import StateOverride, TxParams
@@ -82,7 +83,7 @@ def _decode_error_string(body: bytes) -> str:
         if isinstance(msg, str) and msg:
             return f"Contract reverted with message: {msg}"
         return "Contract reverted with an empty Error(string) message."
-    except Exception:
+    except (DecodingError, ValueError, TypeError):
         return "Contract reverted with Error(string), but the message could not be decoded."
 
 
@@ -91,7 +92,7 @@ def _decode_panic(body: bytes) -> str:
         code = int(eth_abi_decode(["uint256"], body)[0])
         detail = _PANIC_REASONS.get(code, f"unknown panic code 0x{code:x}.")
         return f"Solidity panic (0x{code:x}): {detail}"
-    except Exception:
+    except (DecodingError, ValueError, TypeError):
         return "Solidity panic revert; panic code could not be decoded."
 
 

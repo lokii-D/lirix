@@ -1,4 +1,4 @@
-**EN:** Baseline snapshot policy for CI gates; Markdown conventions: [`documentation_styleguide.md`](../documentation_styleguide.md).  
+**EN:** Baseline snapshot policy for CI gates; Markdown conventions: [`documentation_styleguide.md`](../documentation_styleguide.md).<br>
 **中文：** CI 门禁所用基线快照说明；体例见 [`documentation_styleguide.md`](../documentation_styleguide.md)。
 
 ## Baselines
@@ -29,4 +29,3 @@ Used as the authoritative baseline for:
 
 - The baseline file must remain **small and stable**: counts and policies only.
 - Any baseline bump must be explicitly justified in PR description / release notes.
-

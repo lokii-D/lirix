@@ -63,4 +63,3 @@ Recommended joins:
   - `evidence_v2.l4`, `evidence_v2.l5`, `evidence_v2.policy`
 
 All shapes are **additive-only**; consumers must tolerate extra keys inside `details`.
-

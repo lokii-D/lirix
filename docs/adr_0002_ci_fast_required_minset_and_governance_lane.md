@@ -1,4 +1,4 @@
-**EN:** Architecture Decision Record (ADR); repository Markdown conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Architecture Decision Record (ADR); repository Markdown conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 架构决策记录；全仓双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## ADR 0002: CI fast_required minimal set and governance lane split
@@ -86,4 +86,3 @@ A gate must be migrated out of `Fast Required` when any is true:
 - `tools/failure_surface_triage_gate.py`
 - `tools/legacy_sunset_gate.py`
 - `tools/phase_exit_checklists_gate.py`
-

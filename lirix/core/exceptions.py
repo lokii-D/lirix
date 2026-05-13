@@ -106,7 +106,7 @@ class LirixRPCError(LirixBaseException):
     pass
 
 
-class LirixSecurityException(LirixBaseException):
+class LirixSecurityException(LirixBaseException, RuntimeError):
     pass
 
 

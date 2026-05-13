@@ -1,4 +1,13 @@
-* text=auto
+# Lirix Absolute Git Core Override
+* text=auto eol=lf
 *.py text eol=lf
-*.yml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
 *.toml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+
+# Exclude binary or specific files from normalization if any (e.g., images)
+*.png binary
+*.jpg binary
+*.whl binary

@@ -28,6 +28,7 @@ from lirix.core.evidence import RPCDisagreementReport, build_layer_evidence_v2
 from lirix.core.exceptions import (
     CircuitBreakerOpenException,
     LirixRPCError,
+    LirixSecurityException,
     RPCQuotaExhaustedException,
     RPCUnavailableException,
 )
@@ -224,7 +225,7 @@ class RPCManager:
         self._failures[url] = n
         if n >= CIRCUIT_FAILURE_THRESHOLD:
             self._open[url] = True
-            self._cooldown_until[url] = time.time() + self.CIRCUIT_COOLDOWN_SECONDS
+            self._cooldown_until[url] = time.monotonic() + self.CIRCUIT_COOLDOWN_SECONDS
 
     def _record_outcome(
         self,
@@ -324,7 +325,7 @@ class RPCManager:
         ) from exc
 
     def _record_transport_success(self, url: str) -> None:
-        if time.time() < self._cooldown_until.get(url, 0):
+        if time.monotonic() < self._cooldown_until.get(url, 0):
             return
         self._failures[url] = 0
         self._open[url] = False
@@ -798,7 +799,10 @@ class AsyncQuorumProvider:
                     raise
                 await asyncio.sleep(delay)
                 delay *= 2
-        raise RuntimeError(f"unreachable retry state for {url}")
+        raise LirixSecurityException(
+            human_readable_reason=f"unreachable retry state for {url}",
+            context={"layer": "L4", "reason": "retry_state_unreachable", "url": url},
+        )
 
     async def quorum_eth_call(self, tx: Dict[str, Any]) -> Dict[str, Any]:
         if not self._rpc_urls:

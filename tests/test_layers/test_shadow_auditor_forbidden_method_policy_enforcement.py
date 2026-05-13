@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import pytest
-from lirix.core.exceptions import LirixPolicyViolationException
+from lirix.core.exceptions import ConfigurationGuardException, LirixPolicyViolationException
 from lirix.layers.l5_shadow_auditor import ShadowAuditor, ShadowPolicySchema
 from web3 import Web3
 
 
 def test_shadow_policy_schema_rejects_non_hex_forbidden_selector() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigurationGuardException):
         ShadowPolicySchema(forbidden_methods=["0xzzzzzzzz"])
 
 

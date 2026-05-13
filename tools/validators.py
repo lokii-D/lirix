@@ -95,7 +95,9 @@ def check_test_compat_matrix() -> int:
 
 
 def check_import_topology() -> int:
-    return _run_repo_command([sys.executable, str(_REPO_ROOT / "tools/gen_lirix_import_graph.py"), "--check"])
+    return _run_repo_command(
+        [sys.executable, str(_REPO_ROOT / "tools/gen_lirix_import_graph.py"), "--check"]
+    )
 
 
 def check_release_notes_gate() -> int:

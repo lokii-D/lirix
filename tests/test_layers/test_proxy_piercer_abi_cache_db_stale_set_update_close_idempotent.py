@@ -5,6 +5,7 @@ from typing import Any
 
 import lirix.layers.l3_proxy_piercer as piercer_mod
 import pytest
+from lirix.core.exceptions import LirixSecurityException
 from lirix.layers.l3_proxy_piercer import AbiLRUCache, ProxyPiercer
 from web3 import Web3
 
@@ -89,7 +90,7 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_3(
     monkeypatch.setattr(piercer, "_resolve_diamond_facet", lambda w3, t: None)
 
     now = [100.0]
-    monkeypatch.setattr(piercer_mod.time, "time", lambda: now[0])
+    monkeypatch.setattr(piercer_mod.time, "monotonic", lambda: now[0])
     piercer.INSPECTION_CACHE_TTL_SECONDS = 1
     piercer._store_inspection_cache(target, result, now[0])
     now[0] = 200.0
@@ -168,9 +169,10 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_5(
 
     assert ProxyPiercer._read_slot_address(_W3(_ZeroTailEth()), target, 1) is None
     piercer = ProxyPiercer()
-    assert (
-        piercer._resolve_diamond_facet(_W3(_Eth(call_error=RuntimeError("boom"))), target) is None
-    )
+    with pytest.raises(LirixSecurityException) as boom_exc:
+        piercer._resolve_diamond_facet(_W3(_Eth(call_error=RuntimeError("boom"))), target)
+    assert boom_exc.value.context.get("reason") == "diamond_facet_unexpected"
+    assert "boom" in str(boom_exc.value.context.get("detail", ""))
     assert piercer._resolve_diamond_facet(_W3(_Eth(call_result="zzzz")), target) is None
     assert piercer._resolve_diamond_facet(_W3(_Eth(call_result=object())), target) is None
     assert piercer._resolve_beacon_implementation(_W3(_Eth(call_result="zzzz")), target) is None

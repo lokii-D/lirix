@@ -296,16 +296,33 @@ class LirixConfig(BaseModel):
         if v is None:
             return []
         if not isinstance(v, Sequence) or isinstance(v, (str, bytes)):
-            raise ValueError(f"{field_name} must be a list of address strings.")
+            raise ConfigurationGuardException(
+                human_readable_reason=f"{field_name} must be a list of address strings.",
+                context={"field": field_name, "reason": "type_invalid"},
+            )
         out: List[str] = []
         for i, item in enumerate(v):
             if not isinstance(item, str):
-                raise ValueError(f"{field_name}[{i}] must be a non-empty string address.")
+                raise ConfigurationGuardException(
+                    human_readable_reason=f"{field_name}[{i}] must be a non-empty string address.",
+                    context={"field": field_name, "index": i, "reason": "entry_type_invalid"},
+                )
             raw = item.strip()
             if not raw:
-                raise ValueError(f"{field_name}[{i}] must be a non-empty string address.")
+                raise ConfigurationGuardException(
+                    human_readable_reason=f"{field_name}[{i}] must be a non-empty string address.",
+                    context={"field": field_name, "index": i, "reason": "entry_empty"},
+                )
             if not Web3.is_address(raw):
-                raise ValueError(f"{field_name}[{i}] is not a valid hex address.")
+                raise ConfigurationGuardException(
+                    human_readable_reason=f"{field_name}[{i}] is not a valid hex address.",
+                    context={
+                        "field": field_name,
+                        "index": i,
+                        "reason": "address_invalid",
+                        "value": raw,
+                    },
+                )
             out.append(Web3.to_checksum_address(raw))
         return out
 

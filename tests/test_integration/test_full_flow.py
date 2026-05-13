@@ -14,6 +14,7 @@ from lirix.core.exceptions import (
 from lirix.core.hook_manager import HookManager
 from lirix.core.multicall import MulticallEncoder
 from lirix.layers.l4_rpc_manager import RPCManager
+from tests.conftest import RPC_URL_UNREACHABLE_HIGH_PORT
 from tests.test_layers.conftest import (
     addr_recipient,
     build_swap_calldata,
@@ -203,7 +204,7 @@ def test_chain_validate_survives_noncritical_l1_hook_exception() -> None:
 def test_rpc_manager_reconcile_raises_when_all_rpcs_unavailable() -> None:
     cfg = LirixConfig(
         chain_id=1,
-        rpc_urls=["http://127.0.0.1:59999"],
+        rpc_urls=[RPC_URL_UNREACHABLE_HIGH_PORT],
         allowed_intents=["swap"],
         allowed_function_names=["swapExactTokensForTokens"],
         allowed_to_addresses=["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],

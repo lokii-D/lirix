@@ -45,7 +45,13 @@ from typing import Dict, List, cast
 from lirix import Lirix
 from lirix.core.config import LirixConfig
 
-from lirix_policy import DEFAULT_STRICT_POLICY  # type: ignore[import-not-found]
+try:
+    from lirix_policy import DEFAULT_STRICT_POLICY
+except ImportError as exc:
+    raise SystemExit(
+        "Policy package not found. Install with: pip install 'lirix[policy]' "
+        "or run: lirix init (to generate lirix_policy.py in your project)."
+    ) from exc
 
 
 def _rpc_urls() -> List[str]:

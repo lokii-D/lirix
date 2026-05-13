@@ -6,7 +6,7 @@ Single audit entrypoint (assertions → code → tests → evidence keys → CI 
 
 ## ⚡ Operator snapshot
 
-This page is the **contract surface** for public symbols, return envelopes, and migration flags. The root package stays deliberately narrow—**`Lirix`**, **`LirixConfig`**, **`LirixSecurityException`**, and the frozen helpers listed below—while **`security_trace`**, **`validation_session`**, **`agent_feedback`**, and **`Lirix.extract_broadcast_fields`** carry the evidence story integrators automate against.
+This page is the **contract surface** for public symbols, return envelopes, and migration flags. The root package exposes **`Lirix`**, **`LirixConfig`**, **`LirixSecurityException`**, the frozen helpers below, plus **DX re-exports** for common pipeline types (`HookManager`, `RPCManager`, `SandboxSimulator`, `ProxyPiercer`, `SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR`), while **`security_trace`**, **`validation_session`**, **`agent_feedback`**, and **`Lirix.extract_broadcast_fields`** carry the evidence story integrators automate against.
 
 ---
 
@@ -14,7 +14,7 @@ This page is the **contract surface** for public symbols, return envelopes, and 
 
 ### Recommended imports
 
-- The authoritative frozen name set for the root package is **`_EXPECTED_ROOT_EXPORTS`** in **`tests/test_core/test_public_exports_contract.py`** (validated by **`test_root_package_exports_contract`**): membership is frozen, duplicates are disallowed, and ordering is non-semantic; the root package **`lirix`** exports **only** these names — currently **`Lirix`**, **`LirixConfig`**, **`LirixSecurityException`**, **`atomic_multicall`**, **`build_for_chain_profile`**, **`register_hook`**, **`replay_session`**, **`resolve_failure_protocol`**, **`verify_replay_bundle`**. Anything else — including **`HookManager`**, **`RPCManager`**, **`SandboxSimulator`**, **`ProxyPiercer`**, **`MulticallEncoder`**, other exceptions — must use **`from lirix.core import …`**, **`from lirix.core.exceptions import …`**, or **`from lirix.layers import …`** (and **`from lirix.audit.logger import AuditLogger`**). **`docs/migration_legacy_to_v2.md`** (**Root export policy**).
+- The authoritative frozen name set for the root package is **`_EXPECTED_ROOT_EXPORTS`** in **`tests/test_core/test_public_exports_contract.py`** (validated by **`test_root_package_exports_contract`**): membership is frozen, duplicates are disallowed, and ordering is non-semantic; the root package **`lirix`** exports **only** these names — currently **`Lirix`**, **`LirixConfig`**, **`LirixSecurityException`**, **`HookManager`**, **`SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR`**, **`ProxyPiercer`**, **`RPCManager`**, **`SandboxSimulator`**, **`atomic_multicall`**, **`build_for_chain_profile`**, **`register_hook`**, **`replay_session`**, **`resolve_failure_protocol`**, **`verify_replay_bundle`**. Anything else — including **`MulticallEncoder`**, **`ShadowAuditor`**, other layer-only types, and non-`LirixSecurityException` error types — should use **`from lirix.core import …`**, **`from lirix.core.exceptions import …`**, or **`from lirix.layers import …`** (and **`from lirix.audit.logger import AuditLogger`**). **`docs/migration_legacy_to_v2.md`** (**Root export policy**).
 - **Monkeypatch rules (tests / integrations)** — pick exactly one binding per category:
   1. **Pipeline classes** (`IntentValidator`, `SchemaValidator`, `DeFiPayloadParser`, `RPCManager`, `SandboxSimulator`, …): patch **`lirix._client_core.<Symbol>`** (compat re-exports) **or** the concrete leaf module (**`lirix.layers.*`**), matching where `Lirix.chain_validate` binds validators today.
   2. **`Lirix` instance behavior only**: patch **`lirix.Lirix.<method>`** (implementation class: **`lirix._facade.Lirix`**) or `monkeypatch.setattr(lirix.Lirix, "validate_only", …)`; do **not** patch the bare **`lirix`** package module.
@@ -28,8 +28,10 @@ High-level entry points (see source for full signatures):
 | `LirixConfig` | Frozen Pydantic configuration with address normalization. |
 | `atomic_multicall` | Encode Multicall3 calldata and run L1–L3 checks; **does not sign or broadcast**. |
 | `register_hook` | Register hooks on `HookManager`. |
-| `HookManager` | Sync/async hook dispatch with timeouts and audit integration. |
-| Layer validators / `RPCManager` / `SandboxSimulator` | L1–L5 pipeline as implemented under `lirix.layers`; L4 primary runtime path is `RPCManager`. |
+| `HookManager` | Sync/async hook dispatch with timeouts and audit integration; **`from lirix import HookManager`** (or `from lirix.core import HookManager`). |
+| `SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR` | Common Uniswap V2 router selector bytes; **`from lirix import SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR`**. |
+| `ProxyPiercer` / `RPCManager` / `SandboxSimulator` | L4–L5 pipeline surfaces; **`from lirix import ProxyPiercer, RPCManager, SandboxSimulator`** (or `from lirix.layers import …`). |
+| Layer validators (`IntentValidator`, `SchemaValidator`, `DeFiPayloadParser`, …) | L1–L3 pipeline as implemented under `lirix.layers`; compose via `Lirix.validate_only` or explicit layer imports. |
 
 The exception lattice roots at `LirixBaseException`; only the security-oriented subset uses
 subclasses of `LirixSecurityException`.
@@ -159,9 +161,11 @@ All high-level returns now include additive metadata:
 | `LirixConfig` | Pydantic 冻结配置；初始化时完成地址规范化与约束检查。 |
 | `atomic_multicall` | 将多笔子调用编码为 Multicall3 单笔 calldata，并走 L1–L3 校验；**不签名、不广播**。 |
 | `register_hook` | 在 `HookManager` 上注册钩子（与 `HookManager.register_hook` 等价）。 |
-| `HookManager` | 同步/异步钩子调度、隔离超时、审计绑定；**`from lirix.core import HookManager`**。 |
+| `HookManager` | 同步/异步钩子调度、隔离超时、审计绑定；**`from lirix import HookManager`**（或 `from lirix.core import HookManager`）。 |
+| `SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR` | 常见 Uniswap V2 路由函数选择器字节；**`from lirix import SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR`**。 |
 | `IntentValidator` / `SchemaValidator` / `DeFiPayloadParser` | L1 / L2 / L3 分层校验（与 **`Lirix.validate_only`** 同源；`chain_validate` 可选用于仅需布尔结果的调用方）。 |
-| `RPCManager` / `SandboxSimulator` | L4 / L5：RPC 协调与 `eth_call` 沙盒模拟（需有效 RPC 配置）；**`from lirix.layers import …`**。L4 的标准主路径是 `RPCManager`。`AsyncQuorumProvider` 仅为非主路径兼容组件，快照会标注 `path_role=secondary_non_primary` 与 `usage_warning`，不应作为新生产流入口。 |
+| `RPCManager` / `SandboxSimulator` | L4 / L5：RPC 协调与 `eth_call` 沙盒模拟（需有效 RPC 配置）；**`from lirix import RPCManager, SandboxSimulator`**（或 `from lirix.layers import …`）。L4 的标准主路径是 `RPCManager`。`AsyncQuorumProvider` 仅为非主路径兼容组件，快照会标注 `path_role=secondary_non_primary` 与 `usage_warning`，不应作为新生产流入口。 |
+| `ProxyPiercer` | Proxy / implementation slot 解析与 ABI 缓存；**`from lirix import ProxyPiercer`**（或 `from lirix.layers import …`）。 |
 
 异常体系以 `LirixBaseException` 为根；仅安全相关子集继承自 `LirixSecurityException`（见 `lirix.core.exceptions`）。
 

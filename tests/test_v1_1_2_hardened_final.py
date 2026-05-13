@@ -13,6 +13,8 @@ from lirix.core.exceptions import (
 )
 from lirix.shield.simulator import SimulationEngine
 
+from tests.conftest import LOCAL_ANVIL_RPC_LOCALHOST_URL
+
 pytest_plugins = ("pytest_asyncio",)
 
 
@@ -25,7 +27,7 @@ def test_test_v1_1_2_hardened_final_2(mock_web3: Any) -> None:
         mock_web3.return_value = SimpleNamespace(
             eth=SimpleNamespace(async_eth=SimpleNamespace(call=AsyncMock(side_effect=boom)))
         )
-        engine = SimulationEngine("http://localhost:8545")
+        engine = SimulationEngine(LOCAL_ANVIL_RPC_LOCALHOST_URL)
         engine._w3 = SimpleNamespace(
             eth=SimpleNamespace(async_eth=SimpleNamespace(call=AsyncMock(side_effect=boom)))
         )

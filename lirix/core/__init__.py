@@ -31,6 +31,7 @@ from lirix.core.failure_protocol import (
 )
 from lirix.core.hook_contract import HookAnnotation, HookDecision, HookPatch, ReadonlyHookPayload
 from lirix.core.hook_manager import HookManager
+from lirix.core.layer_ports import PipelineLayerExecutor, RpcEvidenceSource
 from lirix.core.multicall import MulticallEncoder
 from lirix.core.session import ExecutionPlan, ValidationSession, verify_replay_bundle
 
@@ -64,6 +65,9 @@ __all__ = [
     # Stable exception types
     "LirixSecurityException",
     "HookExecutionException",
+    # Dependency inversion protocols (L4/L5 wiring contracts for facades and typing)
+    "PipelineLayerExecutor",
+    "RpcEvidenceSource",
     # Explicitly supported multicall encoder
     "MulticallEncoder",
 ]

@@ -144,7 +144,9 @@ class AuditLogger:
                 "simulation_result": simulation_result,
             },
         }
-        self._stream.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+        self._stream.write(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str) + "\n"
+        )
         self._stream.flush()
         hm = self._hook_manager
         if hm is not None:
@@ -192,7 +194,9 @@ class AuditLogger:
             "attributes": attributes,
             "body": {"message": reason},
         }
-        self._stream.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+        self._stream.write(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str) + "\n"
+        )
         self._stream.flush()
 
     @staticmethod

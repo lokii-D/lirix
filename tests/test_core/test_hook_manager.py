@@ -27,6 +27,8 @@ from lirix.core.exceptions import (
 from lirix.core.hook_contract import HookDecision, HookPatch, ReadonlyHookPayload
 from lirix.core.hook_manager import HookManager
 
+from tests.conftest import LOCAL_ANVIL_RPC_URL
+
 
 def test_register_and_invoke_sync_hook_passes_kwargs() -> None:
     mgr = HookManager()
@@ -511,7 +513,7 @@ def test_audit_logger_payload_contains_rfc3339_timestamp_and_attributes(
 ) -> None:
     from lirix import Lirix, LirixConfig
 
-    cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=["http://127.0.0.1:8545"])
+    cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=[LOCAL_ANVIL_RPC_URL])
     client = Lirix(cfg)
     assert client.config.chain_id == 1
     draft = client.audit.new_tx_draft_id()

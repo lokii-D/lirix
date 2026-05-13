@@ -1,6 +1,6 @@
 # Contributor Covenant Code of Conduct v2.1
 
-**EN:** Contributor Covenant **2.1** English text below is the canonical community rules for this repository.  
+**EN:** Contributor Covenant **2.1** English text below is the canonical community rules for this repository.
 **中文：** 以下为 **Contributor Covenant 2.1** 英文权威正文；文末 **中文摘要** 为便于理解的非法律释义，冲突时以英文条文为准。体例见 [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md)。
 
 ## Preamble

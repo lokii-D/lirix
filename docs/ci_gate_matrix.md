@@ -9,7 +9,7 @@ purpose: 1:1 index of GitHub workflows → jobs → gates (python tools/harness.
 
 ---
 
-**EN:** 1:1 index of GitHub workflows → jobs → gates; keep in sync with `.github/workflows/*.yml` in the same PR.  
+**EN:** 1:1 index of GitHub workflows → jobs → gates; keep in sync with `.github/workflows/*.yml` in the same PR.<br>
 **中文：** 工作流、作业与门禁的一对一索引；新增 job 或 gate 时须在同 PR 内更新本文件。
 
 ### English
@@ -88,7 +88,7 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 ## `.github/workflows/ci.yml` — **CI**
 
-**Triggers:** `push` to `main`, `pull_request`, `workflow_dispatch`.  
+**Triggers:** `push` to `main`, `pull_request`, `workflow_dispatch`.<br>
 **Concurrency:** `ci-${{ github.workflow }}-${{ github.ref }}` (cancel in progress).
 
 | Job (workflow `name:`) | `if:` / context | Steps / gates |
@@ -102,7 +102,7 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 ## `.github/workflows/governance-lane.yml` — **Governance Lane**
 
-**Triggers:** `push` to `main`, **weekly schedule** (`cron: "0 6 * * 1"`), `workflow_dispatch`.  
+**Triggers:** `push` to `main`, **weekly schedule** (`cron: "0 6 * * 1"`), `workflow_dispatch`.<br>
 **Concurrency:** `governance-${{ github.workflow }}-${{ github.ref }}`.
 
 | Job | Context | Steps / gates |

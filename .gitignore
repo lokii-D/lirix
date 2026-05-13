@@ -19,7 +19,6 @@ htmlcov/
 venv/
 .venv_ci*/
 .venv_ci312/
-.python-version
 .env
 .env.release
 
@@ -54,3 +53,12 @@ coverage.xml
 audit_artifacts/**
 !audit_artifacts/release_signoff/
 !audit_artifacts/release_signoff/**
+
+# Dev and env specific
+.cursor/
+.env
+.env.release
+.lirix_launch_silo/
+.mantle_tt_venv/
+tdsc/
+mantle_TT/

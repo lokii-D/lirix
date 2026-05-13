@@ -9,6 +9,8 @@ from lirix.core.exceptions import ConfigurationGuardException
 from pydantic import ValidationError
 from web3 import Web3
 
+from tests.conftest import LOCAL_ANVIL_RPC_URL
+
 
 def test_defaults_are_initialized_when_only_chain_id_provided() -> None:
     cfg = LirixConfig(chain_id=1)
@@ -61,8 +63,8 @@ def test_nullable_list_fields_are_normalized_to_empty_lists() -> None:
 
 
 def test_rpc_urls_are_trimmed_when_provided_with_whitespace() -> None:
-    cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=[" http://127.0.0.1:8545 "])
-    assert cfg.rpc_urls == ["http://127.0.0.1:8545"]
+    cfg = LirixConfig(chain_id=1, strict_mode=False, rpc_urls=[f" {LOCAL_ANVIL_RPC_URL} "])
+    assert cfg.rpc_urls == [LOCAL_ANVIL_RPC_URL]
 
 
 def test_allowed_intents_are_trimmed_when_provided_with_whitespace() -> None:
@@ -158,17 +160,17 @@ def test_allowed_intents_reject_blank_entries() -> None:
 
 
 def test_blacklisted_addresses_must_be_list_type() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, blacklisted_addresses="x")  # type: ignore[arg-type]
 
 
 def test_blacklisted_addresses_reject_non_address_strings() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(chain_id=1, strict_mode=False, blacklisted_addresses=["0xnotanaddress"])
 
 
 def test_blacklisted_addresses_reject_short_hex_values() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
             strict_mode=False,
@@ -177,7 +179,7 @@ def test_blacklisted_addresses_reject_short_hex_values() -> None:
 
 
 def test_blacklisted_addresses_reject_non_string_items() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
             strict_mode=False,
@@ -186,7 +188,7 @@ def test_blacklisted_addresses_reject_non_string_items() -> None:
 
 
 def test_blacklisted_addresses_reject_whitespace_only_values() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
             strict_mode=False,
@@ -195,7 +197,7 @@ def test_blacklisted_addresses_reject_whitespace_only_values() -> None:
 
 
 def test_blacklisted_addresses_reject_empty_string_values() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConfigurationGuardException):
         LirixConfig(
             chain_id=1,
             strict_mode=False,

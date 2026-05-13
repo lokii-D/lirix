@@ -1,4 +1,4 @@
-**EN:** CI gate purpose, inputs, outputs, and ownership; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** CI gate purpose, inputs, outputs, and ownership; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 各 CI 门禁的职责、输入输出与归属；体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## CI Gate Responsibility Matrix

@@ -6,13 +6,9 @@
 
 Use this list when opening or reviewing a **version / release** pull request. Authoritative procedures and command snippets live in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md).
 
-## One-command local rehearsal
+## Local CI-equivalent rehearsal
 
-From a clean venv with `pip install -e ".[dev]"`, run the fixed-order chain (matches **`.github/workflows/ci.yml`** `lint` job semantics, then full `pytest` + acceptance JSON):
-
-```bash
-bash tools/release_full_verification.sh
-```
+Local shell wrappers that duplicated CI have been removed. From a clean venv with `pip install -e ".[dev]"`, mirror **`.github/workflows/ci.yml`** and capture logs under `audit_artifacts/release_signoff/<today>/` using the step-by-step **`tee`** block in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md) § **How to generate (local CI-equivalent replay)** (set `OUT` / `RELEASE_SIGNOFF_OUT` as documented there). After Fast Required semantics, run `python tools/harness.py test-coverage-required` and `python tools/release_acceptance_report.py` as in that README.
 
 For the concise final-regression command set (A/B/C/D/E checklist), run:
 
@@ -21,7 +17,7 @@ bash tools/final_regression_template.sh
 ```
 
 - Logs and acceptance JSON default to `audit_artifacts/release_signoff/<today>/` (override with `RELEASE_SIGNOFF_OUT=/path/to/dir`).
-- Optional real E2E: start Anvil (or rely on your environment), then `RUN_ANVIL_E2E=1 bash tools/release_full_verification.sh`. Use `RUN_ANVIL_E2E_STRICT=1` if E2E failures must fail the script.
+- Optional real E2E: start Anvil (or rely on your environment), then `RUN_ANVIL_E2E=1 python -m pytest -o addopts= -q tests/test_integration/test_real_e2e_paths.py`. For hard failure on E2E errors, run under `set -e` or rely on [`.github/workflows/e2e-anvil-optional.yml`](../.github/workflows/e2e-anvil-optional.yml) in CI.
 - **CI differences:** GitHub **test** matrix runs `python -m pytest tests/` on multiple OS/Python versions and starts Anvil for those jobs; this script runs **one** local interpreter and does **not** start Anvil unless you opt in. Optional workflow [`.github/workflows/e2e-anvil-optional.yml`](../.github/workflows/e2e-anvil-optional.yml) uploads E2E logs as artifacts for audit alignment.
 - **Doc preamble gate:** `python tools/harness.py doc-preamble-hygiene` is part of **Fast Required** and **governance-lane** in CI (**warn-only**; use `--enforce` locally to fail on drift).
 

@@ -7,6 +7,7 @@ import builtins
 from typing import Any
 
 import pytest
+from eth_abi.exceptions import DecodingError
 from lirix.core.exceptions import LirixDependencyError, LirixStateAssertionError
 from lirix.shield.simulator import SimulationEngine, StateDeltaValidator
 
@@ -183,7 +184,7 @@ def test_test_shield_simulator_coverage_state_delta_validator_defaults_return_da
     engine = SimulationEngine("http://example.invalid")
 
     def failing_decode(*_a: Any, **_k: Any) -> None:
-        raise RuntimeError("decode failed")
+        raise DecodingError("decode failed")
 
     err = engine._decode_revert("0x08c379a0" + "00" * 32, failing_decode)
     assert "could not be decoded" in err

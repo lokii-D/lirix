@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lirix"
-version = "2.0.2"
+version = "2.0.3"
 description = "Security-focused DeFi payload validation SDK (zero private keys in-library; explicit dependencies)."
 readme = "README.md"
 requires-python = ">=3.9,<3.15"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{ name = "lokii", email = "zp715875634@gmail.com" }]
 keywords = ["ethereum", "web3", "defi", "security", "multicall", "validation"]
 classifiers = [
@@ -35,21 +35,22 @@ lirix = "lirix.cli:main"
 
 [project.optional-dependencies]
 test = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov",
+    "pytest>=7.0.0,<10.0.0",
+    "pytest-asyncio>=0.21.0,<1.0.0",
+    "pytest-cov>=4.1.0,<7.0.0",
 ]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov",
-    "pyyaml>=6.0.0",
-    "ruff",
+    "pytest>=7.0.0,<10.0.0",
+    "pytest-asyncio>=0.21.0,<1.0.0",
+    "pytest-cov>=4.1.0,<7.0.0",
+    "pyyaml>=6.0.0,<7.0.0",
+    "pre-commit>=4.0.0,<5.0.0",
+    "ruff>=0.4.0,<1.0.0",
     "black==24.10.0",
-    "mypy",
-    "tox>=4.0.0",
-    "build",
-    "twine",
+    "mypy>=1.8.0,<2.0.0",
+    "tox>=4.0.0,<5.0.0",
+    "build>=1.0.0,<2.0.0",
+    "twine>=6.0.0,<7.0.0",
 ]
 # LangChain integration (`lirix.integrations.langchain`); users: `pip install lirix[langchain]`
 langchain = [
@@ -113,7 +114,10 @@ markers = [
     "network: tests requiring live or simulated network dependencies",
     "perf: performance and baseline profiling suites",
 ]
-filterwarnings = []
+filterwarnings = [
+    "error",
+    # 若有不可避免的第三方库弃用警告，在此用 "ignore:..." 逐条豁免；禁止全局放行。
+]
 
 [tool.coverage.run]
 branch = true
@@ -128,10 +132,42 @@ fail_under = 100
 omit = ["tests/*"]
 
 [tool.mypy]
+# Align with `.python-version` / CI 3.12; mypy 1.10+ rejects python_version < 3.10.
+python_version = "3.12"
 strict = true
 warn_unused_ignores = true
+warn_return_any = true
+warn_redundant_casts = true
+no_implicit_optional = true
+show_error_codes = true
+explicit_package_bases = true
 disallow_any_generics = true
+exclude = "(?x)(^\\.venv/|/site-packages/|(^|/)tests/)"
 
 [[tool.mypy.overrides]]
 module = ["langchain_core.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["web3.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["eth_abi.*"]
+ignore_missing_imports = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py39, py310, py311, py312, py313, py314
+isolated_build = true
+skip_missing_interpreters = true
+
+[testenv]
+extras = dev
+setenv =
+    PYTHONIOENCODING = utf-8
+    PYTHONUTF8 = 1
+commands =
+    pytest {posargs}
+"""

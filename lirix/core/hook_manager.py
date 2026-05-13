@@ -75,15 +75,24 @@ def _assert_hook_accepts_lirix_invoke(callback: HookCallback) -> None:
     try:
         sig = inspect.signature(callback)
     except (TypeError, ValueError) as exc:
-        raise RuntimeError("Unable to inspect hook callback signature") from exc
+        raise LirixSecurityException(
+            human_readable_reason="Unable to inspect hook callback signature",
+            context={"layer": "hooks", "reason": "hook_signature_inspection_failed"},
+        ) from exc
     kinds = {p.kind for p in sig.parameters.values()}
     if inspect.Parameter.VAR_KEYWORD not in kinds:
-        raise RuntimeError(
-            "Lirix hook callbacks must accept **kwargs (e.g. def hook(*args, **kwargs): ...)."
+        raise LirixSecurityException(
+            human_readable_reason=(
+                "Lirix hook callbacks must accept **kwargs (e.g. def hook(*args, **kwargs): ...)."
+            ),
+            context={"layer": "hooks", "reason": "hook_signature_missing_kwargs"},
         )
     if inspect.Parameter.VAR_POSITIONAL not in kinds:
-        raise RuntimeError(
-            "Lirix hook callbacks must accept *args (e.g. def hook(*args, **kwargs): ...)."
+        raise LirixSecurityException(
+            human_readable_reason=(
+                "Lirix hook callbacks must accept *args (e.g. def hook(*args, **kwargs): ...)."
+            ),
+            context={"layer": "hooks", "reason": "hook_signature_missing_args"},
         )
 
 
@@ -115,7 +124,13 @@ def _invoke_sync_hook_threaded(
     try:
         return q.get_nowait()
     except Empty:  # pragma: no cover — 竞态下线程未及时入队
-        return ("err", RuntimeError("Hook thread exited without a result."))
+        return (
+            "err",
+            LirixSecurityException(
+                human_readable_reason="Hook thread exited without a result.",
+                context={"layer": "hooks", "reason": "hook_thread_empty_queue"},
+            ),
+        )
 
 
 class HookManager:
@@ -123,6 +138,7 @@ class HookManager:
 
     def __init__(self, *, contract_mode: str = "legacy") -> None:
         self._registry: DefaultDict[str, List[HookCallback]] = defaultdict(list)
+        self._lock = threading.Lock()
         self._audit_for_timeouts: Optional[AuditLogger] = None
         self._contract_mode = contract_mode
         self._trace_recorder: Optional[TraceRecorder] = None
@@ -193,14 +209,16 @@ class HookManager:
         if hook_point not in PREDEFINED_HOOK_POINTS:
             raise HookUnknownPointException(hook_point=hook_point)
         _assert_hook_accepts_lirix_invoke(callback)
-        self._registry[hook_point].append(callback)
+        with self._lock:
+            self._registry[hook_point].append(callback)
 
     def clear(self, hook_point: Optional[str] = None) -> None:
-        if hook_point is None:
-            self._registry.clear()
-            return
-        if hook_point in self._registry:
-            del self._registry[hook_point]
+        with self._lock:
+            if hook_point is None:
+                self._registry.clear()
+                return
+            if hook_point in self._registry:
+                del self._registry[hook_point]
 
     def _emit_hook_timeout_audit(self, hook_point: str, timeout_sec: float) -> None:
         audit = self._audit_for_timeouts
@@ -423,7 +441,8 @@ class HookManager:
     def invoke_hooks(self, hook_point: str, *args: Any, **kwargs: Any) -> List[Any]:
         if hook_point not in PREDEFINED_HOOK_POINTS:
             raise HookUnknownPointException(hook_point=hook_point)
-        callbacks = list(self._registry.get(hook_point, ()))
+        with self._lock:
+            callbacks = list(self._registry.get(hook_point, ()))
         results: List[Any] = []
         for cb in callbacks:
             if inspect.iscoroutinefunction(cb):
@@ -452,7 +471,8 @@ class HookManager:
         """
         if hook_point not in PREDEFINED_HOOK_POINTS:
             raise HookUnknownPointException(hook_point=hook_point)
-        callbacks = list(self._registry.get(hook_point, ()))
+        with self._lock:
+            callbacks = list(self._registry.get(hook_point, ()))
         results: List[Dict[str, Any]] = []
         mutable_payload = kwargs.get("payload") if isinstance(kwargs.get("payload"), dict) else None
         in_kwargs = (
@@ -548,7 +568,8 @@ class HookManager:
     async def ainvoke_hooks(self, hook_point: str, *args: Any, **kwargs: Any) -> List[Any]:
         if hook_point not in PREDEFINED_HOOK_POINTS:
             raise HookUnknownPointException(hook_point=hook_point)
-        callbacks = list(self._registry.get(hook_point, ()))
+        with self._lock:
+            callbacks = list(self._registry.get(hook_point, ()))
         results: List[Any] = []
         for cb in callbacks:
             try:
@@ -575,7 +596,8 @@ class HookManager:
         """异步路径下的钩子异常隔离（语义同 invoke_hooks_isolated）。"""
         if hook_point not in PREDEFINED_HOOK_POINTS:
             raise HookUnknownPointException(hook_point=hook_point)
-        callbacks = list(self._registry.get(hook_point, ()))
+        with self._lock:
+            callbacks = list(self._registry.get(hook_point, ()))
 
         # Fast path: if all hooks are sync, delegate to the sync implementation.
         # This keeps behavior consistent across sync/async entrypoints and makes it

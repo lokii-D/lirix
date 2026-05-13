@@ -6,13 +6,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from tests.conftest import LOCAL_ANVIL_RPC_URL
 from web3 import Web3
 
 _CANONICAL_MULTICALL3 = Web3.to_checksum_address("0xcA11bde05977b3631167028862bE2a173976CA11")
 
 
 def _local_anvil_web3() -> Web3 | None:
-    w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545", request_kwargs={"timeout": 3}))
+    w3 = Web3(Web3.HTTPProvider(LOCAL_ANVIL_RPC_URL, request_kwargs={"timeout": 3}))
     try:
         if not w3.is_connected():
             return None
@@ -29,7 +30,7 @@ def deploy_multicall3_locally() -> Web3:
     """
     w3 = _local_anvil_web3()
     if w3 is None:
-        pytest.skip("Start anvil on http://127.0.0.1:8545 for integration tests.")
+        pytest.skip(f"Start anvil on {LOCAL_ANVIL_RPC_URL} for integration tests.")
     assert w3 is not None
     if len(w3.eth.get_code(_CANONICAL_MULTICALL3)) > 2:
         return w3

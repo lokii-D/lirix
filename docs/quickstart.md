@@ -71,11 +71,10 @@ Further samples live under `examples/`.
 
 ### Layer types (L4/L5)
 
-The root package keeps evidence-oriented entrypoints and `LirixSecurityException` only. Import pipeline types from subpackages:
+The root package re-exports **`HookManager`**, **`RPCManager`**, **`SandboxSimulator`**, and **`ProxyPiercer`** for quickstarts; deeper compositors (`ShadowAuditor`, `ShadowPolicySchema`, …) remain **`from lirix.layers import …`**.
 
 ```python
-from lirix.layers import RPCManager, SandboxSimulator, ProxyPiercer
-from lirix.core import HookManager
+from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator
 ```
 
 See **`docs/migration_legacy_to_v2.md`** (Root export policy).
@@ -203,11 +202,10 @@ _ = client.validate_only(
 
 ### 分层类型（L4/L5 等）
 
-根包仅保留取证向入口与 `LirixSecurityException`；大件类型请从子包导入：
+根包为常用流水线类型提供 **`HookManager` / `RPCManager` / `SandboxSimulator` / `ProxyPiercer`** 的 DX 再导出；其余大件（如 `ShadowAuditor`）仍请 **`from lirix.layers import …`**。
 
 ```python
-from lirix.layers import RPCManager, SandboxSimulator, ProxyPiercer
-from lirix.core import HookManager  # 钩子调度
+from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator
 ```
 
 详见 **`docs/migration_legacy_to_v2.md`**（Root export policy）。

@@ -1,6 +1,6 @@
 # Documentation styleguide（文档体例与清单）
 
-**EN:** Single source for bilingual Markdown structure, fixed terminology, and a classified inventory of all Markdown in this repo.  
+**EN:** Single source for bilingual Markdown structure, fixed terminology, and a classified inventory of all Markdown in this repo.<br>
 **中文：** 全仓 Markdown 的英中体例、固定译法与路径分类清单（SSOT）。
 
 **Meta-SSOT exception (this file only):** There is no top-level `## English` here; the paired `**EN:**` / `**中文：**` lines directly under this H1 are intentional for this meta-SSOT. Guides that use top-level `## English` must **not** copy this pattern—follow § B.1 item 1 (no `**中文：**` between H1 and `## English`).
@@ -67,8 +67,8 @@ If you change **Fast Required** order or membership for the document-related har
 
 1. `.github/workflows/ci.yml`
 2. `CONTRIBUTING.md` (**both** suggested bash blocks)
-3. `tools/release_full_verification.sh` (the docs / import / monkeypatch gate section)
-4. `audit_artifacts/release_signoff/README.md` (the step-by-step `tee` example block)
+3. `audit_artifacts/release_signoff/README.md` (the step-by-step `tee` example block aligned with `ci.yml`)
+4. `docs/release_pr_checklist.md` (rehearsal / CI differences bullets)
 
 Also verify **`docs/ci_gate_matrix.md`** (Fast Required step narrative) and **`docs/release_pr_checklist.md`** (CI differences / doc preamble bullet) remain **1:1** with `ci.yml`.
 
@@ -76,8 +76,8 @@ Also verify **`docs/ci_gate_matrix.md`** (Fast Required step narrative) and **`d
 
 1. `.github/workflows/ci.yml`
 2. `CONTRIBUTING.md`（**两处**建议 bash 命令块）
-3. `tools/release_full_verification.sh`（文档/导入/monkeypatch 门禁段）
-4. `audit_artifacts/release_signoff/README.md`（逐步 `tee` 示例块）
+3. `audit_artifacts/release_signoff/README.md`（与 `ci.yml` 对齐的逐步 `tee` 示例块）
+4. `docs/release_pr_checklist.md`（预演 / CI 差异条目）
 
 并核对 **`docs/ci_gate_matrix.md`**（Fast Required 步骤叙述）与 **`docs/release_pr_checklist.md`**（CI differences / Doc preamble 条目）是否与 `ci.yml` **1:1**。
 
@@ -107,18 +107,18 @@ Also verify **`docs/ci_gate_matrix.md`** (Fast Required step narrative) and **`d
 
 ### B.2 Section template — English
 
-1. **Title** in English (H1), optionally with ` / 中文` on the same line when not using the `REPORT.md` strict H1 rule above.  
-2. **`## English` / `## 中文` split files:** put `**中文：**` one-liners at the **start of `## 中文`**, not between H1 and `## English`. **Other layouts** (no top-level `## English`): a one-line `**中文：**` under the H1 remains acceptable.  
-3. For each mirrored subsection: use `### English` then `### 中文` (or `#### English` / `#### 中文` under a shared `###` parent). Put code blocks, paths, and API identifiers once—usually in the English block; the Chinese block explains semantics without duplicating fenced code when avoidable.  
-4. End with **Related** / **延伸阅读**：bilingual bullets linking to SSOT (`docs/audit_path_map.md`, `docs/quickstart.md`, `docs/api_reference.md`, etc.).  
+1. **Title** in English (H1), optionally with ` / 中文` on the same line when not using the `REPORT.md` strict H1 rule above.<br>
+2. **`## English` / `## 中文` split files:** put `**中文：**` one-liners at the **start of `## 中文`**, not between H1 and `## English`. **Other layouts** (no top-level `## English`): a one-line `**中文：**` under the H1 remains acceptable.<br>
+3. For each mirrored subsection: use `### English` then `### 中文` (or `#### English` / `#### 中文` under a shared `###` parent). Put code blocks, paths, and API identifiers once—usually in the English block; the Chinese block explains semantics without duplicating fenced code when avoidable.<br>
+4. End with **Related** / **延伸阅读**：bilingual bullets linking to SSOT (`docs/audit_path_map.md`, `docs/quickstart.md`, `docs/api_reference.md`, etc.).<br>
 5. **Do not** change heading slugs that are linked externally; prefer adding bilingual lines under the same heading.
 
 ### B.2 Section template — 中文
 
-1. **标题**：英文 H1；若与 `REPORT.md` 体例一致则 H1 纯英文。  
-2. **顶层英中分块**：`**中文：**` 放在 **`## 中文` 段首**；无顶层 `## English` 的文档仍可在标题下保留一句 `**中文：**`。  
-3. **正文**：每一大节可采用 `### English` 与 `### 中文`（或同级 `####`）；代码与路径通常只保留英文块一份，中文块做语义对照。  
-4. **导航**：文末双语链接到 SSOT。  
+1. **标题**：英文 H1；若与 `REPORT.md` 体例一致则 H1 纯英文。<br>
+2. **顶层英中分块**：`**中文：**` 放在 **`## 中文` 段首**；无顶层 `## English` 的文档仍可在标题下保留一句 `**中文：**`。<br>
+3. **正文**：每一大节可采用 `### English` 与 `### 中文`（或同级 `####`）；代码与路径通常只保留英文块一份，中文块做语义对照。<br>
+4. **导航**：文末双语链接到 SSOT。<br>
 5. **锚点**：少改 `#` 片段；必要时在同一标题下增译，不强行改 slug。
 
 ---

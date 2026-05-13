@@ -18,12 +18,12 @@ jobs:
     name: Mantle fork (Anvil + mantle_TT)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
       - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
           with-dev-install: "false"
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
         with:
           version: "v1.6.0-rc1"
           cache: true

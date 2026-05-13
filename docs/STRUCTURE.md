@@ -1,6 +1,6 @@
 # Lirix Project Structure / Lirix 项目结构
 
-**EN:** Authoritative tree with inline `EN:` / `中文：` comments; repo-wide section template: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Authoritative tree with inline `EN:` / `中文：` comments; repo-wide section template: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 树形结构内联 `EN:` / `中文：` 注释；块级双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 This tree is the **EVM defense-in-depth layout**: L1 intent → L5 simulation, with a **narrow public hull** (`lirix/__init__.py`) and heavy machinery kept in `core/` + `layers/` for auditability.

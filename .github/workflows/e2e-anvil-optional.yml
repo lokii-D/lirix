@@ -17,9 +17,12 @@ permissions:
 jobs:
   anvil-e2e:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+      - uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
         with:
           version: nightly
       - uses: ./.github/actions/lirix-ci-setup
@@ -32,7 +35,7 @@ jobs:
       - name: Run test_real_e2e_paths
         run: |
           python -m pytest -o addopts= -v tests/test_integration/test_real_e2e_paths.py 2>&1 | tee pytest-e2e.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         if: always()
         with:
           name: optional-anvil-e2e-pytest-log

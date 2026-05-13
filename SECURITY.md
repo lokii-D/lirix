@@ -1,6 +1,6 @@
 # Security Policy for Lirix
 
-**EN:** Triple-Zero boundary, scope, and private disclosure process.  
+**EN:** Triple-Zero boundary, scope, and private disclosure process.
 **中文：** 三重零信任边界、漏洞收录范围与私下报告流程。本文中的安全联系方式当前包含占位符（`security@lirix.invalid` / `example.com`）；维护者在获得真实投递渠道后，必须在发版前替换为正式邮箱与 PGP 地址。
 
 ## The Triple-Zero Standard 🛡️

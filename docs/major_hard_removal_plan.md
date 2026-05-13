@@ -4,7 +4,7 @@ scope: legacy/signed_only/v2_dual input aliases + related migration scaffolding
 status: draft (execution in next major release)
 ---
 
-**EN:** Next-major removal plan for migration-only aliases; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Next-major removal plan for migration-only aliases; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 下一主版本硬移除迁移别名的计划；体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## Goal

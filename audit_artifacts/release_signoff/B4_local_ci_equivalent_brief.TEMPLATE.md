@@ -1,6 +1,6 @@
 # Local CI-equivalent brief (sign-off)
 
-**EN:** Template for the B4 brief — copy into a dated folder and fill placeholders; pairs with [`README.md`](README.md) in this directory.  
+**EN:** Template for the B4 brief — copy into a dated folder and fill placeholders; pairs with [`README.md`](README.md) in this directory.
 **中文：** B4 简报模板；复制到 `audit_artifacts/release_signoff/<YYYY-MM-DD>/B4_local_ci_equivalent_brief.md` 后替换占位符。说明见同目录 [`README.md`](README.md)。体例见 [`docs/documentation_styleguide.md`](../../docs/documentation_styleguide.md)。
 
 ### English
@@ -13,7 +13,7 @@ Copy this file to `audit_artifacts/release_signoff/<YYYY-MM-DD>/B4_local_ci_equi
 
 ## Commands run
 
-- Full verification script: `bash tools/release_full_verification.sh` (or paste equivalent per-step logs referenced below).
+- Full verification: run the CI-equivalent step list in this directory’s [`README.md`](README.md) § **How to generate** (or paste equivalent per-step logs referenced below).
 - Python: `(paste python --version)`.
 - Virtualenv / toolchain notes: `(optional)`.
 

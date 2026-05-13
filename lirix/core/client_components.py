@@ -11,9 +11,9 @@ from lirix.core.evidence import (
     build_validate_only_evidence_v2,
 )
 from lirix.core.exceptions import ConfigurationGuardException
+from lirix.core.layer_ports import PipelineLayerExecutor
 from lirix.core.session import ValidationSession
 from lirix.core.trace_recorder import TraceRecorder
-from lirix.layers import RPCManager, SandboxSimulator
 
 # --- Request trace / normalization (single internal pipeline surface) ---
 
@@ -90,18 +90,6 @@ def result_envelope_builder(
 
 
 # --- Layer adapters & envelope builders ---
-
-
-@dataclass(frozen=True)
-class PipelineExecutor:
-    request_timeout: int
-    backend_profile: Mapping[str, Any]
-
-    def build_rpc_manager(self, config: Any, hooks: Any) -> RPCManager:
-        return RPCManager(config, hooks=hooks, request_timeout=self.request_timeout)
-
-    def build_sandbox_simulator(self, hooks: Any) -> SandboxSimulator:
-        return SandboxSimulator(hooks=hooks, backend_profile=dict(self.backend_profile))
 
 
 @dataclass(frozen=True)
@@ -206,7 +194,7 @@ class FailureContextEnricher:
 class ClientPipelineProtocol:
     """Single internal composition surface for Lirix client pipeline helpers."""
 
-    executor: PipelineExecutor
+    executor: PipelineLayerExecutor
     evidence: EvidenceAssembler
     results: ResultBuilder
     failures: FailureContextEnricher

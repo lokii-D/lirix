@@ -13,9 +13,10 @@ from typing import Any, Callable, Dict, List, Optional, cast
 
 from eth_typing import ChecksumAddress
 from web3 import Web3
+from web3.exceptions import BadFunctionCallOutput, ContractLogicError, Web3Exception
 from web3.types import TxParams
 
-from lirix.core.exceptions import ConfigurationGuardException
+from lirix.core.exceptions import ConfigurationGuardException, LirixSecurityException
 
 try:
     from eth_abi.abi import decode as _abi_decode
@@ -23,6 +24,17 @@ except ImportError:  # pragma: no cover - optional dependency fallback
     abi_decode: Optional[Callable[[List[str], bytes], tuple[Any, ...]]] = None
 else:
     abi_decode = _abi_decode
+
+try:
+    from eth_abi.exceptions import DecodingError as _EthAbiDecodingError
+
+    _ABI_ADDRESS_DECODE_ERRORS: tuple[type[BaseException], ...] = (
+        _EthAbiDecodingError,
+        ValueError,
+        TypeError,
+    )
+except ImportError:  # pragma: no cover - optional dependency fallback
+    _ABI_ADDRESS_DECODE_ERRORS = (ValueError, TypeError)
 
 EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
 EIP1967_BEACON_SLOT = "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50"
@@ -147,6 +159,12 @@ class AbiLRUCache:
         with self._lock:
             self._db.close()
 
+    def __enter__(self) -> AbiLRUCache:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
     def snapshot(self) -> Dict[str, Any]:
         with self._lock:
             self._ensure_open_locked(allow_closed=True)
@@ -205,7 +223,10 @@ class AbiLRUCache:
 
     def _ensure_open_locked(self, allow_closed: bool = False) -> None:
         if self._closed and not allow_closed:
-            raise RuntimeError("AbiLRUCache is closed")
+            raise LirixSecurityException(
+                human_readable_reason="AbiLRUCache is closed",
+                context={"layer": "L3", "reason": "abi_cache_closed"},
+            )
 
     def _purge_locked(self, address: str) -> None:
         self._memory.pop(address, None)
@@ -247,7 +268,7 @@ class ProxyPiercer:
 
     def inspect_target(self, web3: Web3, target_address: str) -> Dict[str, Any]:
         target = Web3.to_checksum_address(target_address)
-        now = time.time()
+        now = time.monotonic()
         with self._inspection_lock:
             cached = self._inspection_cache.get(target)
             if cached is not None:
@@ -380,7 +401,7 @@ class ProxyPiercer:
 
     def snapshot(self) -> Dict[str, Any]:
         with self._inspection_lock:
-            now = time.time()
+            now = time.monotonic()
             return {
                 "inspection_cache_entries": len(self._inspection_cache),
                 "inspection_cache_max_entries": self.INSPECTION_CACHE_MAX_ENTRIES,
@@ -440,8 +461,39 @@ class ProxyPiercer:
         )
         try:
             raw = web3.eth.call(payload)
-        except Exception:
+        except (ContractLogicError, BadFunctionCallOutput):
             return None
+        except Web3Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "diamond_facet_eth_call",
+                    "detail": str(exc),
+                    "target": target,
+                },
+            ) from exc
+        except (TimeoutError, OSError) as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "diamond_facet_transport",
+                    "detail": str(exc),
+                    "target": target,
+                },
+            ) from exc
+        except Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "diamond_facet_unexpected",
+                    "detail": str(exc),
+                    "exc_type": type(exc).__name__,
+                    "target": target,
+                },
+            ) from exc
         if not raw:
             return None
         if isinstance(raw, str):
@@ -457,7 +509,41 @@ class ProxyPiercer:
 
     def _resolve_beacon_implementation(self, web3: Web3, beacon_address: str) -> Optional[str]:
         payload = cast(TxParams, {"to": beacon_address, "data": BEACON_IMPLEMENTATION_SELECTOR})
-        raw = web3.eth.call(payload)
+        try:
+            raw = web3.eth.call(payload)
+        except (ContractLogicError, BadFunctionCallOutput):
+            return None
+        except Web3Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "beacon_implementation_eth_call",
+                    "detail": str(exc),
+                    "beacon_address": beacon_address,
+                },
+            ) from exc
+        except (TimeoutError, OSError) as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "beacon_implementation_transport",
+                    "detail": str(exc),
+                    "beacon_address": beacon_address,
+                },
+            ) from exc
+        except Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "beacon_implementation_unexpected",
+                    "detail": str(exc),
+                    "exc_type": type(exc).__name__,
+                    "beacon_address": beacon_address,
+                },
+            ) from exc
         if not raw:
             return None
         if isinstance(raw, str):
@@ -491,8 +577,27 @@ class ProxyPiercer:
             else:
                 codec = getattr(web3, "codec", None) or Web3().codec
                 decoded = codec.decode(["address"], raw)
-        except Exception:
+        except _ABI_ADDRESS_DECODE_ERRORS:
             return None
+        except Web3Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "proxy_address_abi_decode",
+                    "detail": str(exc),
+                },
+            ) from exc
+        except Exception as exc:
+            raise LirixSecurityException(
+                human_readable_reason="RPC Error while probing proxy",
+                context={
+                    "layer": "L3",
+                    "reason": "proxy_address_decode_unexpected",
+                    "detail": str(exc),
+                    "exc_type": type(exc).__name__,
+                },
+            ) from exc
         address = decoded[0]
         if not isinstance(address, str) or not Web3.is_address(address):
             return None

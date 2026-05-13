@@ -7,6 +7,7 @@ from lirix import Lirix, LirixConfig
 from lirix.core import HookExecutionException
 from lirix.core.exceptions import RPCUnavailableException
 from lirix.core.multicall import MulticallEncoder
+from tests.conftest import LOCAL_ANVIL_RPC_URL
 from web3 import Web3
 
 
@@ -16,7 +17,7 @@ def _build_local_guardian(w3: Web3) -> Lirix:
     cfg = LirixConfig(
         chain_id=1,
         strict_mode=False,
-        rpc_urls=["http://127.0.0.1:8545"],
+        rpc_urls=[LOCAL_ANVIL_RPC_URL],
         allowed_intents=["swap"],
         allowed_function_names=["aggregate3"],
         allowed_to_addresses=[mc, recipient],

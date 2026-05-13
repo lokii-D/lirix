@@ -39,19 +39,31 @@ class _TxDraftSchema(BaseModel):
     @classmethod
     def _checksum_to(cls, v: str) -> str:
         if not isinstance(v, str) or not Web3.is_address(v):
-            raise ValueError("to is not a valid address")
+            raise SchemaValidationException(
+                human_readable_reason="to is not a valid address",
+                context={"layer": "L2", "field": "to", "reason": "address_invalid"},
+            )
         if not Web3.is_checksum_address(v):
-            raise ValueError("to must be EIP-55 checksummed")
+            raise SchemaValidationException(
+                human_readable_reason="to must be EIP-55 checksummed",
+                context={"layer": "L2", "field": "to", "reason": "address_not_checksum"},
+            )
         return Web3.to_checksum_address(v)
 
     @field_validator("data", mode="after")
     @classmethod
     def _hex_data(cls, v: str) -> str:
         if not isinstance(v, str) or not v.startswith("0x"):
-            raise ValueError("data must be a 0x-prefixed hex string")
+            raise SchemaValidationException(
+                human_readable_reason="data must be a 0x-prefixed hex string",
+                context={"layer": "L2", "field": "data", "reason": "calldata_prefix_invalid"},
+            )
         body = v[2:]
         if len(body) % 2 != 0:
-            raise ValueError("data hex length must be even")
+            raise SchemaValidationException(
+                human_readable_reason="data hex length must be even",
+                context={"layer": "L2", "field": "data", "reason": "calldata_odd_hex_length"},
+            )
         if body:
             bytes.fromhex(body)
         return "0x" + body.lower()

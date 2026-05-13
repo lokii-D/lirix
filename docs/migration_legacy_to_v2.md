@@ -21,13 +21,13 @@ as the only documented stable fields — not a stable ABI for older trace object
 
 **Authoritative root `__all__`:** [`tests/test_core/test_public_exports_contract.py`](../tests/test_core/test_public_exports_contract.py) **`test_root_package_exports_contract`** (membership frozen, no duplicates; order is non-semantic).
 
-**As of v1.6.x (Minor A applied in-repo):** the root package re-exports only evidence-aligned entrypoints plus `LirixSecurityException`. Removed from the root (use subpackages instead):
+**As of v2.0.3:** the root package re-exports **`HookManager`**, **`RPCManager`**, **`SandboxSimulator`**, **`ProxyPiercer`**, and **`SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR`** alongside the evidence-oriented **`Lirix`** entrypoints. Prefer **`from lirix import …`** in README / quickstart / examples for those symbols. Still import from subpackages when you need symbols not listed on the root:
 
-- **Layers** (`RPCManager`, `SandboxSimulator`, `ProxyPiercer`, `ShadowAuditor`, `ShadowPolicySchema`, `AbiLRUCache`): `from lirix.layers import …`
-- **Hooks / multicall / other exceptions** (e.g. `HookManager`, `MulticallEncoder`): `from lirix.core import …` or `from lirix.core.exceptions import …`
+- **Layers** (`ShadowAuditor`, `ShadowPolicySchema`, `AbiLRUCache`, …): `from lirix.layers import …`
+- **Hooks / multicall / other exceptions** (e.g. `MulticallEncoder`): `from lirix.core import …` or `from lirix.core.exceptions import …`
 - **`AuditLogger`**: `from lirix.audit.logger import AuditLogger`
 
-**Minor B:** in README / quickstart / examples, when showing pipeline types, default to **`from lirix.layers import …`** (see also **§ Root export policy** in release notes for any future shrink).
+**Minor B:** in README / quickstart / examples, default to **`from lirix import …`** for the root-re-exported pipeline symbols above; use **`from lirix.layers import …`** for advanced layer-only types.
 
 **Scheduled removals (version-gated; do not rely on soft dates in prose alone)** — track in **release notes** per version; see also **§ Root export policy** there:
 

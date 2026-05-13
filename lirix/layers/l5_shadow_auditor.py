@@ -13,7 +13,7 @@ from lirix.core.constants import (
     normalize_policy_lifecycle_mode,
     policy_lifecycle_integrity_enforced,
 )
-from lirix.core.exceptions import LirixPolicyViolationException
+from lirix.core.exceptions import ConfigurationGuardException, LirixPolicyViolationException
 
 
 class ShadowPolicySchema(BaseModel):
@@ -32,13 +32,26 @@ class ShadowPolicySchema(BaseModel):
         if value is None or value == "ANY":
             return "ANY"
         if isinstance(value, str):
-            raise ValueError("allowed_target_contracts must be 'ANY' or a list of addresses.")
+            raise ConfigurationGuardException(
+                human_readable_reason=(
+                    "allowed_target_contracts must be 'ANY' or a list of addresses."
+                ),
+                context={"field": "allowed_target_contracts", "reason": "type_invalid"},
+            )
         if not isinstance(value, Sequence):
-            raise ValueError("allowed_target_contracts must be 'ANY' or a list of addresses.")
+            raise ConfigurationGuardException(
+                human_readable_reason=(
+                    "allowed_target_contracts must be 'ANY' or a list of addresses."
+                ),
+                context={"field": "allowed_target_contracts", "reason": "type_invalid"},
+            )
         normalized: List[str] = []
         for raw in value:
             if not isinstance(raw, str) or not Web3.is_address(raw):
-                raise ValueError("allowed_target_contracts contains an invalid address.")
+                raise ConfigurationGuardException(
+                    human_readable_reason="allowed_target_contracts contains an invalid address.",
+                    context={"field": "allowed_target_contracts", "reason": "address_invalid"},
+                )
             normalized.append(Web3.to_checksum_address(raw))
         return normalized
 
@@ -48,23 +61,47 @@ class ShadowPolicySchema(BaseModel):
         if value is None:
             return []
         if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
-            raise ValueError(
-                "forbidden_methods must be a list of 4-byte hex selectors or method names."
+            raise ConfigurationGuardException(
+                human_readable_reason=(
+                    "forbidden_methods must be a list of 4-byte hex selectors or method names."
+                ),
+                context={"field": "forbidden_methods", "reason": "type_invalid"},
             )
         normalized: List[str] = []
         for raw in value:
             if not isinstance(raw, str):
-                raise ValueError("forbidden_methods entries must be strings.")
+                raise ConfigurationGuardException(
+                    human_readable_reason="forbidden_methods entries must be strings.",
+                    context={"field": "forbidden_methods", "reason": "entry_type_invalid"},
+                )
             method = raw.strip()
             if not method:
-                raise ValueError("forbidden_methods entries must be non-empty strings.")
+                raise ConfigurationGuardException(
+                    human_readable_reason="forbidden_methods entries must be non-empty strings.",
+                    context={"field": "forbidden_methods", "reason": "entry_empty"},
+                )
             lowered = method.lower()
             if lowered.startswith("0x"):
                 if len(lowered) != 10:
-                    raise ValueError(
-                        "forbidden_methods selector entries must be 4-byte hex selectors."
+                    raise ConfigurationGuardException(
+                        human_readable_reason=(
+                            "forbidden_methods selector entries must be 4-byte hex selectors."
+                        ),
+                        context={"field": "forbidden_methods", "reason": "selector_length_invalid"},
                     )
-                int(lowered[2:], 16)
+                try:
+                    int(lowered[2:], 16)
+                except ValueError as exc:
+                    raise ConfigurationGuardException(
+                        human_readable_reason=(
+                            "forbidden_methods selector entries must be valid 4-byte hex selectors."
+                        ),
+                        context={
+                            "field": "forbidden_methods",
+                            "reason": "selector_hex_invalid",
+                            "value": lowered,
+                        },
+                    ) from exc
                 normalized.append(lowered)
                 continue
             normalized.append(method)

@@ -7,6 +7,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
+from eth_abi.exceptions import DecodingError
 from lirix.core.exceptions import (
     LirixDependencyError,
     LirixSimulationError,
@@ -255,14 +256,14 @@ class SimulationEngine:
                 message = eth_abi_decode(["string"], body)[0]
                 if isinstance(message, str) and message:
                     return f"Execution reverted: {message}"
-            except Exception:
+            except (DecodingError, ValueError, TypeError):
                 return "Execution reverted with Error(string), but reason could not be decoded."
             return "Execution reverted with an empty Error(string) message."
         if selector == _PANIC_SELECTOR:
             try:
                 code = int(eth_abi_decode(["uint256"], body)[0])
                 return f"Execution reverted with Solidity panic 0x{code:x}."
-            except Exception:
+            except (DecodingError, ValueError, TypeError):
                 return "Execution reverted with Solidity panic, but code could not be decoded."
         return f"Execution reverted with custom error 0x{selector.hex()}."
 

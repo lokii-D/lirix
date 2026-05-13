@@ -1,6 +1,6 @@
 # Release Notes
 
-**EN:** Version history and API contract deltas for Lirix releases.  
+**EN:** Version history and API contract deltas for Lirix releases.<br>
 **中文：** 版本历史与 API 契约增量说明；契约门禁敏感锚点见 § **API Contract Delta** 及文末兼容性声明。
 
 ---

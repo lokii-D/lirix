@@ -1,6 +1,6 @@
 # Release sign-off audit artifacts
 
-**EN:** Versioned evidence bundles for release sign-off; local replay commands and minimum artifact set below.  
+**EN:** Versioned evidence bundles for release sign-off; local replay commands and minimum artifact set below.
 **中文：** 发布签核用的版本化、可复核、可复现证据包；本地回放命令与最低证据集见下文。体例见 [`docs/documentation_styleguide.md`](../../docs/documentation_styleguide.md)。
 
 ### English
@@ -11,7 +11,7 @@ This directory contains **versioned, reviewable, and reproducible** evidence bun
 
 本目录包含用于发布签署的**版本化、可审查、可复现**证据束。
 
-- **One-command rehearsal (local):** [`tools/release_full_verification.sh`](../../tools/release_full_verification.sh) — fixed-order ruff/black/mypy, CI-aligned governance batch, gates, full `pytest` + `release_acceptance_report` (see also [`docs/release_pr_checklist.md`](../../docs/release_pr_checklist.md) § CI differences).
+- **Local rehearsal:** follow § **How to generate (local CI-equivalent replay)** below (stepwise `tee` under a date folder; same semantics as [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) Fast Required + coverage + acceptance JSON; see also [`docs/release_pr_checklist.md`](../../docs/release_pr_checklist.md)).
 - **Brief template:** [`B4_local_ci_equivalent_brief.TEMPLATE.md`](B4_local_ci_equivalent_brief.TEMPLATE.md) — copy into your date folder as `B4_local_ci_equivalent_brief.md` and fill placeholders.
 
 - **Location**: `audit_artifacts/release_signoff/<YYYY-MM-DD>/`
@@ -66,7 +66,7 @@ python -m pip install -e ".[dev]"
 
 ### CI-equivalent commands (capture logs)
 
-As a shortcut, **`bash tools/release_full_verification.sh`** runs the same lint-order chain and writes logs under `audit_artifacts/release_signoff/<today>/` (see `RELEASE_SIGNOFF_OUT` in [`tools/release_full_verification.sh`](../../tools/release_full_verification.sh)). To capture filenames exactly like historical bundles, you can still run step-by-step and `tee` into the date folder:
+Set `OUT` (or `RELEASE_SIGNOFF_OUT`) to `audit_artifacts/release_signoff/<date>/` and run the same steps as in `.github/workflows/ci.yml`, piping each command through `tee` so filenames match historical bundles:
 
 Run the same steps as in `.github/workflows/ci.yml` and write logs under the date folder:
 
@@ -181,4 +181,3 @@ The authoritative baseline logs are referenced from that document (typically `C4
 - **Closure semantics**: documented in `C5_coverage_100_verification.md` (tail/branch closure suites complement the numeric gate).
 - **Acceptance JSON**: run with **`--coverage-threshold 100`** and **`--warnings-blocking`** (sign-off policy). The committed
   template defaults in the script remain permissive for local triage; **do not** use those defaults for release bundles.
-

@@ -6,7 +6,7 @@ purpose: validate / simulate entrypoints vs security_trace, session, replay orde
 # Pipeline evidence flow (mini)
 
 
-**EN:** Authoritative technical content in the sections below; repo-wide bilingual conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Authoritative technical content in the sections below; repo-wide bilingual conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 正文为权威技术叙述；全仓双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## 🔧 Maintainer checklist (orchestrator + facade)
@@ -18,7 +18,7 @@ When you **reorder pipeline phases**, rename orchestrator helpers, or change wha
 3. Re-run **`python tools/harness.py test-governance`** (or the subset you touched).
 4. Regenerate **`docs/lirix_import_topology.md`** with `python tools/gen_lirix_import_graph.py` when import edges shift.
 
-Authoritative code: **`lirix/core/orchestrator.py`** (`LirixPipelineOrchestrator`), **`lirix/_facade.py`** (`Lirix` thin client), **`lirix/core/client_components.py`** (`request_normalization`, `ClientPipelineProtocol`).
+Authoritative code: **`lirix/core/orchestrator.py`** (`LirixPipelineOrchestrator`), **`lirix/_facade.py`** (`Lirix` thin client), **`lirix/core/client_components.py`** (`request_normalization`, `ClientPipelineProtocol`), **`lirix/core/layer_ports.py`** (dependency-inversion protocols), **`lirix/_layer_factories.py`** (L4/L5 assembly wired by the facade).
 
 ---
 

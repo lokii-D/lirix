@@ -1,4 +1,4 @@
-**EN:** Source-only vs artifact metrics policy for migration observability scans; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).  
+**EN:** Source-only vs artifact metrics policy for migration observability scans; conventions: [`documentation_styleguide.md`](documentation_styleguide.md).<br>
 **中文：** 迁移可观测性扫描的 source-only 策略；体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
 ## 🔍 Migration observability scan policy (source-only)
@@ -20,4 +20,3 @@ The **source-only** scan MUST exclude any paths that contain:
 - `.venv*` (any directory component that starts with `.venv`)
 
 This policy is contracted by tests and must not be weakened without an explicit ADR update.
-

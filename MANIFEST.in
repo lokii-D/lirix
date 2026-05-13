@@ -1,0 +1,8 @@
+# Tracked .github/ must never ship in sdist; `prune` removes the tree if setuptools ever
+# includes it. Root files like .gitignore are not manifest candidates here—bare `exclude`
+# or `global-exclude` for them only emits setuptools `warning: no previously-included...`.
+prune tests
+prune tools
+prune examples
+prune docs/baselines
+prune .github

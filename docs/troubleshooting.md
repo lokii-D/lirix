@@ -25,7 +25,7 @@ Start Anvil on `127.0.0.1:8545` or rely on CI, which starts Anvil automatically.
 
 ### mypy vs runtime Python
 
-The mypy target version may differ from the minimum runtime; see `.mypy.ini` comments.
+The mypy target version may differ from the minimum runtime; see `[tool.mypy]` in `pyproject.toml`.
 
 ### pip vs pip3
 
@@ -33,7 +33,7 @@ Prefer `python -m pip` to target the correct interpreter in multi-Python setups.
 
 ### Multi-version testing (tox)
 
-Use **`tox`** per `tox.ini` to run the same checks across Python versions locally; missing interpreters are skipped when `skip_missing_interpreters` is enabled.
+Use **`tox`** with the environments declared under **`[tool.tox]` in `pyproject.toml`** (`legacy_tox_ini`) to run the same checks across Python versions locally; missing interpreters are skipped when `skip_missing_interpreters` is enabled.
 
 ---
 
@@ -63,7 +63,7 @@ GitHub Actions 中 Mantle fork 作业依赖仓库 secret `MANTLE_MAINNET_RPC`。
 
 ### `mypy` 与 Python 3.9+
 
-仓库内 `mypy` 配置以 `pyproject.toml` / `.mypy.ini` 为准，**运行兼容性**以 `requires-python` 为准。
+仓库内 `mypy` 配置以 `pyproject.toml` 的 `[tool.mypy]` 为准，**运行兼容性**以 `requires-python` 为准。
 
 ### `pip` vs `pip3`
 
@@ -71,4 +71,4 @@ GitHub Actions 中 Mantle fork 作业依赖仓库 secret `MANTLE_MAINNET_RPC`。
 
 ### 本地跨版本测试（tox）
 
-推荐使用 **`tox`**（见仓库根目录 `tox.ini`）在本地对齐 CI 的 Python 3.9–3.14 矩阵：安装 dev 依赖后执行 `tox`；未安装的解释器对应环境会被跳过（`skip_missing_interpreters = true`）。
+推荐使用 **`tox`**（配置见仓库根目录 **`pyproject.toml`** 中的 **`[tool.tox]`**）在本地对齐 CI 的 Python 3.9–3.14 矩阵：安装 dev 依赖后执行 `tox`；未安装的解释器对应环境会被跳过（`skip_missing_interpreters = true`）。
