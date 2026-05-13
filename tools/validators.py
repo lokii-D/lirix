@@ -224,7 +224,7 @@ def check_hygiene() -> int:
         for p in signoff_files:
             # audit_artifacts/release_signoff/<YYYY-MM-DD>/...
             # (ignore loose files under release_signoff/)
-            parts = p.split("/")
+            parts = Path(p).parts
             if len(parts) >= 4 and _SIGNOFF_DATE_DIR.match(parts[2]):
                 # parts[0]=audit_artifacts, parts[1]=release_signoff, parts[2]=<date>
                 date_dirs.add("/".join(parts[:3]) + "/")

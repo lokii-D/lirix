@@ -16,7 +16,7 @@ from lirix._multicall_facade import atomic_multicall
 from lirix.core import LirixConfig, LirixSecurityException
 from lirix.core.session import verify_replay_bundle
 
-__version__ = "2.0.0"
+__version__ = "2.0.2"
 
 if sys.version_info < (3, 9) or sys.version_info >= (3, 15):
     raise ImportError("Lirix requires Python 3.9 through 3.14.")

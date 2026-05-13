@@ -10,6 +10,9 @@ name: Mantle fork smoke
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mantle-fork:
     name: Mantle fork (Anvil + mantle_TT)

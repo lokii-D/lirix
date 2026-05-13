@@ -9,6 +9,9 @@ name: Optional SBOM (CycloneDX)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sbom:
     runs-on: ubuntu-latest

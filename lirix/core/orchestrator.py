@@ -6,7 +6,6 @@ from uuid import uuid4
 from typing_extensions import TypeAlias
 from web3.types import StateOverride
 
-from lirix.core.hook_manager import HookManager
 from lirix.core.client_components import (
     ClientPipelineProtocol,
     error_to_feedback_mapper,
@@ -29,6 +28,7 @@ from lirix.core.evidence import (
 )
 from lirix.core.exceptions import HookExecutionException, LirixBaseException
 from lirix.core.failure_protocol import build_failure_protocol_from_agent_feedback
+from lirix.core.hook_manager import HookManager
 from lirix.core.session import ValidationSession, ensure_session
 from lirix.core.trace_recorder import TraceRecorder
 from lirix.layers import RPCManager
@@ -45,7 +45,7 @@ RunKind: TypeAlias = Literal[
 
 
 class OrchestratorClient(Protocol):
-    """Narrow surface of `Lirix` used by `LirixPipelineOrchestrator` (avoids importing `_facade`)."""
+    """Narrow `Lirix` surface for `LirixPipelineOrchestrator` (no `_facade` import)."""
 
     hooks: HookManager
     _pipeline: ClientPipelineProtocol
@@ -62,7 +62,9 @@ class OrchestratorClient(Protocol):
 
     def _artifact_digests_base(self) -> Mapping[str, str]: ...
 
-    def _artifact_digests_with_rpc(self, *, rpc_snapshot: Mapping[str, Any]) -> Mapping[str, str]: ...
+    def _artifact_digests_with_rpc(
+        self, *, rpc_snapshot: Mapping[str, Any]
+    ) -> Mapping[str, str]: ...
 
     def _run_l1_l3_validation(
         self, *, intent: str, payload: Mapping[str, Any], recorder: TraceRecorder
@@ -91,7 +93,9 @@ class OrchestratorClient(Protocol):
 
     def _build_rpc_manager(self) -> RPCManager: ...
 
-    def _l4_orchestration_details(self, *, rpc: RPCManager, block_number: int) -> Mapping[str, Any]: ...
+    def _l4_orchestration_details(
+        self, *, rpc: RPCManager, block_number: int
+    ) -> Mapping[str, Any]: ...
 
     def _build_sandbox_simulator(self) -> object: ...
 
