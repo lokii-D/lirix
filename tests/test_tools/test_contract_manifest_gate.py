@@ -133,81 +133,60 @@ def test_readme_contract_rejects_raw_result_broadcast() -> None:
     assert failures
 
 
-def test_extract_governance_gate_tests_from_repo_ci_yml() -> None:
+def test_governance_explicit_gate_tests_ssot_covers_anchors() -> None:
     gate = _load_gate_module()
-    root = Path(__file__).resolve().parents[2]
-    ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    extracted = gate._extract_governance_gate_tests(ci)
+    extracted = gate._governance_explicit_gate_tests_ssot()
     assert len(extracted) >= gate._GOVERNANCE_GATE_EXPLICIT_MIN_TESTS
     for t in gate._GOVERNANCE_GATE_CI_YML_ANCHORS:
         assert t in extracted
 
 
-def test_extract_governance_gate_tests_empty_when_step_renamed() -> None:
+def test_assert_governance_step_invokes_test_harness_accepts_repo_ci_yml() -> None:
     gate = _load_gate_module()
-    fake_ci = """
-jobs:
-  fast_required:
-    steps:
-      - name: Governance gate
-        run: |
-          python -m pytest -q \\
-            tests/test_core/test_canonical_semantics.py
-"""
-    assert gate._extract_governance_gate_tests(fake_ci) == []
+    root = Path(__file__).resolve().parents[2]
+    ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    failures: list[str] = []
+    gate._assert_governance_step_invokes_test_harness(ci, failures)
+    assert failures == []
 
 
-def _seven_test_governance_fragment(gate) -> str:
+def test_assert_governance_step_invokes_test_harness_rejects_non_harness_run() -> None:
+    gate = _load_gate_module()
     step = gate.GOVERNANCE_GATE_EXPLICIT_STEP_NAME
-    return "\n".join(
-        [
-            f"      - name: {step}",
-            "        run: |",
-        ]
-        + [f"            tests/test_core/test_short_{i}.py \\" for i in range(7)]
-    )
-
-
-def test_extract_governance_gate_tests_short_list_length() -> None:
-    gate = _load_gate_module()
-    fragment = _seven_test_governance_fragment(gate)
-    extracted = gate._extract_governance_gate_tests(fragment)
-    n_expected = 7
-    assert len(extracted) == n_expected
-    assert n_expected < gate._GOVERNANCE_GATE_EXPLICIT_MIN_TESTS
+    ci = f"""
+      - name: {step}
+        run: |
+          python -m pytest -q tests/test_core/test_canonical_semantics.py
+"""
+    failures: list[str] = []
+    gate._assert_governance_step_invokes_test_harness(ci, failures)
+    assert failures
 
 
 def test_validate_governance_explicit_list_short_list_floor_failure_substrings() -> None:
     gate = _load_gate_module()
-    extracted = gate._extract_governance_gate_tests(_seven_test_governance_fragment(gate))
+    extracted = [f"tests/test_core/test_short_{i}.py" for i in range(7)]
     failures: list[str] = []
     gate._validate_governance_explicit_list(extracted, failures)
     joined = "\n".join(failures)
     assert "explicit gate list too short" in joined
     assert f"{len(extracted)} < {gate._GOVERNANCE_GATE_EXPLICIT_MIN_TESTS}" in joined
-    assert gate.GOVERNANCE_GATE_EXPLICIT_STEP_NAME in joined
-    assert ".github/workflows/ci.yml" in joined
+    assert "validators.py" in joined
 
 
 def test_validate_governance_explicit_list_empty_extraction_message() -> None:
     gate = _load_gate_module()
     failures: list[str] = []
     gate._validate_governance_explicit_list([], failures)
-    assert failures == ["ci-governance-gate: failed to extract explicit gate test list"]
+    assert failures == [
+        "ci-governance-gate: failed to load explicit gate test list from "
+        "`tools/validators.py` (`GOVERNANCE_EXPLICIT_PYTEST_PATHS`)"
+    ]
 
 
 def test_validate_governance_explicit_list_missing_anchor_paths() -> None:
     gate = _load_gate_module()
-    step = gate.GOVERNANCE_GATE_EXPLICIT_STEP_NAME
-    fragment = "\n".join(
-        [
-            f"      - name: {step}",
-            "        run: |",
-        ]
-        + [f"            tests/test_core/test_dummy_gate_{i}.py \\" for i in range(8)]
-    )
-    extracted = gate._extract_governance_gate_tests(fragment)
-    assert len(extracted) == 8
+    extracted = [f"tests/test_core/test_dummy_gate_{i}.py" for i in range(8)]
     failures: list[str] = []
     gate._validate_governance_explicit_list(extracted, failures)
     assert any("missing gated test" in msg for msg in failures)

@@ -81,7 +81,7 @@ purpose: post-harness plan items — path/gate, action, benefit, acceptance
 | Todo ID | Outcome | Evidence |
 | --- | --- | --- |
 | `r4-action-list-r3-closure-table` | Done | 本文件 **Round 3 todo closure** 表 **10** 行 + 上文 closure 计数指向下表 |
-| `r4-contract-manifest-governance-step-constant` | Done | `tools/contract_manifest_gate.py` — `GOVERNANCE_GATE_EXPLICIT_STEP_NAME`；`_extract_governance_gate_tests` 使用该常量 |
+| `r4-contract-manifest-governance-step-constant` | Done | `tools/contract_manifest_gate.py` — `GOVERNANCE_GATE_EXPLICIT_STEP_NAME`；`contract-manifest` 绑定 `ci.yml` harness 步骤 + `tools/validators.py` SSOT |
 | `r4-contract-manifest-floor-unit-integration` | Done | `_validate_governance_explicit_list`；`tests/test_tools/test_contract_manifest_gate.py`（floor / 空列表 / 锚点等） |
 | `r4-readme-tools-gates-index-crosslink` | Done | `README.md` 英 / 中文审计链一带 `docs/tools_gates_index.md` 与矩阵 § 互补说明 |
 | `r4-cv-rubric-tools-index-metering` | Done | `docs/cv_rubric.yaml` `ci_alignment` 子项（含 `tools_gates_index_doc`）；`tools/cv_score_report.py` 模块说明 |
@@ -101,7 +101,7 @@ purpose: post-harness plan items — path/gate, action, benefit, acceptance
 | `r5-tools-gates-index-row-count-check` | Done | `_validate_tools_gates_index_row_parity` + `_TOOLS_GATES_INDEX_MAIN_ROW_RE`；`docs/tools_gates_index.md` **Row parity**；矩阵 § Docs contract gate |
 | `r5-required-check-policy-crossref` | Done | `tools/required_check_policy_gate.py` docstring + 读 `governance-lane.yml` 断言 **Governance Gates** job；`docs/branch_protection_required_checks.md` **Cross-check** |
 | `r5-audit-path-map-contributor-tools-link` | Done | `docs/audit_path_map.md` contributor bullet → `docs/tools_gates_index.md` |
-| `r5-extractor-single-workflow-assumption-doc` | Done | `_extract_governance_gate_tests` docstring **仅 ci.yml**；`docs/ci_gate_matrix.md` § Docs contract gate（单 workflow 提取假设） |
+| `r5-extractor-single-workflow-assumption-doc` | Done | 治理 pytest 路径 SSOT 在 **`tools/validators.py`**；`docs/ci_gate_matrix.md` § Docs contract gate |
 
 ## Action rows (path or gate)
 

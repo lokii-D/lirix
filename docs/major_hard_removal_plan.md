@@ -62,5 +62,5 @@ This major change is the “hard removal” phase described in `docs/migration_l
 - `python tools/harness.py contract-manifest`
 - `python tools/harness.py root-import-surface`
 - `python tools/harness.py test-monkeypatch-convention --strict`
-- CI explicit governance gate test list (from `.github/workflows/ci.yml`)
+- CI explicit governance gate test list (SSOT: `GOVERNANCE_EXPLICIT_PYTEST_PATHS` in `tools/validators.py`, invoked via `python tools/harness.py test-governance` in `.github/workflows/ci.yml`)
 - Full `pytest` suite and closure suites

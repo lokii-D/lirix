@@ -43,8 +43,51 @@ lirix/
 │   ├── e2e-anvil-optional.yml      # EN: Optional Anvil e2e lane. / 中文：可选 Anvil 端到端 lane。
 │   ├── sbom-optional.yml           # EN: Optional SBOM generation lane. / 中文：可选 SBOM 生成 lane。
 │   └── release.yml                 # EN: On GitHub Release published: OIDC PyPI + attach dist to that release. / 中文：Release 发布时 OIDC 发 PyPI 并把 dist 挂到该 Release。
-├── docs/
-│   └── STRUCTURE.md
+├── docs/                           # EN: Doc hub (audit SSOT + guides). / 中文：文档枢纽（审计 SSOT + 指南）。
+│   ├── STRUCTURE.md                # EN: This file — repo + `docs/` topology. / 中文：本文件 — 仓库与 `docs/` 拓扑。
+│   ├── 入门与参考 / Onboarding & reference
+│   │   ├── quickstart.md
+│   │   ├── api_reference.md
+│   │   ├── troubleshooting.md
+│   │   ├── best_practices.md
+│   │   └── contributing_local_tests.md
+│   ├── 架构与控制面 / Architecture & control plane
+│   │   ├── audit_path_map.md       # EN: Audit SSOT index. / 中文：审计主索引（SSOT）。
+│   │   ├── architecture_control_plane.md
+│   │   ├── pipeline_evidence_flow.md
+│   │   ├── checklist_implementation_matrix.md
+│   │   ├── assumption_register.md
+│   │   └── supported_tx_shapes.md
+│   ├── 证据与策略 schema / Evidence & policy schema
+│   │   ├── evidence_schema_v2.md
+│   │   ├── provenance_spec.md
+│   │   └── policy_lifecycle_and_rollback.md
+│   ├── 迁移与可观测 / Migration & observability
+│   │   ├── migration_legacy_to_v2.md
+│   │   ├── migration_observability_dashboard.md
+│   │   ├── migration_observability_scan_policy.md
+│   │   └── lirix_import_topology.md  # EN: Generated graph artifact. / 中文：导入图生成物。
+│   ├── 治理与 CI / Governance & CI
+│   │   ├── ci_gate_matrix.md
+│   │   ├── ci_gate_responsibility_matrix.md
+│   │   ├── branch_protection_required_checks.md
+│   │   ├── tools_gates_index.md
+│   │   ├── release_pr_checklist.md
+│   │   └── repo_exclusions.md
+│   ├── 历史 ADR 与演进 / ADRs & evolution
+│   │   ├── adr_0001_architecture_convergence_baseline.md
+│   │   ├── adr_0002_ci_fast_required_minset_and_governance_lane.md
+│   │   ├── adr_responsibility_boundaries.md
+│   │   ├── architecture_evolution_action_list.md
+│   │   ├── major_hard_removal_plan.md
+│   │   └── legacy_sunset_milestones.md
+│   ├── 发布与体例 / Release & style
+│   │   ├── release_notes.md
+│   │   ├── documentation_styleguide.md
+│   │   ├── sbom_optional.md
+│   │   └── cv_rubric.yaml
+│   ├── baselines/                  # EN: Frozen JSON baselines. / 中文：冻结 JSON 基线。
+│   └── *.json                      # EN: Machine contracts (phase exit, metrics, triage). / 中文：机读契约 JSON。
 ├── examples/
 │   ├── basic_usage.py                # EN: Minimal SDK walkthrough. / 中文：最小 SDK 演示。
 │   └── validate_and_simulate_broadcast.py  # EN: End-to-end broadcast handoff example with strict dual-approved extract semantics. / 中文：带严格双 approved 提取语义的端到端广播交接示例。

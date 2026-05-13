@@ -25,48 +25,23 @@ jobs:
       - name: Repo exclusions alignment gate
         run: python tools/harness.py check-exclusions
       - name: Import topology drift gate
-        run: python tools/gen_lirix_import_graph.py --check
+        run: python tools/harness.py import-topology
       - name: Install lint dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
       - name: Run Ruff
-        run: python -m ruff check .
+        run: python tools/harness.py lint
       - name: Run Black check
-        run: python -m black --check .
+        run: python tools/harness.py format-check
       - name: Run MyPy
-        run: python -m mypy --strict lirix
+        run: python tools/harness.py typecheck
       - name: Governance gate (explicit)
-        run: |
-          python -m pytest -q \
-            tests/test_core/test_canonical_semantics.py \
-            tests/test_core/test_agent_feedback_reason_taxonomy_closure.py \
-            tests/test_core/test_session.py \
-            tests/test_core/test_session_replay_verifier_malformed_shapes.py \
-            tests/test_core/test_session_workflow_strict_happy_path.py \
-            tests/test_core/test_replay_registry_closure_binding.py \
-            tests/test_core/test_replay_registry_closure_parity_all_entrypoints.py \
-            tests/test_core/test_chain_adapter_profiles.py \
-            tests/test_core/test_hook_manager.py \
-            tests/test_core/test_hook_governance_async_contract_mode_parity.py \
-            tests/test_core/test_status_aggregation.py \
-            tests/test_core/test_config_governance_overlap_guards.py \
-            tests/test_core/test_simulate_only_prior_validate_config.py \
-            tests/test_core/test_entrypoints.py \
-            tests/test_core/test_entrypoint_symbol_binding_contract.py \
-            tests/test_core/test_public_exports_contract.py \
-            tests/test_core/test_cli_public_contract.py \
-            tests/test_core/test_readme_envelope_contract.py \
-            tests/test_core/test_governance_provenance_matrix.py \
-            tests/test_layers/test_l4_rpc_manager_disagreement_report.py \
-            tests/test_layers/test_shadow_auditor_policy_bundle.py \
-            tests/test_integrations/test_langchain_tool_run_arun_delegate_to_guardian_paths.py
+        run: python tools/harness.py test-governance
       - name: Registry authority contract gate
         run: python tools/harness.py registry-authority-contract
       - name: Release notes gate
-        run: |
-          grep -nF "API Contract Delta" docs/release_notes.md
-          grep -nF "additive and backward compatible" docs/release_notes.md
+        run: python tools/harness.py release-notes-gate
       - name: Docs contract gate
         run: python tools/harness.py contract-manifest
       - name: Required checks policy gate
@@ -93,7 +68,7 @@ jobs:
           TEST_TOPOLOGY_MAX_COST_SECONDS: "320"
           TEST_TOPOLOGY_MAX_FAILURE_DENSITY: "0.02"
       - name: Migration observability report (truth source)
-        run: python tools/migration_observability_report.py
+        run: python tools/harness.py migration-observability-report
   coverage_required:
     name: Coverage Required (Single Authority)
     if: github.event_name != 'pull_request'
@@ -105,8 +80,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run full suite with coverage fail-under=100
-        run: |
-          python -m pytest -q --cov=lirix --cov-report=term-missing:skip-covered --cov-report=xml
+        run: python tools/harness.py test-coverage-required
 
   pr_compat_smoke:
     name: PR Compatibility Smoke (${{ matrix.os }}, py${{ matrix.python-version }})
@@ -125,8 +99,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-pip-cache: "true"
       - name: Run PR compatibility smoke subset
-        run: |
-          python -m pytest -q tests/test_core/test_entrypoints.py tests/test_core/test_sync_async_contract_consistency.py tests/test_core/test_registry_authority_contract.py
+        run: python tools/harness.py test-pr-compat-smoke
 
   compatibility_matrix:
     name: Compatibility Matrix (${{ matrix.os }}, py${{ matrix.python-version }})
@@ -147,8 +120,7 @@ jobs:
           enable-pip-cache: "true"
 
       - name: Run compatibility test subset
-        run: |
-          python -m pytest -q -m "not slow and not e2e and not network and not perf and not migration"
+        run: python tools/harness.py test-compat-matrix
         env:
           PYTHONIOENCODING: "utf-8"
           PYTHONLEGACYWINDOWSSTDIO: "0"

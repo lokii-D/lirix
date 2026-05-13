@@ -3,6 +3,118 @@ from __future__ import annotations
 
 # mypy: ignore-errors
 
+import subprocess
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# SSOT for `python tools/harness.py test-governance` (was previously duplicated in `ci.yml` `run: |`).
+GOVERNANCE_EXPLICIT_PYTEST_PATHS: tuple[str, ...] = (
+    "tests/test_core/test_canonical_semantics.py",
+    "tests/test_core/test_agent_feedback_reason_taxonomy_closure.py",
+    "tests/test_core/test_session.py",
+    "tests/test_core/test_session_replay_verifier_malformed_shapes.py",
+    "tests/test_core/test_session_workflow_strict_happy_path.py",
+    "tests/test_core/test_replay_registry_closure_binding.py",
+    "tests/test_core/test_replay_registry_closure_parity_all_entrypoints.py",
+    "tests/test_core/test_chain_adapter_profiles.py",
+    "tests/test_core/test_hook_manager.py",
+    "tests/test_core/test_hook_governance_async_contract_mode_parity.py",
+    "tests/test_core/test_status_aggregation.py",
+    "tests/test_core/test_config_governance_overlap_guards.py",
+    "tests/test_core/test_simulate_only_prior_validate_config.py",
+    "tests/test_core/test_entrypoints.py",
+    "tests/test_core/test_entrypoint_symbol_binding_contract.py",
+    "tests/test_core/test_public_exports_contract.py",
+    "tests/test_core/test_cli_public_contract.py",
+    "tests/test_core/test_readme_envelope_contract.py",
+    "tests/test_core/test_governance_provenance_matrix.py",
+    "tests/test_layers/test_l4_rpc_manager_disagreement_report.py",
+    "tests/test_layers/test_shadow_auditor_policy_bundle.py",
+    "tests/test_integrations/test_langchain_tool_run_arun_delegate_to_guardian_paths.py",
+)
+
+_PR_COMPAT_SMOKE_PYTEST_PATHS: tuple[str, ...] = (
+    "tests/test_core/test_entrypoints.py",
+    "tests/test_core/test_sync_async_contract_consistency.py",
+    "tests/test_core/test_registry_authority_contract.py",
+)
+
+
+def _run_repo_command(argv: list[str]) -> int:
+    proc = subprocess.run(argv, cwd=_REPO_ROOT, check=False)
+    return int(proc.returncode)
+
+
+def check_lint() -> int:
+    return _run_repo_command([sys.executable, "-m", "ruff", "check", "."])
+
+
+def check_format_check() -> int:
+    return _run_repo_command([sys.executable, "-m", "black", "--check", "."])
+
+
+def check_typecheck() -> int:
+    return _run_repo_command([sys.executable, "-m", "mypy", "--strict", "lirix"])
+
+
+def check_test_governance() -> int:
+    cmd = [sys.executable, "-m", "pytest", "-q", *GOVERNANCE_EXPLICIT_PYTEST_PATHS]
+    return _run_repo_command(cmd)
+
+
+def check_test_coverage_required() -> int:
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "--cov=lirix",
+        "--cov-report=term-missing:skip-covered",
+        "--cov-report=xml",
+    ]
+    return _run_repo_command(cmd)
+
+
+def check_test_pr_compat_smoke() -> int:
+    cmd = [sys.executable, "-m", "pytest", "-q", *PR_COMPAT_SMOKE_PYTEST_PATHS]
+    return _run_repo_command(cmd)
+
+
+def check_test_compat_matrix() -> int:
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "not slow and not e2e and not network and not perf and not migration",
+    ]
+    return _run_repo_command(cmd)
+
+
+def check_import_topology() -> int:
+    return _run_repo_command([sys.executable, str(_REPO_ROOT / "tools/gen_lirix_import_graph.py"), "--check"])
+
+
+def check_release_notes_gate() -> int:
+    text = (_REPO_ROOT / "docs" / "release_notes.md").read_text(encoding="utf-8")
+    needles = ("API Contract Delta", "additive and backward compatible")
+    missing = [n for n in needles if n not in text]
+    if missing:
+        for item in missing:
+            print(f"release-notes-gate: missing `{item}` in docs/release_notes.md", file=sys.stderr)
+        return 1
+    print("release-notes-gate: ok")
+    return 0
+
+
+def check_migration_observability_report() -> int:
+    return _run_repo_command(
+        [sys.executable, str(_REPO_ROOT / "tools/migration_observability_report.py")]
+    )
+
 
 def check_hygiene() -> int:
     import fnmatch

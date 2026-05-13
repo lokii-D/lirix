@@ -30,16 +30,26 @@ Companion to **`docs/ci_gate_matrix.md`** § **Tool gates vs subprocess / runtim
 | `contract-manifest` | No | 0 / 1 | `docs/audit_path_map.md`, `.github/workflows/ci.yml`, API/README docs |
 | `doc-preamble-hygiene` | No | 0 / 1 | optional bilingual preamble order (`docs/documentation_styleguide.md` § Part B.1); default warn-only — use `--enforce` to fail |
 | `failure-surface-triage` | No | 0 | failure surface taxonomy docs |
+| `format-check` | **Yes** | 0 / 1 | `python -m black --check .` (wrapped) |
 | `hygiene` | No | 0 / 2 | `git`; sign-off dirs per gate docstring |
+| `import-topology` | No | 0 / 1 | `tools/gen_lirix_import_graph.py --check` (wrapped) |
 | `legacy-sunset` | No | 0 | `pyproject.toml`, `lirix/__init__.py` |
+| `lint` | **Yes** | 0 / 1 | `python -m ruff check .` (wrapped) |
+| `migration-observability-report` | **Yes** | 0 / 1 | `tools/migration_observability_report.py` (wrapped) |
 | `no-internal-imports` | No | 0 / 1 | markdown import examples |
 | `phase-exit-checklists` | No | 0 / 1 | checklist paths under `docs/` |
 | `plan-to-pr-exit-metrics` | No | 0 | plan metrics docs / conventions |
 | `registry-authority-contract` | **Yes** (`import lirix`) | 0 / 1 / **2** | `docs/ci_gate_matrix.md` § runtime imports |
+| `release-notes-gate` | No | 0 / 1 | `docs/release_notes.md` required substrings |
 | `required-check-policy` | No | 0 / 1 | `docs/branch_protection_required_checks.md` |
 | `root-import-surface` | **Yes** | 0 / 1 / **2** | same |
+| `test-compat-matrix` | **Yes** | 0 / 1 | marker-filtered pytest subset (`ci.yml` compatibility matrix) |
+| `test-coverage-required` | **Yes** | 0 / 1 | full pytest + coverage (`fail_under` in `pyproject.toml`) |
+| `test-governance` | **Yes** | 0 / 1 | explicit governance pytest list (`tools/validators.py` SSOT) |
 | `test-monkeypatch-convention` | No | 0 / 1 | `tests/` monkeypatch style |
+| `test-pr-compat-smoke` | **Yes** | 0 / 1 | PR matrix smoke subset (`ci.yml`) |
 | `test-topology-admission` | No | 0 / 1 | env `TEST_TOPOLOGY_*` (see `ci.yml`) |
+| `typecheck` | **Yes** | 0 / 1 | `python -m mypy --strict lirix` (wrapped) |
 
 ### 中文
 
@@ -57,9 +67,9 @@ Companion to **`docs/ci_gate_matrix.md`** § **Tool gates vs subprocess / runtim
 - **Typical exits**：典型退出码（0 通过；1 策略/契约/扫描失败；2 环境或前置条件不满足等）。
 - **Human / doc dependencies**：人工或文档侧依赖（外部命令、环境变量、SSOT 文档路径等）。
 
-## Related tools (not harness subcommands)
+## Related tools (also exposed as harness subcommands)
 
-| Script | Role | Needs dev install? |
+| Script | Harness mirror | Notes |
 | --- | --- | --- |
-| `gen_lirix_import_graph.py` | Regenerate **`docs/lirix_import_topology.md`**; **`--check`** in CI | No |
-| `migration_observability_report.py` | Migration report (truth source in `ci.yml`) | **Yes** (invoked after install in Fast Required) |
+| `gen_lirix_import_graph.py` | `import-topology` | Regenerate **`docs/lirix_import_topology.md`**; CI uses **`--check`**. |
+| `migration_observability_report.py` | `migration-observability-report` | Writes migration observability artifacts (Fast Required). |

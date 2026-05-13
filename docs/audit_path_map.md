@@ -137,7 +137,7 @@ These module-level entrypoints do **not** emit new pipeline `SecurityTrace` / se
 
 - Governance gate lives in `.github/workflows/ci.yml` under `Governance gate (explicit)`.
 - **Governance lane** (`.github/workflows/governance-lane.yml`, push to `main` / schedule / `workflow_dispatch`) runs **`python tools/cv_score_report.py`** without `--enforce` for CV 制品留痕；主线 PR 合并仍以 `ci.yml` 为准（见 **`docs/ci_gate_matrix.md`**）。
-- Full `pytest` + coverage runs after governance gate passes.
+- Full `pytest` + coverage runs after governance gate passes (non-PR job: **`python tools/harness.py test-coverage-required`**).
 - **Editing this file’s § Core Assertions Map:** run `python tools/harness.py contract-manifest` before pushing (CI runs it under “Docs contract gate”).
 - **`from lirix import` surface:** CI runs `python tools/harness.py root-import-surface` after internal doc link checks (scans `tests/`, `examples/`, `tools/`).
 - **Import topology artifact:** regenerate with `python tools/gen_lirix_import_graph.py` (writes `docs/lirix_import_topology.md`).
@@ -205,4 +205,16 @@ The repo uses tests as explicit governance gates. The minimum contract is:
 - **`docs/migration_legacy_to_v2.md`**: 迁移顺序与风险控制（runtime 已 single-stack，仅保留 alias 输入兼容窗口）。
 - **`docs/checklist_implementation_matrix.md`**: 发布/回归清单到代码落点的闭环矩阵（发布签署用）。
 - **`docs/release_notes.md`**: 变更声明（必须 additive-only，且可映射到测试与证据键）。
+
+---
+
+## 历史决策与演进计划 / Historical decisions & evolution
+
+**EN:** Deep-dive and planning docs that are not repeated in the core assertion table above; link them here so the audit map stays the one-hop index.
+
+**中文：** 下列深度文档未在上文断言表中重复展开；在此显式挂链，避免「文档孤岛」。
+
+- [`adr_0002_ci_fast_required_minset_and_governance_lane.md`](adr_0002_ci_fast_required_minset_and_governance_lane.md) — Fast Required 与 governance lane 的 ADR。
+- [`major_hard_removal_plan.md`](major_hard_removal_plan.md) — 硬移除与收敛计划。
+- [`migration_observability_dashboard.md`](migration_observability_dashboard.md) — 迁移可观测看板说明（与 `tools/migration_observability_report.py` 产出配套）。
 

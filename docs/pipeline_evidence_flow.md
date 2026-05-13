@@ -15,7 +15,7 @@ When you **reorder pipeline phases**, rename orchestrator helpers, or change wha
 
 1. Update **this doc** and **`docs/audit_path_map.md`** rows that cite session / replay semantics (human review — avoid brittle CI string-matching to this prose).
 2. Run **`python tools/harness.py contract-manifest`** locally after doc/code edits.
-3. Re-run **governance pytest** (`.github/workflows/ci.yml` step **Governance gate (explicit)**) or the subset you touched.
+3. Re-run **`python tools/harness.py test-governance`** (or the subset you touched).
 4. Regenerate **`docs/lirix_import_topology.md`** with `python tools/gen_lirix_import_graph.py` when import edges shift.
 
 Authoritative code: **`lirix/core/orchestrator.py`** (`LirixPipelineOrchestrator`), **`lirix/_facade.py`** (`Lirix` thin client), **`lirix/core/client_components.py`** (`request_normalization`, `ClientPipelineProtocol`).

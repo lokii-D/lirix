@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict, Literal, Mapping, NoReturn, Optional, cast
+from typing import Any, Awaitable, Callable, Dict, Literal, Mapping, NoReturn, Optional, Protocol
 from uuid import uuid4
 
 from typing_extensions import TypeAlias
 from web3.types import StateOverride
 
+from lirix.core.hook_manager import HookManager
 from lirix.core.client_components import (
+    ClientPipelineProtocol,
     error_to_feedback_mapper,
     request_normalization,
     result_envelope_builder,
@@ -42,6 +44,79 @@ RunKind: TypeAlias = Literal[
 ]
 
 
+class OrchestratorClient(Protocol):
+    """Narrow surface of `Lirix` used by `LirixPipelineOrchestrator` (avoids importing `_facade`)."""
+
+    hooks: HookManager
+    _pipeline: ClientPipelineProtocol
+
+    def _ensure_hook_trace_binding(self) -> None: ...
+
+    def _migration_modes(self) -> Mapping[str, str]: ...
+
+    def _config_fingerprint(self) -> str: ...
+
+    def _registry_closure_digest(self) -> str: ...
+
+    def _replay_proof(self) -> Mapping[str, Any]: ...
+
+    def _artifact_digests_base(self) -> Mapping[str, str]: ...
+
+    def _artifact_digests_with_rpc(self, *, rpc_snapshot: Mapping[str, Any]) -> Mapping[str, str]: ...
+
+    def _run_l1_l3_validation(
+        self, *, intent: str, payload: Mapping[str, Any], recorder: TraceRecorder
+    ) -> None: ...
+
+    def _mark_session_l1_l3_ok(self, sess: ValidationSession) -> None: ...
+
+    def _success_postlude_and_build_result(
+        self,
+        *,
+        sess: ValidationSession,
+        kind: RunKind,
+        trace: SecurityTrace,
+        manage_session_lifecycle: bool,
+        finalization_note: str,
+        decision_rationale: str,
+        decision_details: Mapping[str, Any],
+        artifact_digests: Mapping[str, str],
+        payload: Mapping[str, Any],
+        audit: Optional[Mapping[str, Any]],
+        agent_feedback: Mapping[str, Any],
+        evidence_v2: Mapping[str, Any],
+    ) -> Dict[str, Any]: ...
+
+    def _ensure_simulate_only_precondition(self, sess: ValidationSession) -> None: ...
+
+    def _build_rpc_manager(self) -> RPCManager: ...
+
+    def _l4_orchestration_details(self, *, rpc: RPCManager, block_number: int) -> Mapping[str, Any]: ...
+
+    def _build_sandbox_simulator(self) -> object: ...
+
+    def _run_policy_audit(
+        self,
+        *,
+        payload: Mapping[str, Any],
+        simulation_result: Mapping[str, Any],
+        security_policy: Optional[Mapping[str, Any]],
+        recorder: TraceRecorder,
+    ) -> Mapping[str, Any]: ...
+
+    def _record_full_pipeline_success(
+        self,
+        *,
+        kind: RunKind,
+        sess: ValidationSession,
+        trace: SecurityTrace,
+        rpc: RPCManager,
+        policy_decision: Mapping[str, Any],
+    ) -> Dict[str, Any]: ...
+
+    def _build_result(self, **kwargs: Any) -> Dict[str, Any]: ...
+
+
 class LirixPipelineOrchestrator:
     """Stateless orchestration engine for Lirix client pipelines."""
 
@@ -68,7 +143,7 @@ class LirixPipelineOrchestrator:
             context={
                 "layer": "hooks",
                 "reason": "hook_blocked",
-                "hook_result": cast(dict[str, Any], dict(blocking)),
+                "hook_result": dict(blocking),
             },
         )
 
@@ -93,7 +168,7 @@ class LirixPipelineOrchestrator:
     @staticmethod
     def _start_request(
         *,
-        client: Any,
+        client: OrchestratorClient,
         intent: str,
         payload: Mapping[str, Any],
         session: Optional[ValidationSession],
@@ -120,7 +195,7 @@ class LirixPipelineOrchestrator:
 
     @staticmethod
     def _record_failure(
-        client: Any,
+        client: OrchestratorClient,
         *,
         sess: ValidationSession,
         kind: RunKind,
@@ -206,7 +281,7 @@ class LirixPipelineOrchestrator:
     async def _run_async_template_pipeline(
         self,
         *,
-        client: Any,
+        client: OrchestratorClient,
         kind: RunKind,
         intent: str,
         payload: Mapping[str, Any],
@@ -259,7 +334,7 @@ class LirixPipelineOrchestrator:
     async def run_validate(
         self,
         *,
-        client: Any,
+        client: OrchestratorClient,
         kind: RunKind,
         stage: str,
         intent: str,
@@ -306,7 +381,7 @@ class LirixPipelineOrchestrator:
                 ),
                 evidence_v2=client._pipeline.evidence.validate_only(intent=intent),
             )
-            return cast(Dict[str, Any], result)
+            return result
 
         return await self._run_async_template_pipeline(
             client=client,
@@ -321,7 +396,7 @@ class LirixPipelineOrchestrator:
     async def run_simulate(
         self,
         *,
-        client: Any,
+        client: OrchestratorClient,
         kind: RunKind,
         stage: str,
         payload: Mapping[str, Any],
@@ -356,7 +431,7 @@ class LirixPipelineOrchestrator:
             l4_details = client._l4_orchestration_details(rpc=rpc, block_number=block_number)
             recorder.record_step(
                 ExecutionEvidence(
-                    layer="L4", stage="rpc_reconcile", status="ok", details=l4_details
+                    layer="L4", stage="rpc_reconcile", status="ok", details=dict(l4_details)
                 )
             )
             web3_client = await get_web3(rpc)
@@ -403,7 +478,7 @@ class LirixPipelineOrchestrator:
                     l4_details=l4_details, l5_details={"outcome": sim_embed}
                 ),
             )
-            return cast(Dict[str, Any], result)
+            return result
 
         return await self._run_async_template_pipeline(
             client=client,
@@ -418,7 +493,7 @@ class LirixPipelineOrchestrator:
     async def run_full(
         self,
         *,
-        client: Any,
+        client: OrchestratorClient,
         kind: RunKind,
         decision_rationale: str,
         finalization_note: str,
@@ -469,7 +544,7 @@ class LirixPipelineOrchestrator:
             l4_details = client._l4_orchestration_details(rpc=rpc, block_number=block_number)
             recorder.record_step(
                 ExecutionEvidence(
-                    layer="L4", stage="rpc_reconcile", status="ok", details=l4_details
+                    layer="L4", stage="rpc_reconcile", status="ok", details=dict(l4_details)
                 )
             )
             web3_client = await get_web3(rpc)
@@ -543,7 +618,7 @@ class LirixPipelineOrchestrator:
                     l4_details=l4_details, l5_details={"outcome": sim_embed}, policy_details=auditor
                 ),
             )
-            return cast(Dict[str, Any], result)
+            return result
         except LirixBaseException as exc:
             self._record_failure(
                 client,

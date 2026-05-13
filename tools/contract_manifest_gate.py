@@ -9,11 +9,11 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Display name of the step in `.github/workflows/ci.yml` whose `run: |` lists governance pytest files.
-# Keep in sync with YAML; referenced by extraction, validation errors, and contract tests.
-# `contract_manifest_gate` asserts a stripped `- name: …` line exactly matches this string in `ci.yml`
-# (see `_assert_governance_explicit_step_line_in_ci_yml`) so renaming only the constant cannot drift
-# from the workflow silently. See `docs/ci_gate_matrix.md` § **Docs contract gate** — governance pytest SSOT.
+# Display name of the step in `.github/workflows/ci.yml` that runs the explicit governance pytest
+# batch via `python tools/harness.py test-governance`. The authoritative path list lives in
+# `GOVERNANCE_EXPLICIT_PYTEST_PATHS` inside `tools/validators.py` (sorted by
+# `_governance_explicit_gate_tests_ssot`). Keep the YAML step name in sync with this constant; see
+# `_assert_governance_explicit_step_line_in_ci_yml` and `_assert_governance_step_invokes_test_harness`.
 GOVERNANCE_GATE_EXPLICIT_STEP_NAME = "Governance gate (explicit)"
 
 _TOOLS_GATES_INDEX_MAIN_ROW_RE = re.compile(r"^\|\s*`([a-z0-9-]+)`\s*\|", re.MULTILINE)
@@ -29,54 +29,48 @@ def _require_all(doc: str, name: str, needles: list[str], failures: list[str]) -
             failures.append(f"{name}: missing `{needle}`")
 
 
-def _extract_governance_gate_tests(ci_yml: str) -> list[str]:
-    """
-    Extract the explicit governance gate test list from `.github/workflows/ci.yml` only.
+def _governance_explicit_gate_tests_ssot() -> list[str]:
+    """Return sorted governance pytest paths (SSOT: ``GOVERNANCE_EXPLICIT_PYTEST_PATHS``)."""
 
-    **Single-workflow assumption:** the exhaustive pytest path list is parsed only from
-    ``.github/workflows/ci.yml`` (step ``GOVERNANCE_GATE_EXPLICIT_STEP_NAME``), not from
-    ``governance-lane.yml`` or other workflows. If a second workflow later duplicates an
-    explicit governance list, extend the extractor (or add a dedicated manifest) before
-    relying on parity. See ``docs/ci_gate_matrix.md`` § **Docs contract gate**.
+    from tools import validators
 
-    This is a structured extraction (step name + run block), not a substring search.
-    """
+    return sorted(validators.GOVERNANCE_EXPLICIT_PYTEST_PATHS)
+
+
+def _assert_governance_step_invokes_test_harness(ci_yml: str, failures: list[str]) -> None:
+    """Require the governance step to invoke ``python tools/harness.py test-governance``."""
+
     lines = ci_yml.splitlines()
     in_gate = False
-    in_run_block = False
-    tests: list[str] = []
+    found_run = False
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("- name:") and GOVERNANCE_GATE_EXPLICIT_STEP_NAME in stripped:
             in_gate = True
-            in_run_block = False
+            found_run = False
             continue
-        if (
-            in_gate
-            and stripped.startswith("- name:")
-            and GOVERNANCE_GATE_EXPLICIT_STEP_NAME not in stripped
-        ):
-            # next step begins
+        if not in_gate:
+            continue
+        if stripped.startswith("- name:") and GOVERNANCE_GATE_EXPLICIT_STEP_NAME not in stripped:
             break
-        if in_gate and stripped == "run: |":
-            in_run_block = True
-            continue
-        if in_gate and in_run_block:
-            # run block ends when indentation collapses to step indentation
-            if (
-                stripped.startswith("- name:")
-                or stripped.startswith("uses:")
-                or stripped.startswith("run:")
-            ):
-                break
-            token = stripped.rstrip("\\").strip()
-            if token.startswith("tests/") and token.endswith(".py"):
-                tests.append(token)
-    return sorted(set(tests))
+        if stripped.startswith("run:"):
+            found_run = True
+            if "python tools/harness.py test-governance" not in stripped:
+                failures.append(
+                    "ci-governance-gate: "
+                    f"step `{GOVERNANCE_GATE_EXPLICIT_STEP_NAME}` must use "
+                    "`python tools/harness.py test-governance` (single harness entrypoint)."
+                )
+            return
+    if in_gate and not found_run:
+        failures.append(
+            f"ci-governance-gate: missing `run:` for `{GOVERNANCE_GATE_EXPLICIT_STEP_NAME}` "
+            "or it does not invoke `python tools/harness.py test-governance`."
+        )
 
 
-# Floor on the **count** of `tests/...py` lines in the step `GOVERNANCE_GATE_EXPLICIT_STEP_NAME`.
-# Maintenance: when you add paths to that step in `ci.yml`, bump this constant to match the new
+# Floor on the **count** of governance pytest paths in `tools/validators.py` (`GOVERNANCE_EXPLICIT_PYTEST_PATHS`).
+# Maintenance: when you add paths to that tuple, bump this constant to match the new
 # minimum count so accidental truncation cannot slip under the floor. Also extend
 # `_GOVERNANCE_GATE_CI_YML_ANCHORS` when adding new classes of governance coverage that must never
 # disappear from CI. See `docs/ci_gate_matrix.md` § Fast Required / governance list.
@@ -93,15 +87,18 @@ def _validate_governance_explicit_list(gated_tests: list[str], failures: list[st
     """Append failures when extracted list is empty, below floor, or missing anchor paths."""
 
     if not gated_tests:
-        failures.append("ci-governance-gate: failed to extract explicit gate test list")
+        failures.append(
+            "ci-governance-gate: failed to load explicit gate test list from "
+            "`tools/validators.py` (`GOVERNANCE_EXPLICIT_PYTEST_PATHS`)"
+        )
         return
     if len(gated_tests) < _GOVERNANCE_GATE_EXPLICIT_MIN_TESTS:
         failures.append(
             "ci-governance-gate: explicit gate list too short "
             f"({len(gated_tests)} < {_GOVERNANCE_GATE_EXPLICIT_MIN_TESTS}); "
-            f"verify `.github/workflows/ci.yml` step `{GOVERNANCE_GATE_EXPLICIT_STEP_NAME}` "
-            "and its `run: |` block were not renamed or truncated."
+            "verify `tools/validators.py` `GOVERNANCE_EXPLICIT_PYTEST_PATHS` was not truncated."
         )
+        return
     for t in _GOVERNANCE_GATE_CI_YML_ANCHORS:
         if t not in gated_tests:
             failures.append(f"ci-governance-gate: missing gated test `{t}`")
@@ -118,7 +115,7 @@ def _assert_governance_explicit_step_line_in_ci_yml(ci_yml: str, failures: list[
         "ci-governance-gate: `.github/workflows/ci.yml` has no step whose stripped `- name:` line "
         f"exactly matches `{expected!r}` (drift vs `GOVERNANCE_GATE_EXPLICIT_STEP_NAME` in this script). "
         "Rename the YAML step and the constant together. See `docs/ci_gate_matrix.md` § **Docs contract gate** "
-        "— governance pytest SSOT."
+        "— governance harness step marker."
     )
 
 
@@ -725,14 +722,15 @@ def main() -> int:
     client_source = _read("lirix/_facade.py")
 
     _assert_governance_explicit_step_line_in_ci_yml(ci, failures)
+    _assert_governance_step_invokes_test_harness(ci, failures)
     _validate_tools_gates_index_row_parity(tools_gates_index, failures)
 
-    gated_tests = _extract_governance_gate_tests(ci)
-    # Minimal anchors only: the exhaustive governance pytest list lives solely in
-    # `.github/workflows/ci.yml` (`GOVERNANCE_GATE_EXPLICIT_STEP_NAME`). Every audit map row with
-    # CI gate "Governance gate" must reference tests that appear in that extracted list
-    # (enforced in the loop below). These paths are "must not disappear from CI YAML" probes
-    # so an accidental truncation of the workflow still trips a clear failure.
+    gated_tests = _governance_explicit_gate_tests_ssot()
+    # Minimal anchors only: the exhaustive governance pytest list lives in
+    # `tools/validators.py` (`GOVERNANCE_EXPLICIT_PYTEST_PATHS`). Every audit map row with
+    # CI gate "Governance gate" must reference tests that appear in that list
+    # (enforced in the loop below). These paths are "must not disappear from SSOT" probes
+    # so an accidental truncation of the tuple still trips a clear failure.
     _validate_governance_explicit_list(gated_tests, failures)
 
     # Audit map table must reference real code/tests, and gated rows must be in the explicit gate.
