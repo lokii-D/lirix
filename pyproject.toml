@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{ name = "lokii", email = "zp715875634@gmail.com" }]
 keywords = ["ethereum", "web3", "defi", "security", "multicall", "validation"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -57,16 +57,9 @@ langchain = [
     "langchain>=0.1.0,<1.0.0",
     "langchain-core>=0.1.0,<1.0.0",
 ]
-autogen = [
-    "autogen-agentchat>=0.4.0,<1.0.0",
-]
 simulation = [
     "web3>=6.0.0,<8.0.0",
     "eth-abi>=4.0.0,<6.0.0",
-]
-# HTTP client for RPC backends that need httpx explicitly (`pip install lirix[http-rpc]`).
-http-rpc = [
-    "httpx>=0.27.0,<1.0.0",
 ]
 
 [project.urls]
@@ -77,6 +70,9 @@ Documentation = "https://github.com/lokii-D/lirix/blob/main/docs/api_reference.m
 
 [tool.setuptools]
 include-package-data = false
+
+[tool.setuptools.package-data]
+lirix = ["py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -91,7 +87,7 @@ target-version = ["py39"]
 target-version = "py39"
 
 [tool.ruff.lint]
-ignore = ["BLE001"]
+extend-select = ["BLE"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/benchmark/*.py" = ["E501", "E402", "SIM113", "SIM105", "E741"]
@@ -105,7 +101,7 @@ ignore_errors = true
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = "-v --strict-markers --doctest-modules --import-mode=importlib tests --pyargs lirix"
-norecursedirs = [".git", ".venv", "venv", "__pycache__", "node_modules", "tdsc", "mantle_TT"]
+norecursedirs = [".git", ".venv", "venv", "__pycache__", "node_modules", "tdsc", "mantle_TT", "checklists", "prompts", "cache"]
 asyncio_mode = "auto"
 markers = [
     "migration: migration-only compatibility coverage (legacy inputs retained during deprecation window)",

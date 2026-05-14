@@ -76,7 +76,7 @@ OUT="audit_artifacts/release_signoff/$DATE"
 mkdir -p "$OUT"
 
 python -m ruff check . 2>&1 | tee "$OUT/B4_ruff_ci312.log"
-python -m black --check . 2>&1 | tee "$OUT/B4_black_check_ci312.log"
+python -m black --check --quiet . 2>&1 | tee "$OUT/B4_black_check_ci312.log"
 python -m mypy --strict lirix 2>&1 | tee "$OUT/B4_mypy_strict_lirix_ci312.log"
 
 python -m pytest -q \
@@ -85,7 +85,7 @@ python -m pytest -q \
   tests/test_core/test_config_governance_overlap_guards.py \
   tests/test_core/test_session.py \
   tests/test_core/test_session_replay_verifier_malformed_shapes.py \
-  tests/test_core/test_session_workflow_strict_happy_path.py \
+  tests/test_core/test_session_agent_timeline_order_happy_path.py \
   tests/test_core/test_simulate_only_prior_validate_config.py \
   tests/test_core/test_evidence_models.py \
   tests/test_core/test_chain_adapter_profiles.py \

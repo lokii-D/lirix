@@ -3,28 +3,55 @@ title: Repository exclusions SSOT
 purpose: align .gitignore, pytest norecursedirs, audit scope, and harness ignore
 ---
 
-# Repository exclusions (single source of truth)
+# Repository exclusions
 
+This file is the repository-level exclusion SSOT.
 
-**EN:** Authoritative technical content in the sections below; repo-wide bilingual conventions: [`documentation_styleguide.md`](documentation_styleguide.md).
-**中文：** 正文为权威技术叙述；全仓双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
+**EN:** Keep this document focused on exclusion boundaries only. For general architecture, release, or API contract guidance, use the dedicated docs in `docs/`.
+**中文：** 本文档仅负责排除边界；架构、发布与 API 契约请使用 `docs/` 下的专门文档。
 
-These paths are **out of scope** for default Lirix package CI, hygiene scanners, and audit tables unless a workflow explicitly targets them.
+## Scope
+
+These paths are out of scope for default package CI, hygiene scanners, and audit tables unless a workflow explicitly targets them.
 
 | Mechanism | Paths / intent |
 | --- | --- |
 | `.gitignore` | `tdsc/`, `mantle_TT/`, virtualenv dirs (`.venv/`, `.venv*/`, `venv/`, …), local IDE (`.cursor/`), `checklists/`, `prompts/`, … |
-| `pyproject.toml` → `[tool.pytest.ini_options]` `norecursedirs` | `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, **`tdsc`**, **`mantle_TT`** |
-| `docs/audit_path_map.md` → Scope / Exclusions | **`tdsc/`**, **`mantle_TT/`** called out explicitly |
-| `.harnessignore` (repo root) | Same glob intent as `.gitignore` for local harness-style tooling; keep in sync when adding new top-level research trees |
+| `.harnessignore` | Same local-tooling intent as `.gitignore`; keep in lockstep for top-level research trees and caches |
+| `pyproject.toml` → `[tool.pytest.ini_options].norecursedirs` | `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `tdsc`, `mantle_TT` |
+| `docs/audit_path_map.md` → Scope / Exclusions | `tdsc/`, `mantle_TT/` called out explicitly |
 
 ## Consistency rule
 
-When adding a new **non-package** research or fork-integration tree:
+When adding a new non-package research or fork-integration tree:
 
-1. Add it to `.gitignore` (if it must never ship in clones as tracked files).
+1. Add it to `.gitignore` if it must never ship as tracked content.
 2. Add the directory name to pytest `norecursedirs` if tests must not collect there.
-3. Add one line under **`docs/audit_path_map.md`** Scope / Exclusions.
-4. Mirror the same pattern in **`.harnessignore`**.
+3. Add one line under `docs/audit_path_map.md` Scope / Exclusions.
+4. Mirror the same pattern in `.harnessignore`.
 
-Optional workflows that intentionally enter `mantle_TT/` (e.g. Mantle fork smoke) are documented in `docs/ci_gate_matrix.md`.
+## Current exclusion set
+
+### Generated and cache artifacts
+
+`__pycache__/`, `*.py[cod]`, `*.egg-info/`, `.eggs/`, `dist/`, `build/`, `out/`, `cache/`, `.tox/`, `.nox/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.coverage`, `.coverage.*`, `htmlcov/`, `coverage.xml`
+
+### Virtual environments
+
+`.venv/`, `.venv*/`, `venv/`, `env/`, `.venv_ci*/`, `.venv_ci312/`, `.lirix_audit_venv/`, `.lirix_final_preflight_venv/`, `.mantle_tt_venv/`, `_lirix_launch_sandbox/`
+
+### Local-only secrets and machine state
+
+`.env`, `.env.release`, `.DS_Store`, `Thumbs.db`, `node_modules/`, `.cursor/`
+
+### Local research and checklist artifacts
+
+`checklists/`, `prompts/`, `tdsc/`, `mantle_TT/`
+
+### Dev silos and audit artifacts
+
+`.lirix_launch_silo/`, `audit_artifacts/**` except `audit_artifacts/release_signoff/` and `audit_artifacts/release_signoff/**`
+
+## Note
+
+Optional workflows that intentionally enter `mantle_TT/` are documented in `docs/ci_gate_matrix.md`.

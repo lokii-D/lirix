@@ -1,5 +1,7 @@
 # Release Notes
 
+This document records release-visible deltas and compatibility notes only. It is not a second SSOT for architecture or workflow governance.
+
 **EN:** Version history and API contract deltas for Lirix releases.<br>
 **中文：** 版本历史与 API 契约增量说明；契约门禁敏感锚点见 § **API Contract Delta** 及文末兼容性声明。
 
@@ -7,6 +9,9 @@
 
 ## Unreleased
 
+- **G-008 documentation audit (closed cycle):** structured audience / consistency register at **`docs/documentation_ux_audit_register.md`** (not a line-by-line proof of every `docs/**` file).
+- **G-008（中文）：** 结构化读者矩阵与一致性核对见 **`docs/documentation_ux_audit_register.md`**（非对 `docs/**` 全量逐行审阅证明）。
+- **PyPI classifiers:** `Development Status` updated from **Beta** to **`Production/Stable`** to align PyPI metadata with the **2.x** stability narrative (README § Stability cross-reference). Semver and `docs/migration_legacy_to_v2.md` still govern breaking releases.
 - **CV rubric v2:** `docs/cv_rubric.yaml` `version` bumped after **`ci_alignment`** automated sub-score re-weighting (cache / diff hygiene only; scoring script unchanged). See `docs/architecture_evolution_action_list.md` top note.
 - **CV rubric v2（中文）：** 同上；`ci_alignment` 子项分值重分配后递增 `version`，便于外部缓存与 diff 识别语义批次，详见 **`docs/architecture_evolution_action_list.md`** 顶栏说明。
 
@@ -83,8 +88,8 @@
 - Added public export contract tests for `lirix`, `lirix.core`, and `lirix.layers`.
 - Added static helper `Lirix.extract_broadcast_fields(result)`: read-only view over `result["payload"]` returning `to` / `data` / `value` for signing/broadcast prep.
 - Packaged `lirix._client_core` as a **package** (replacing the historical single-file `_client_core.py`); monkeypatch entrypoints remain `lirix._client_core.<symbol>` per `docs/api_reference.md`.
-- **Fail-closed broadcast invariant:** when `result["decision"] == "approved"` **and** `result["status"] == "approved"`, `to` / `data` under `result["payload"]` must each be a **non-empty string** (type `str`, not empty/whitespace) with valid hex-shaped `data`; otherwise `LirixSecurityException` is raised with `context["reason"] == "approved_broadcast_fields_invariant"` and canonical code `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT` (non-dual-approved paths remain permissive and return `None` placeholders as before).
-- **Broadcast extract summary:** `Lirix.extract_broadcast_fields(result)` is the supported one-liner for prepared broadcast payloads; only the dual-approved path enforces fail-closed `to`/`data` validation.
+- **Fail-closed broadcast extract:** calling `Lirix.extract_broadcast_fields(result)` when `decision` and `status` are not both `"approved"` raises `LirixSecurityException` with `context["reason"] == "broadcast_extract_requires_dual_approved"` and canonical code `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`. When both are `"approved"`, `to` / `data` under `result["payload"]` must each be a **non-empty string** (type `str`, not empty/whitespace) with valid hex-shaped `data`; otherwise `LirixSecurityException` is raised with `context["reason"] == "approved_broadcast_fields_invariant"` and the same canonical code.
+- **Broadcast extract summary:** `Lirix.extract_broadcast_fields(result)` is the supported one-liner for prepared broadcast payloads after the dual-approved gate; it enforces fail-closed `to`/`data` validation on that path only.
 - **LangChain / AutoGen success JSON:** serialized success payloads now include additive `tx_payload` (JSON object mirroring `Lirix.extract_broadcast_fields(result)`) alongside existing keys.
 
 All changes are additive and backward compatible with existing payload keys.

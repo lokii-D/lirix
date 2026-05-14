@@ -51,7 +51,7 @@ purpose: post-harness plan items — path/gate, action, benefit, acceptance
 | --- | --- | --- |
 | `r2-pytest-addopts-contributor-doc` | Done | `docs/contributing_local_tests.md`（`addopts` / `pytest -o addopts=` / `PYTEST_ADDOPTS=` / `pip install -e`）；README 审计链 grep |
 | `r2-subprocess-gates-venv-doc` | Done | `docs/ci_gate_matrix.md` § Tool gates vs subprocess；`hygiene_gate.py` / `branch_protection_drift_gate.py` docstring；`compat_switch_expiry_gate.py` / `registry_authority_contract_gate.py` / `root_import_surface_gate.py` ImportError→exit 2 |
-| `r2-import-topology-drift-gate` | Done | `tools/gen_lirix_import_graph.py`（`format_topology_markdown`、`--check`）；`.github/workflows/ci.yml` Fast Required 在 dev install 前调用 `--check`；矩阵 Fast Required 行 |
+| `r2-import-topology-drift-gate` | Done | `tools/gen_lirix_import_graph.py`（`format_topology_markdown`、`--check`）；`.github/workflows/ci.yml` Fast Required 在 dev install 前调用 `python tools/harness.py preflight-remediation-status`（内含 `--check`）；治理车道同序 |
 | `r2-contract-manifest-dual-source` | Done | `tools/contract_manifest_gate.py` — `_GOVERNANCE_GATE_CI_YML_ANCHORS` 与注释（完整列表仅以 `ci.yml` 为准）；audit Governance 行 ⊆ 解析列表循环校验 |
 | `r2-cv-automation-ceiling-doc` | Done | 本文件顶栏 Semantic ceiling；`docs/cv_rubric.yaml` `manual_review_note`；`docs/ci_gate_matrix.md` § CV automation score；README 审计链 |
 | `r2-action-list-todo-id-parity` | Done | 本文件首轮 closure 表 **19/19** 与 `merged-into-row` 说明 |

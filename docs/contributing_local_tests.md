@@ -19,6 +19,12 @@ python -m pip install -e ".[dev]"
 
 未安装时，部分需要 `import lirix` 的 **`python tools/harness.py …`** 子命令会在运行时失败；详见 `docs/ci_gate_matrix.md` § **Tool gates vs runtime imports** 与 **`docs/tools_gates_index.md`**。
 
+## Black / Ruff / MyPy 版本与 CI 对齐
+
+**EN:** `python tools/harness.py format-check` uses **`black==24.10.0`** from **`pyproject.toml`** optional dependency group **`dev`** (via `pip install -e ".[dev]"`). Running `black --check` from a **different** major (e.g. globally installed Black 26.x) can produce **false** “would reformat” on files that already pass CI — always use the project venv or `python tools/harness.py format-check`.
+
+**中文：** 仓库门禁以 **`pyproject.toml`** 的 **`dev`** 里 **`black==24.10.0`** 为准；勿用系统里任意升级的 Black 主版本对根目录跑 `--check` 作为合并依据。
+
 ## `pyproject.toml` 里 `addopts` 末尾的 `tests`
 
 `[tool.pytest.ini_options]` 中配置了：

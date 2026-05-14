@@ -4,9 +4,15 @@
 **EN:** Authoritative technical content in the sections below; repo-wide bilingual conventions: [`documentation_styleguide.md`](documentation_styleguide.md).
 **中文：** 正文为权威技术叙述；全仓双语体例见 [`documentation_styleguide.md`](documentation_styleguide.md)。
 
-Use this list when opening or reviewing a **version / release** pull request. Authoritative procedures and command snippets live in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md).
+Use this list when opening or reviewing a **version / release** pull request. Authoritative procedures and command snippets live in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md). For the **final redundant multiscan agent harness** (waves A–L, handoff template, repo fingerprint), see [`release_final_multiscan_harness_r3.md`](release_final_multiscan_harness_r3.md).
 
 ## Local CI-equivalent rehearsal
+
+**Python 3.12** is the **authoritative** interpreter for release sign-off (matches `.python-version` and `ci.yml`); personal newer runtimes are exploratory only until gates are replayed on 3.12.
+
+**Work tree:** before tagging or opening a release PR, `git status --short` must show **no unintended** `??` deliverables and no surprise `MM` splits — the Git object graph is the auditable release surface (see `python tools/harness.py preflight-remediation-status` for R-002-style hazards).
+
+**Full `pytest` skips (charter):** a default full-tree `pytest -q -rs` run may list **four** skips from `tests/test_core/test_pipeline_performance_gates.py` (perf baseline env) and `tests/test_integration/test_real_e2e_paths.py` (live RPC / Anvil). That is **expected** for default CI and local venvs; closing them is **optional** evidence (perf JSON, Anvil E2E log) per § **Recommended** below and `docs/ci_gate_matrix.md` § **Full default collection — expected `pytest` skips**.
 
 Local shell wrappers that duplicated CI have been removed. From a clean venv with `pip install -e ".[dev]"`, mirror **`.github/workflows/ci.yml`** and capture logs under `audit_artifacts/release_signoff/<today>/` using the step-by-step **`tee`** block in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md) § **How to generate (local CI-equivalent replay)** (set `OUT` / `RELEASE_SIGNOFF_OUT` as documented there). After Fast Required semantics, run `python tools/harness.py test-coverage-required` and `python tools/release_acceptance_report.py` as in that README.
 

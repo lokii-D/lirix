@@ -61,7 +61,7 @@ Maps checklist items to code locations, acceptance assertions, gates, and eviden
 - `tests/test_core/test_hook_manager.py`
 - `tests/test_core/test_canonical_semantics.py`
 - `tests/test_core/test_session.py`
-- `tests/test_core/test_session_workflow_strict_happy_path.py`
+- `tests/test_core/test_session_agent_timeline_order_happy_path.py`
 - `tests/test_core/test_evidence_models.py`
 - `tests/test_core/test_chain_adapter_profiles.py`
 - `tests/test_core/test_replay_registry_closure_binding.py`

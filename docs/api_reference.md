@@ -134,7 +134,8 @@ All high-level returns now include additive metadata:
 
 - **Recommended**: `Lirix.extract_broadcast_fields(result)` reads only `result["payload"]` and returns `{"to", "data", "value"}` (same subtree as `simulation_outcome` / `simulation_ok` mirrored by `ResultBuilder.build_base_result`).
 - **Equivalent manual path**: `p = result["payload"]`, then `p["to"]` / `p["data"]` / `p.get("value", 0)`; do not assume `to`/`data` exist at the top level of the envelope.
-- **Strict (fail-closed) mode**: iff `result["decision"] == "approved"` and `result["status"] == "approved"`, missing **non-empty string** `to` / `data` under `payload` (`None`, empty string, or non-`str`) causes `LirixSecurityException` with `context["reason"] == "approved_broadcast_fields_invariant"` and `canonical_error_code` / `context["canonical_error_code"]` set to `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`. Non-approved envelopes keep the permissive `None` placeholders.
+- **Non-dual-approved calls**: unless both `result["decision"] == "approved"` and `result["status"] == "approved"`, calling `Lirix.extract_broadcast_fields(result)` raises `LirixSecurityException` with `context["reason"] == "broadcast_extract_requires_dual_approved"` and `canonical_error_code` / `context["canonical_error_code"]` set to `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`.
+- **Dual-approved broadcast invariant (fail-closed)**: when both `decision` and `status` are `"approved"`, missing **non-empty string** `to` / `data` under `payload` (`None`, empty string, or non-`str`) causes `LirixSecurityException` with `context["reason"] == "approved_broadcast_fields_invariant"` and `canonical_error_code` / `context["canonical_error_code"]` set to `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`.
 - **Mainline assertion aligned with integration tests**: `result["decision"] == "approved"` and `result["payload"]["simulation_ok"] is True` (see `tests/test_integration/test_real_e2e_paths.py`).
 
 ### Multi-chain Adaptation (`chain_profile`)
@@ -280,7 +281,8 @@ All high-level returns now include additive metadata:
 
 - **推荐**：`Lirix.extract_broadcast_fields(result)`，内部只读 `result["payload"]`，返回 `{"to", "data", "value"}`（与 `ResultBuilder.build_base_result` 提升的 `simulation_ok` / `simulation_outcome` 同源子树）。
 - **等价手写**：`p = result["payload"]`，再读 `p["to"]` / `p["data"]` / `p.get("value", 0)`；不要假设 `to`/`data` 在返回字典顶层。
-- **严格模式（fail-closed）**：当且仅当 `result["decision"] == "approved"` 且 `result["status"] == "approved"` 时，若 `payload` 缺少**非空字符串**的 `to` / `data`（含 `None`、空串、非 `str`），`extract_broadcast_fields` 抛出 `LirixSecurityException`，`context["reason"] == "approved_broadcast_fields_invariant"`，`canonical_error_code` / `context["canonical_error_code"]` 为 `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`。其他决策路径仍返回宽松占位（`to`/`data` 可为 `None`）。
+- **非双重 approved 调用**：若 `result["decision"]` 与 `result["status"]` 未同时为 `"approved"`，调用 `Lirix.extract_broadcast_fields(result)` 将抛出 `LirixSecurityException`，`context["reason"] == "broadcast_extract_requires_dual_approved"`，`canonical_error_code` / `context["canonical_error_code"]` 为 `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`。
+- **双重 approved 下的广播不变量（fail-closed）**：当 `decision` 与 `status` 均为 `"approved"` 时，若 `payload` 缺少**非空字符串**的 `to` / `data`（含 `None`、空串、非 `str`），`extract_broadcast_fields` 抛出 `LirixSecurityException`，`context["reason"] == "approved_broadcast_fields_invariant"`，`canonical_error_code` / `context["canonical_error_code"]` 为 `LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT`。
 - **与集成测试对齐的主线断言**：`result["decision"] == "approved"` 且 `result["payload"]["simulation_ok"] is True`（见 `tests/test_integration/test_real_e2e_paths.py`）。
 
 ### 多链适配配置（`chain_profile`）

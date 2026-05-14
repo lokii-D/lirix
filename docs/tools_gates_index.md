@@ -30,7 +30,8 @@ Companion to **`docs/ci_gate_matrix.md`** § **Tool gates vs subprocess / runtim
 | `contract-manifest` | No | 0 / 1 | `docs/audit_path_map.md`, `.github/workflows/ci.yml`, API/README docs |
 | `doc-preamble-hygiene` | No | 0 / 1 | optional bilingual preamble order (`docs/documentation_styleguide.md` § Part B.1); default warn-only — use `--enforce` to fail |
 | `failure-surface-triage` | No | 0 | failure surface taxonomy docs |
-| `format-check` | **Yes** | 0 / 1 | `python -m black --check .` (wrapped) |
+| `fast-required-local-chain` | **Yes** | 0 / 1 | Chains every *Fast Required* step from `.github/workflows/ci.yml` in order (excludes `pip install`; topology gate uses same env defaults as CI) |
+| `format-check` | **Yes** | 0 / 1 | `python -m black --check --quiet .` (wrapped) |
 | `hygiene` | No | 0 / 2 | `git`; sign-off dirs per gate docstring |
 | `import-topology` | No | 0 / 1 | `tools/gen_lirix_import_graph.py --check` (wrapped) |
 | `legacy-sunset` | No | 0 | `pyproject.toml`, `lirix/__init__.py` |
@@ -39,6 +40,7 @@ Companion to **`docs/ci_gate_matrix.md`** § **Tool gates vs subprocess / runtim
 | `no-internal-imports` | No | 0 / 1 | markdown import examples |
 | `phase-exit-checklists` | No | 0 / 1 | checklist paths under `docs/` |
 | `plan-to-pr-exit-metrics` | No | 0 | plan metrics docs / conventions |
+| `preflight-remediation-status` | No | 0 / 1 | Roll-up: `import-topology` + git index/worktree hazards; playbook `docs/preflight_remediation_executor_handoff.md` |
 | `registry-authority-contract` | **Yes** (`import lirix`) | 0 / 1 / **2** | `docs/ci_gate_matrix.md` § runtime imports |
 | `release-notes-gate` | No | 0 / 1 | `docs/release_notes.md` required substrings |
 | `required-check-policy` | No | 0 / 1 | `docs/branch_protection_required_checks.md` |
@@ -71,5 +73,5 @@ Companion to **`docs/ci_gate_matrix.md`** § **Tool gates vs subprocess / runtim
 
 | Script | Harness mirror | Notes |
 | --- | --- | --- |
-| `gen_lirix_import_graph.py` | `import-topology` | Regenerate **`docs/lirix_import_topology.md`**; CI uses **`--check`**. |
+| `gen_lirix_import_graph.py` | `import-topology`; CI / governance drift via `preflight-remediation-status` | Regenerate **`docs/lirix_import_topology.md`**; Fast Required + Governance call **`preflight-remediation-status`** (embeds `--check`). |
 | `migration_observability_report.py` | `migration-observability-report` | Writes migration observability artifacts (Fast Required). |

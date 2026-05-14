@@ -9,6 +9,8 @@
   <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="docs/migration_legacy_to_v2.md">Migration</a> | <a href="#-installation--setup">📦 Installation</a> | <a href="#-quickstart-five-minute-blitz">⚡ Quickstart</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Integrations</a> | <a href="#-architecture--security-trace">🏗️ Architecture</a> | <a href="#-support--faq">💬 Support</a>
 </p>
 
+**Current version:** **v2.0.3** (see `[project].version` in `pyproject.toml`).
+
 # Lirix 2.0 · The EVM-grade execution airlock for AI agents
 
 [![PyPI version](https://img.shields.io/pypi/v/lirix?color=blue&style=flat-square)](https://pypi.org/project/lirix/)
@@ -20,7 +22,27 @@
 
 The Web3 agent stack fails in predictable ways: prompt injection becomes malicious calldata, toxic DeFi shapes pass review but fail on-chain, proxies hide real code paths, and RPC views diverge under load. Lirix collapses that attack surface into a single deterministic DAG: validate intent, decode and pierce contracts, reconcile RPC evidence, simulate with state overrides, and only then return an evidence-rich envelope that your orchestrator can retry, rewrite, or reject without guessing.
 
+## 📚 Stability & evidence sources
+
+This README is an orientation layer only. It is intentionally incomplete and must not be treated as the contract SSOT.
+
+Use the dedicated docs for authoritative detail:
+
+- **API and behavior contract**: `docs/api_reference.md` plus the public tests under `tests/`
+- **Architecture and audit topology**: `docs/architecture_control_plane.md` and `docs/audit_path_map.md`
+- **Workflow / gate truth**: `docs/ci_gate_matrix.md` and the GitHub workflows under `.github/workflows/`
+- **Repository exclusions**: `docs/repo_exclusions.md`
+- **Security boundary**: `SECURITY.md`
+
+If this README conflicts with code, tests, or SSOT docs, the latter win.
+
+**PyPI maturity:** package metadata lists **`Development Status :: 5 - Production/Stable`** for the **2.x** line on PyPI; semver and `docs/migration_legacy_to_v2.md` remain the authority for breaking-change cadence.
+
+**Public API vs migration shims:** Supported **2.x** import surfaces and payload contracts are treated as **stable** for integrators. `DeprecationWarning` paths and **legacy config alias coercion** exist only for **documented migration** and the **next-major removal window** described in `docs/migration_legacy_to_v2.md` and `docs/release_notes.md` — they do **not** contradict the Production/Stable classifier; they bound how long compatibility shims remain before a semver major.
+
 ## 📦 Installation & Setup
+
+This README tracks **`v2.0.3`** with PyPI/source metadata in `pyproject.toml`.
 
 ```bash
 python3 -m venv .venv
@@ -56,13 +78,22 @@ Use **`Lirix.extract_broadcast_fields(result)`** only after both `decision` and 
 ```python
 from lirix import Lirix
 
-broadcast_fields = Lirix.extract_broadcast_fields(result)
-# 签名并广播（broadcast_fields）
+if result.get("decision") == "approved" and result.get("status") == "approved":
+    broadcast_fields = Lirix.extract_broadcast_fields(result)
+    # Sign and broadcast using broadcast_fields only.
+else:
+    rc = (result.get("agent_feedback") or {}).get("reason_code")
+    print(
+        f"Validation failed: decision={result.get('decision')!r} "
+        f"status={result.get('status')!r} reason_code={rc!r}"
+    )
 ```
 
 ### 3) Failure triage
 
 When a request is blocked, inspect **`agent_feedback.remediation`**, then **`agent_feedback.reason_code`**, then resolve the protocol with **`resolve_failure_protocol(...)`** or **`Lirix.resolve_failure_protocol(...)`**. Stable audit fields include **`canonical_error_code`**, **`failure_type_canonical`**, **`canonical_reason_codes`**, and the replay-facing aliases inside **`forensic_bundle`**.
+
+For the lower-level contract and the exact recovery order, use the SSOT docs and tests listed in **`docs/audit_path_map.md`** rather than extending this README narrative.
 
 ### 4) E2E regression mirror
 
@@ -103,8 +134,21 @@ class LirixSecurityValidator:
         draft = cast(Mapping[str, Any], json.loads(raw_llm_output))
         # 先做结构化反序列化，再交给 Lirix 执行 fail-closed 校验与模拟
         result = self._guardian.validate_and_simulate(intent, draft)
-        # 绝对安全：只提取经过 Lirix 校验并导出的广播字段
-        tx_payload = Lirix.extract_broadcast_fields(result)
+        if result.get("decision") != "approved" or result.get("status") != "approved":
+            rc = (result.get("agent_feedback") or {}).get("reason_code")
+            return json.dumps(
+                {"result": result, "tx_payload": None, "reason_code": rc},
+                sort_keys=True,
+                default=str,
+            )
+        try:
+            tx_payload = Lirix.extract_broadcast_fields(result)
+        except LirixSecurityException as exc:
+            return json.dumps(
+                {"result": result, "tx_payload": None, "resolution_for_agent": exc.resolution_for_agent},
+                sort_keys=True,
+                default=str,
+            )
         return json.dumps({"result": result, "tx_payload": tx_payload}, sort_keys=True, default=str)
 
 
@@ -136,18 +180,15 @@ class AutoGenLirixBridge:
 
     def __call__(self, raw_llm_output: str, intent: str) -> Mapping[str, Any]:
         draft = cast(Mapping[str, Any], json.loads(raw_llm_output))
+        result = self.guardian.validate_and_simulate(intent, draft)
+        if result.get("decision") != "approved" or result.get("status") != "approved":
+            rc = (result.get("agent_feedback") or {}).get("reason_code")
+            return {"status": "blocked", "result": result, "reason_code": rc}
         try:
-            # 先执行意图校验、ABI 解码与沙盒模拟，确认是否满足 fail-closed 门槛
-            result = self.guardian.validate_and_simulate(intent, draft)
-            return {
-                "status": "approved",
-                "result": result,
-                # 绝对安全：只提取经过 Lirix 校验并导出的广播字段
-                "tx_payload": Lirix.extract_broadcast_fields(result),
-            }
+            tx_payload = Lirix.extract_broadcast_fields(result)
         except LirixSecurityException as exc:
-            # 回退机制：当 Lirix 拦截到攻击时，将重写指令回传给 Agent
             return {"status": "blocked", "resolution_for_agent": exc.resolution_for_agent}
+        return {"status": "approved", "result": result, "tx_payload": tx_payload}
 
 
 autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet.g.alchemy.com/v2/…"]))
@@ -156,6 +197,8 @@ autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet
 ## 🏗️ Architecture & Security Trace
 
 Public **`Lirix`** (`lirix/_facade.py`) composes **`HookManager`**, **`ClientPipelineProtocol`**, and **`LirixPipelineOrchestrator`** into a one-way pipeline with session and trace FSM semantics. Hooks extend policy at the perimeter; they do not bypass the core.
+
+For implementation details, prefer the architecture and audit docs plus the tests that pin behavior. This section is intentionally a compressed overview.
 
 ```mermaid
 flowchart LR
@@ -211,6 +254,17 @@ Full tree: **`docs/STRUCTURE.md`**. Control plane table: **`docs/architecture_co
 
 **Triple-Zero:** **Zero-Key · Zero-Telemetry · Zero-Trust** — see **`SECURITY.md`**.
 
+## ✅ Stability, guarantees, and evidence sources
+
+This README is a high-level entry point, not the SSOT for every operational claim.
+
+- **API and behavior guarantees:** confirm against `docs/api_reference.md` and the public tests under `tests/`.
+- **Architecture and audit trace:** confirm against `docs/audit_path_map.md`, `docs/architecture_control_plane.md`, and `docs/lirix_import_topology.md`.
+- **Workflow / gate truth:** confirm against `docs/ci_gate_matrix.md` and `.github/workflows/*.yml`.
+- **Versioned packaging truth:** confirm against `pyproject.toml`.
+
+When this README and the evidence sources differ, the evidence sources win.
+
 ## 💬 Support & FAQ
 
 - **General:** [Discussions](https://github.com/lokii-D/lirix/discussions) / [Issues](https://github.com/lokii-D/lirix/issues)
@@ -233,6 +287,8 @@ A: Use a venv; never `pip install --break-system-packages`.
 Web3 Agent 的常见死法非常一致：**Prompt 注入** 变成恶意 calldata，**有毒 DeFi 形状** 在审查时看似合理、上线后却 Revert 或失血，**Proxy / Router** 把真实执行路径藏起来，RPC 视图还会在高压下分叉。Lirix 把这些风险压成一条确定性 DAG：先校验意图与结构，再做 ABI 解码与 Proxy 穿透，必要时进行多节点 RPC 对账，并配合 **State Overrides** 做沙盒模拟，最后输出带 **`security_trace`** 与 **`replay_bundle`** 的证据信封——由你的编排器决定重试、改写，还是直接硬拒绝。
 
 ## 📦 安装与初始化
+
+**当前版本：v2.0.3**（与 `pyproject.toml` 中 `[project].version` 一致）。
 
 ```bash
 python3 -m venv .venv
@@ -268,8 +324,15 @@ print(result["payload"].get("simulation_ok"))
 ```python
 from lirix import Lirix
 
-broadcast_fields = Lirix.extract_broadcast_fields(result)
-# 签名并广播（broadcast_fields）
+if result.get("decision") == "approved" and result.get("status") == "approved":
+    broadcast_fields = Lirix.extract_broadcast_fields(result)
+    # 仅将 broadcast_fields 交给签名器并广播。
+else:
+    rc = (result.get("agent_feedback") or {}).get("reason_code")
+    print(
+        f"校验未通过：decision={result.get('decision')!r} "
+        f"status={result.get('status')!r} reason_code={rc!r}"
+    )
 ```
 
 ### 3) 失败排查
@@ -315,8 +378,21 @@ class LirixSecurityValidator:
         draft = cast(Mapping[str, Any], json.loads(raw_llm_output))
         # 先做结构化反序列化，再交给 Lirix 执行 fail-closed 校验与模拟
         result = self._guardian.validate_and_simulate(intent, draft)
-        # 绝对安全：只提取经过 Lirix 校验并导出的广播字段
-        tx_payload = Lirix.extract_broadcast_fields(result)
+        if result.get("decision") != "approved" or result.get("status") != "approved":
+            rc = (result.get("agent_feedback") or {}).get("reason_code")
+            return json.dumps(
+                {"result": result, "tx_payload": None, "reason_code": rc},
+                sort_keys=True,
+                default=str,
+            )
+        try:
+            tx_payload = Lirix.extract_broadcast_fields(result)
+        except LirixSecurityException as exc:
+            return json.dumps(
+                {"result": result, "tx_payload": None, "resolution_for_agent": exc.resolution_for_agent},
+                sort_keys=True,
+                default=str,
+            )
         return json.dumps({"result": result, "tx_payload": tx_payload}, sort_keys=True, default=str)
 
 
@@ -348,18 +424,15 @@ class AutoGenLirixBridge:
 
     def __call__(self, raw_llm_output: str, intent: str) -> Mapping[str, Any]:
         draft = cast(Mapping[str, Any], json.loads(raw_llm_output))
+        result = self.guardian.validate_and_simulate(intent, draft)
+        if result.get("decision") != "approved" or result.get("status") != "approved":
+            rc = (result.get("agent_feedback") or {}).get("reason_code")
+            return {"status": "blocked", "result": result, "reason_code": rc}
         try:
-            # 先执行意图校验、ABI 解码与沙盒模拟，确认是否满足 fail-closed 门槛
-            result = self.guardian.validate_and_simulate(intent, draft)
-            return {
-                "status": "approved",
-                "result": result,
-                # 绝对安全：只提取经过 Lirix 校验并导出的广播字段
-                "tx_payload": Lirix.extract_broadcast_fields(result),
-            }
+            tx_payload = Lirix.extract_broadcast_fields(result)
         except LirixSecurityException as exc:
-            # 回退机制：当 Lirix 拦截到攻击时，将重写指令回传给 Agent
             return {"status": "blocked", "resolution_for_agent": exc.resolution_for_agent}
+        return {"status": "approved", "result": result, "tx_payload": tx_payload}
 
 
 autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet.g.alchemy.com/v2/…"]))

@@ -34,7 +34,7 @@ Every workflow under `.github/workflows/` is indexed below (no orphan files).
 | `mantle_fork_smoke.yml` | Mantle fork smoke | § `mantle_fork_smoke.yml` |
 | `release.yml` | Release | § `release.yml` |
 
-**Import topology artifact:** regenerate with `python tools/gen_lirix_import_graph.py`; **drift gate** (Fast Required, before dev install): `python tools/harness.py import-topology`.
+**Import topology artifact:** regenerate with `python tools/gen_lirix_import_graph.py`; **drift + preflight roll-up** (Fast Required / Governance, before dev install): `python tools/harness.py preflight-remediation-status` (includes the same `--check` as `import-topology`; see `docs/preflight_remediation_executor_handoff.md`).
 
 ## Shared composite
 
@@ -44,13 +44,13 @@ Every workflow under `.github/workflows/` is indexed below (no orphan files).
 
 ### Duplicate step audit
 
-Before the composite existed, **≥4** workflows repeated the same **checkout → setup-python → pip install -e ".[dev]"`** pattern (`ci.yml` jobs `fast_required` / `coverage_required` / `pr_compat_smoke` / `compatibility_matrix`, `governance-lane.yml`, optional lanes). The composite **deduplicates** that block while preserving special cases (`fast_required` runs **hygiene** before dev install → first call uses `with-dev-install: false`; `e2e-anvil-optional` uses `checkout-repository: false` after a local checkout + Foundry; `mantle_fork_smoke` installs **after** Foundry). **`governance-lane.yml`** mirrors the same **pre-install** trio as Fast Required (`hygiene_gate` → `repo_exclusions_alignment_gate` → `gen_lirix_import_graph.py --check`) before `pip install -e ".[dev]"` so scheduled / `main` pushes do not silently bypass repo / topology drift gates; after dev install it also runs **`doc_preamble_hygiene_gate.py`** (warn-only, same script as `ci.yml` Fast Required) before **`cv_score_report.py`**.
+Before the composite existed, **≥4** workflows repeated the same **checkout → setup-python → pip install -e ".[dev]"`** pattern (`ci.yml` jobs `fast_required` / `coverage_required` / `pr_compat_smoke` / `compatibility_matrix`, `governance-lane.yml`, optional lanes). The composite **deduplicates** that block while preserving special cases (`fast_required` runs **hygiene** before dev install → first call uses `with-dev-install: false`; `e2e-anvil-optional` uses `checkout-repository: false` after a local checkout + Foundry; `mantle_fork_smoke` installs **after** Foundry). **`governance-lane.yml`** mirrors the same **pre-install** trio as Fast Required (`hygiene_gate` → `repo_exclusions_alignment_gate` → `python tools/harness.py preflight-remediation-status`) before `pip install -e ".[dev]"` so scheduled / `main` pushes do not silently bypass repo / topology drift gates; after dev install it also runs **`doc_preamble_hygiene_gate.py`** (warn-only, same script as `ci.yml` Fast Required) before **`cv_score_report.py`**.
 
 **`release.yml`** intentionally **does not** use the composite: it installs **`build` + `twine`** only (no `lirix[dev]`), then publishes.
 
 ### Release workflow regression checklist
 
-`release.yml` **does not** use `.github/actions/lirix-ci-setup` and does **not** install `.[dev]` — only `build` + `twine`. After **large changes** to the composite action, Python version pins, or packaging metadata, manually smoke the release path before **publishing a GitHub Release** (the workflow runs on `release: published` only), for example:
+`release.yml` **does not** use `.github/actions/lirix-ci-setup` and does **not** install `.[dev]` — only `build` + `twine`. After **large changes** to the composite action, Python version pins, or packaging metadata, manually smoke the release path before publishing a tag-driven release via `push` (`v*`) or `workflow_dispatch` (existing tag input), for example:
 
 - Local: `pip install build twine && python -m build --sdist --wheel && python -m twine check dist/*`
 - Or a dry-run workflow in a fork / branch where safe.
@@ -60,6 +60,20 @@ This is intentionally separate from the mainline composite so publishing stays m
 ### Local pytest defaults (`addopts`)
 
 `pyproject.toml` appends **`tests`** (and `--pyargs lirix`) to default `addopts`, so bare `pytest path/to/one_file.py` still collects the full `tests/` tree unless you override addopts. Contributor commands and rationale: **`docs/contributing_local_tests.md`**.
+
+### Full default collection — expected `pytest` skips (release charter)
+
+**EN:** A bare `pytest` / full-tree run may report a **small, fixed** `skipped` count under default developer and **Fast Required** environments. That is **not** a flaky suite: those tests are **opt-in** behind env vars or live RPC fixtures.
+
+**中文：** 默认全量 `pytest` 可能出现**少量、稳定**的 `skipped`；在默认开发与 **Fast Required** 环境下属**预期行为**，不是随机失败。
+
+| Location | Skip condition | How to execute (opt-in) |
+| --- | --- | --- |
+| `tests/test_core/test_pipeline_performance_gates.py` (`test_main_paths_baseline_report`) | `os.getenv("LIRIX_RUN_PERF_BASELINE", "0") != "1"` | Set `LIRIX_RUN_PERF_BASELINE=1` (see test `skipif` / sign-off README § Performance baseline). |
+| `tests/test_core/test_pipeline_performance_gates.py` (`test_main_paths_realistic_fixture_baseline_report`) | `os.getenv("LIRIX_RUN_PERF_REALISTIC_BASELINE", "0") != "1"` | Set `LIRIX_RUN_PERF_REALISTIC_BASELINE=1` (optional `LIRIX_PERF_REALISTIC_BASELINE_JSON_OUT` per test docstring). |
+| `tests/test_integration/test_real_e2e_paths.py` | `pytest.skip` when `RPCUnavailableException` (no local Anvil / quorum) | Start Anvil + fixture chain (see `tests/conftest.py`, `docs/contributing_local_tests.md`, optional `.github/workflows/e2e-anvil-optional.yml`) or `RUN_ANVIL_E2E=1` where documented in `docs/release_pr_checklist.md`. |
+
+**Merge / default CI bar:** `python tools/harness.py format-check`, `test-governance`, `test-coverage-required`, and workflow steps in **`ci.yml`** remain authoritative; **zero skip** is **not** asserted on the unconstrained full `pytest` tree unless a dedicated job (compare **Route B** in internal release engineering notes) is added and kept stable.
 
 ### Tool gates vs subprocess / runtime imports
 
@@ -93,7 +107,7 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 | Job (workflow `name:`) | `if:` / context | Steps / gates |
 | --- | --- | --- |
-| **Fast Required** | always on PR + push | `lirix-ci-setup` (Python 3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py import-topology` → `pip install -e ".[dev]"` → `python tools/harness.py lint` → `python tools/harness.py format-check` → `python tools/harness.py typecheck` → **`python tools/harness.py test-governance`** (explicit list SSOT: `GOVERNANCE_EXPLICIT_PYTEST_PATHS` in `tools/validators.py`) → `python tools/harness.py registry-authority-contract` → `python tools/harness.py release-notes-gate` → `python tools/harness.py contract-manifest` → `python tools/harness.py required-check-policy` → `python tools/harness.py ci-lane-responsibility` → `python tools/harness.py compat-switch-expiry` → `python tools/harness.py plan-to-pr-exit-metrics` → `python tools/harness.py audit-internal-link` → `python tools/harness.py doc-preamble-hygiene` → `python tools/harness.py no-internal-imports` → `python tools/harness.py root-import-surface` → `python tools/harness.py test-monkeypatch-convention --strict` → `python tools/harness.py test-topology-admission` → `python tools/harness.py migration-observability-report` |
+| **Fast Required** | always on PR + push | `lirix-ci-setup` (Python 3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py lint` → `python tools/harness.py format-check` → `python tools/harness.py typecheck` → **`python tools/harness.py test-governance`** (explicit list SSOT: `GOVERNANCE_EXPLICIT_PYTEST_PATHS` in `tools/validators.py`) → `python tools/harness.py registry-authority-contract` → `python tools/harness.py release-notes-gate` → `python tools/harness.py contract-manifest` → `python tools/harness.py required-check-policy` → `python tools/harness.py ci-lane-responsibility` → `python tools/harness.py compat-switch-expiry` → `python tools/harness.py plan-to-pr-exit-metrics` → `python tools/harness.py audit-internal-link` → `python tools/harness.py doc-preamble-hygiene` → `python tools/harness.py no-internal-imports` → `python tools/harness.py root-import-surface` → `python tools/harness.py test-monkeypatch-convention --strict` → `python tools/harness.py test-topology-admission` → `python tools/harness.py migration-observability-report` |
 | **Coverage Required (Single Authority)** | `github.event_name != 'pull_request'`; needs `fast_required` | `lirix-ci-setup` (3.12) → **`python tools/harness.py test-coverage-required`** (`pytest -q --cov=lirix … --cov-report=xml`, **`fail_under=100`** from `pyproject.toml`) |
 | **PR Compatibility Smoke (${{ matrix.os }}, py${{ matrix.python-version }})** | PR only; needs `fast_required` | `lirix-ci-setup` + pip cache → **`python tools/harness.py test-pr-compat-smoke`** |
 | **Compatibility Matrix (${{ matrix.os }}, py${{ matrix.python-version }})** | non-PR; needs `fast_required` | `lirix-ci-setup` + pip cache → **`python tools/harness.py test-compat-matrix`** (`pytest -q -m "not slow and not e2e and not network and not perf and not migration"`) |
@@ -107,13 +121,13 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 | Job | Context | Steps / gates |
 | --- | --- | --- |
-| **Governance Gates** | push / schedule / dispatch | `lirix-ci-setup` (3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/gen_lirix_import_graph.py --check` → `pip install -e ".[dev]"` → `python tools/harness.py doc-preamble-hygiene` → **`python tools/cv_score_report.py`** (no `--enforce`) → `python tools/harness.py branch-protection-drift` → **`python tools/harness.py ci-lane-responsibility`** → `python tools/harness.py failure-surface-triage` → `python tools/harness.py legacy-sunset` → `python tools/harness.py phase-exit-checklists` |
+| **Governance Gates** | push / schedule / dispatch | `lirix-ci-setup` (3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py doc-preamble-hygiene` → **`python tools/cv_score_report.py`** (no `--enforce`) → `python tools/harness.py branch-protection-drift` → **`python tools/harness.py ci-lane-responsibility`** → `python tools/harness.py failure-surface-triage` → `python tools/harness.py legacy-sunset` → `python tools/harness.py phase-exit-checklists` |
 
 ### Governance vs `ci.yml` overlap
 
 | Gate | `ci.yml` | `governance-lane.yml` | Rationale |
 | --- | --- | --- | --- |
-| `hygiene_gate.py` + `repo_exclusions_alignment_gate.py` + `gen_lirix_import_graph.py --check` | Fast Required (**before** dev install) | Governance Gates (**same order**, before dev install) | **Parity:** `main` push / schedule cannot skip repo-cleanliness, exclusion SSOT, or committed import-topology drift checks that PRs already hit on Fast Required. |
+| `hygiene_gate.py` + `repo_exclusions_alignment_gate.py` + `python tools/harness.py preflight-remediation-status` | Fast Required (**before** dev install) | Governance Gates (**same order**, before dev install) | **Parity:** `main` push / schedule cannot skip repo-cleanliness, exclusion SSOT, preflight roll-up (import-topology `--check` + documented worktree hazards) that PRs already hit on Fast Required. |
 | `doc_preamble_hygiene_gate.py` | Fast Required (**after** `audit_internal_link_gate.py`, warn-only) | Governance Gates (**after** dev install, warn-only) | **Parity:** preamble hygiene is not skipped on `main` / schedule; governance omits `audit_internal_link_gate.py` but still runs the same warn-only script so heading drift is visible in both lanes. |
 | `ci_lane_responsibility_gate.py` | Fast Required (PR + main) | Governance Gates (main + schedule) | **Keep both:** PRs must fail fast if lane docs desync; scheduled governance still catches drift if branch protection or workflow filters change. Inputs are identical; duplication is intentional redundancy across **PR** vs **scheduled** contexts. |
 | `cv_score_report.py` | *(not run)* | Governance Gates | **Optional trace:** non-enforcing CV panel for `main`/schedule logs only (see `docs/cv_rubric.yaml`; PRs do not need `--enforce` until policy changes). |
@@ -126,7 +140,7 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 **Rationale (keep unless team explicitly changes policy):**
 
 - The rubric is largely **file / string existence** checks — a failing `--enforce` on every PR would churn whenever docs or optional artifacts are refactored, without always indicating a runtime regression.
-- PR Fast Required already carries **high-signal** gates (`contract_manifest_gate`, governance pytest, hygiene, import-topology `--check`, etc.); adding `--enforce` duplicates **noise** vs **coverage** unless branch protection is updated to treat CV as a required check.
+- PR Fast Required already carries **high-signal** gates (`contract_manifest_gate`, governance pytest, hygiene, `preflight-remediation-status` / import-topology `--check`, etc.); adding `--enforce` duplicates **noise** vs **coverage** unless branch protection is updated to treat CV as a required check.
 - **Speed:** an extra YAML parse + filesystem walk is small but non-zero on the hottest path.
 
 If procurement or internal audit mandates a **hard numeric CV floor** on PRs, add `python tools/cv_score_report.py --enforce` to `ci.yml` **and** document the new required check in `docs/branch_protection_required_checks.md` so protection rules stay aligned.
@@ -177,11 +191,20 @@ No gate was removed from either workflow; `docs/branch_protection_required_check
 
 ## `.github/workflows/release.yml` — **Release**
 
-**Triggers:** `release` **published** only (not `push` to `main`, not bare tag push). After you publish a GitHub Release from the UI (or API), this job checks out **`${{ github.event.release.tag_name }}`**, builds **sdist + wheel**, runs **`twine check`**, publishes to **PyPI** (OIDC), then **attaches `dist/*`** to that same Release via `softprops/action-gh-release` (does **not** regenerate release notes, so the description you entered stays intact).
+**Triggers:** `push` of tags matching `v*` and `workflow_dispatch` with an explicit existing tag input. This workflow is **not** driven by a GitHub Release `published` event. It runs from the tag / dispatch entrypoint, checks out **`${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.sha }}`**, builds **sdist + wheel**, runs **`twine check`**, publishes to **PyPI** (OIDC), then **attaches `dist/*`** to the matching GitHub Release via `softprops/action-gh-release`.
 
 | Job | Steps |
 | --- | --- |
-| **publish** | `actions/checkout@v4` (ref = release tag) → `setup-python` + pip cache → `pip install build twine` → `python -m build --sdist --wheel` → `twine check` → PyPI publish action → attach `dist/*` to the existing GitHub Release |
+| **build** | `actions/checkout@v4` (ref = tag or dispatch input) → `setup-python` + pip cache → `pip install build twine` → `python -m build --sdist --wheel` → `twine check` → upload `dist/` artifact |
+| **publish** | download `dist/` artifact → PyPI publish action → attach `dist/*` to the release identified by `RELEASE_TAG` |
+
+### Release workflow truth table
+
+- **Tag push** (`v*`): builds and publishes the tagged release.
+- **Workflow dispatch**: republishes an existing tag after a fix or re-run.
+- **GitHub Release UI/API publish event**: not a trigger for this workflow.
+
+**Rule:** trigger facts take precedence over narrative shorthand; if these bullets and the YAML diverge, update this section to match the workflow file in the same PR.
 
 ### Optional SBOM / Anvil E2E — procurement and release sign-off (manual)
 

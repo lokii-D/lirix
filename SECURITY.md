@@ -1,7 +1,7 @@
 # Security Policy for Lirix
 
 **EN:** Triple-Zero boundary, scope, and private disclosure process.
-**中文：** 三重零信任边界、漏洞收录范围与私下报告流程。本文中的安全联系方式当前包含占位符（`security@lirix.invalid` / `example.com`）；维护者在获得真实投递渠道后，必须在发版前替换为正式邮箱与 PGP 地址。
+**中文：** 三重零信任边界、漏洞收录范围与私下报告流程。漏洞报告**仅**通过下方 GitHub Private Security Advisory 受理（不设独立邮件/PGP 渠道，避免不可投递地址）。
 
 ## The Triple-Zero Standard 🛡️
 
@@ -52,15 +52,11 @@ Use the private disclosure path below instead.
 
 ### Reporting contact
 
-> **Note:** The addresses below are placeholders and must be replaced with real production contacts before public disclosure.
+**Submit vulnerabilities only through GitHub Private Security Advisories** (do not open public issues for undisclosed security defects):
 
-> 🚨 **ACTION REQUIRED:** Placeholder address.
+`https://github.com/lokii-D/lirix/security/advisories/new`
 
-- Email: `security@lirix.invalid` *(placeholder)*
-- PGP key: `https://example.com/lirix-security-pgp.asc` *(placeholder)*
-- Optional GitHub private advisory: `https://github.com/lokii-D/lirix/security/advisories/new`
-
-If you are using PGP, encrypt your report to the published security key before sending it. Include the subject line `Lirix Security Report`.
+Use the advisory title and description fields to summarize impact; include the subject line `Lirix Security Report` in the title or first line when possible.
 
 ### What to include
 
@@ -135,9 +131,11 @@ If a request cannot be verified with high confidence, it must not execute. If th
 
 ### 报告流程
 
-**勿**为活跃 0-day 或可利用漏洞开公开 Issue。请使用上文 **Reporting contact**。如当前仅为占位邮箱 / PGP，维护者必须在生产披露前替换为真实渠道。若使用 PGP，请先加密再发送，主题行使用 `Lirix Security Report`。
+**勿**为活跃 0-day 或可利用漏洞开公开 Issue。请**仅**通过 GitHub 私密安全公告提交：
 
-> **Note:** 上方地址在生产环境中不能继续作为占位符；正式发布前必须替换为可投递的安全邮箱与密钥 URL。
+`https://github.com/lokii-D/lirix/security/advisories/new`
+
+建议在标题或正文首行包含 `Lirix Security Report` 以便维护者筛选。
 
 ### 响应期望
 

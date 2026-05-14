@@ -14,23 +14,23 @@ cache/
 .coverage
 .coverage.*
 htmlcov/
+coverage.xml
+
+# Virtual environments
 .venv/
 .venv*/
 venv/
+env/
 .venv_ci*/
 .venv_ci312/
+.lirix_audit_venv/
+.lirix_final_preflight_venv/
+.mantle_tt_venv/
+_lirix_launch_sandbox/
+
+# Secrets / local env
 .env
 .env.release
-
-# Virtual Environments
-.lirix_audit_venv/
-venv/
-.venv/
-env/
-
-# Final Preflight Venv
-.lirix_final_preflight_venv/
-_lirix_launch_sandbox/
 
 # OS files
 .DS_Store
@@ -47,18 +47,11 @@ checklists/
 prompts/
 tdsc/
 mantle_TT/
-coverage.xml
 
-# Audit artifacts: only version release sign-off evidence
+# Audit artifacts: only version release signoff evidence
 audit_artifacts/**
 !audit_artifacts/release_signoff/
 !audit_artifacts/release_signoff/**
 
-# Dev and env specific
-.cursor/
-.env
-.env.release
+# Dev silos (local only)
 .lirix_launch_silo/
-.mantle_tt_venv/
-tdsc/
-mantle_TT/

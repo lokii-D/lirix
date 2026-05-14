@@ -13,9 +13,9 @@ Legacy labels are accepted only as input aliases and are normalized immediately 
 
 ## LirixGuard `last_trace` (legacy helper)
 
-[`LirixGuard`](../lirix/legacy-guard-removed.py) sets `last_trace` after `parse` / `async_parse`.
+The legacy `LirixGuard` helper was **removed** in the v2 stack; use [`Lirix`](../lirix/_facade.py) and the pipeline / session evidence surfaces instead. Historically, `LirixGuard` set `last_trace` after `parse` / `async_parse`.
 Treat **`raw_payload`**, **`latency`**, **`pipeline_result_keys`**, and optionally **`security_trace`**
-as the only documented stable fields — not a stable ABI for older trace objects.
+as the only documented stable fields when reading archived traces — not a stable ABI for older trace objects.
 
 ## Root export policy (`lirix.__all__` roadmap)
 
