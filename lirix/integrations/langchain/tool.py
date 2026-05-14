@@ -87,6 +87,14 @@ def _merge_raw_intent_overlay(
     return {**parsed, "raw_intent_or_calldata": raw_intent_or_calldata, **dict(overlay)}
 
 
+def _maybe_attach_tx_payload(out: dict[str, Any], envelope: Mapping[str, Any]) -> None:
+    """Populate ``tx_payload`` only for dual-approved Lirix envelopes (fail-closed boundary)."""
+
+    if envelope.get("decision") != "approved" or envelope.get("status") != "approved":
+        return
+    out["tx_payload"] = Lirix.extract_broadcast_fields(envelope)
+
+
 def _format_security_exception(exc: LirixBaseException) -> str:
     context = exc.context if isinstance(exc.context, dict) else {}
     protocol = context.get("failure_protocol")
@@ -130,27 +138,27 @@ def _format_security_exception(exc: LirixBaseException) -> str:
 
 
 def _serialize_guardian_success(result: Any) -> str:
-    """Serialize a Lirix success envelope as JSON with additive ``tx_payload``.
+    """Serialize a Lirix envelope as JSON, optionally attaching ``tx_payload``.
 
-    ``tx_payload`` is injected only when the value is serialized from a ``Mapping``,
-    from ``model_dump`` (mapping branch), or from ``model_dump_json`` after a JSON
-    parse into a ``dict``. If the result is neither a mapping nor a Pydantic model
-    handled above, the final fallback is ``str(result)`` **without** ``tx_payload``
-    so plain-string tool outputs stay unchanged for downstream parsers.
+    ``tx_payload`` is injected only when ``decision`` and ``status`` are both
+    ``approved`` (via :meth:`Lirix.extract_broadcast_fields`). Non-approved envelopes
+    are serialized without ``tx_payload`` so LangChain outputs are not mistaken for
+    broadcast-ready signing material.
 
-    This non-JSON fallback intentionally carries no ``tx_payload`` so callers can
-    distinguish plain textual outputs from structured broadcast-ready envelopes.
+    If the result is neither a mapping nor a Pydantic model handled below, the final
+    fallback is ``str(result)`` **without** ``tx_payload`` so plain-string tool outputs
+    stay unchanged for downstream parsers.
     """
     if hasattr(result, "model_dump"):
         dumped = cast(Any, result).model_dump(mode="python")
         if not isinstance(dumped, Mapping):
             return json.dumps(dumped, sort_keys=True, default=str)
         out = dict(dumped)
-        out["tx_payload"] = Lirix.extract_broadcast_fields(out)
+        _maybe_attach_tx_payload(out, out)
         return json.dumps(out, sort_keys=True, default=str)
     if isinstance(result, Mapping):
         out = dict(result)
-        out["tx_payload"] = Lirix.extract_broadcast_fields(result)
+        _maybe_attach_tx_payload(out, result)
         return json.dumps(out, sort_keys=True, default=str)
     if hasattr(result, "model_dump_json"):
         raw = str(cast(Any, result).model_dump_json())
@@ -166,7 +174,7 @@ def _serialize_guardian_success(result: Any) -> str:
         if not isinstance(parsed, dict):
             return raw
         out = dict(parsed)
-        out["tx_payload"] = Lirix.extract_broadcast_fields(out)
+        _maybe_attach_tx_payload(out, parsed)
         return json.dumps(out, sort_keys=True, default=str)
     return str(result)
 

@@ -14,7 +14,11 @@ from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_se
 
 class _Model:
     def model_dump_json(self) -> str:
-        return '{"ok": true}'
+        return (
+            '{"ok": true, "decision": "approved", "status": "approved", '
+            '"payload": {"to": "0x0000000000000000000000000000000000000001", '
+            '"data": "0x", "value": 0}}'
+        )
 
 
 def test_test_langchain_tool_format_security_exception_policy_context() -> None:
@@ -41,10 +45,18 @@ def test_test_langchain_tool_format_security_exception_policy_context_2(
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"], default_intent="swap")
     sync_out = json.loads(tool._run("swap 1 ETH for USDC"))
     assert sync_out["ok"] is True
-    assert sync_out["tx_payload"] == {"to": None, "data": None, "value": 0}
+    assert sync_out["tx_payload"] == {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    }
     async_out = json.loads(asyncio.run(tool._arun("swap 1 ETH for USDC")))
     assert async_out["ok"] is True
-    assert async_out["tx_payload"] == {"to": None, "data": None, "value": 0}
+    assert async_out["tx_payload"] == {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    }
     assert calls == ["swap", "swap"]
 
 

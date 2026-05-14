@@ -174,7 +174,9 @@ class SimulationEngine:
                 resolution_dev="Run: pip install lirix[simulation]",
                 value_protected="Unknown Asset Value",
             ) from exc
-        self._w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+        self._w3 = Web3(
+            Web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 10}),
+        )
         return decode_fn, Web3, ContractLogicError, Web3Exception
 
     def run_simulation(

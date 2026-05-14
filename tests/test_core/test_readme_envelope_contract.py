@@ -94,23 +94,23 @@ def test_extract_broadcast_fields_approved_empty_to_raises() -> None:
         )
 
 
-def test_extract_broadcast_fields_decision_approved_without_status_is_loose() -> None:
-    """Only ``decision`` + ``status`` both ``approved`` triggers strict broadcast extraction."""
-    assert Lirix.extract_broadcast_fields(
-        {
-            "decision": "approved",
-            "status": "pending",
-            "payload": {},
-        }
-    ) == {"to": None, "data": None, "value": 0}
+def test_extract_broadcast_fields_decision_approved_without_status_raises() -> None:
+    """Both ``decision`` and ``status`` must be ``approved`` to extract broadcast fields."""
+    with pytest.raises(LirixSecurityException) as excinfo:
+        Lirix.extract_broadcast_fields(
+            {
+                "decision": "approved",
+                "status": "pending",
+                "payload": {},
+            }
+        )
+    assert excinfo.value.context.get("reason") == "broadcast_extract_requires_dual_approved"
 
 
-def test_extract_broadcast_fields_empty_payload_mapping() -> None:
-    assert Lirix.extract_broadcast_fields({"decision": "blocked"}) == {
-        "to": None,
-        "data": None,
-        "value": 0,
-    }
+def test_extract_broadcast_fields_non_approved_raises() -> None:
+    with pytest.raises(LirixSecurityException) as excinfo:
+        Lirix.extract_broadcast_fields({"decision": "blocked"})
+    assert excinfo.value.context.get("reason") == "broadcast_extract_requires_dual_approved"
 
 
 def test_readme_real_e2e_docstring_mentions_integration_suite() -> None:

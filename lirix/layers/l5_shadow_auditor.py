@@ -233,10 +233,20 @@ class ShadowAuditor:
             return security_policy, {"source": "direct_policy", "conflicts": []}
 
         policy_dict = dict(security_policy)
+        if "policy_lifecycle_mode" in policy_dict:
+            raise ConfigurationGuardException(
+                human_readable_reason=(
+                    "policy_lifecycle_mode is restricted and cannot be overridden via "
+                    "security_policy mapping; configure it on LirixConfig instead."
+                ),
+                context={
+                    "layer": "L5",
+                    "reason": "policy_lifecycle_mode_override_forbidden",
+                },
+            )
         bundle_raw = policy_dict.pop("policy_bundle", None)
         environment = str(policy_dict.pop("policy_environment", "default"))
         preferred_version = policy_dict.pop("policy_version", None)
-        policy_dict.pop("policy_lifecycle_mode", None)
         conflicts: List[PolicyConflict] = []
         source = "mapping_override"
 

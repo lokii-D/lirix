@@ -10,6 +10,16 @@ import pytest
 from lirix.core.exceptions import LirixPolicyViolationException, LirixSecurityException
 from lirix.integrations.langchain.tool import LirixSecurityValidator, _format_security_exception
 
+_APPROVED_ENVELOPE: dict[str, Any] = {
+    "decision": "approved",
+    "status": "approved",
+    "payload": {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    },
+}
+
 
 def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model() -> None:
     tool = LirixSecurityValidator(rpc_urls=["https://example.invalid"])
@@ -50,7 +60,7 @@ def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model_4(
         captured["intent"] = intent
         captured["payload"] = payload
         captured["kwargs"] = kwargs
-        return {"ok": True}
+        return {**_APPROVED_ENVELOPE, "trace": "synthetic"}
 
     monkeypatch.setattr("lirix.Lirix.validate_and_simulate", fake_validate_and_simulate)
     tool = LirixSecurityValidator(
@@ -68,8 +78,13 @@ def test_test_langchain_tool_coerce_policy_accepts_mapping_pydantic_model_4(
     )
 
     decoded = json.loads(result)
-    assert decoded["ok"] is True
-    assert decoded["tx_payload"] == {"to": None, "data": None, "value": 0}
+    assert decoded["decision"] == "approved"
+    assert decoded["status"] == "approved"
+    assert decoded["tx_payload"] == {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    }
     assert captured["intent"] == "swap"
     assert captured["payload"]["raw_intent_or_calldata"] == "swap 1 ETH for USDC"
     assert captured["payload"]["expected"] == 1
@@ -116,7 +131,18 @@ async def test_validator_async_path_serializes_model_output(
 ) -> None:
     class Dummy:
         def model_dump_json(self) -> str:
-            return '{"async": true}'
+            return json.dumps(
+                {
+                    "async": True,
+                    "decision": "approved",
+                    "status": "approved",
+                    "payload": {
+                        "to": "0x0000000000000000000000000000000000000001",
+                        "data": "0x",
+                        "value": 0,
+                    },
+                }
+            )
 
     def fake_validate_and_simulate(self: Any, intent: str, payload: Any, **kwargs: Any) -> Any:
         return Dummy()
@@ -126,4 +152,8 @@ async def test_validator_async_path_serializes_model_output(
     output = await tool._arun("swap 1 ETH for USDC")
     decoded = json.loads(output)
     assert decoded["async"] is True
-    assert decoded["tx_payload"] == {"to": None, "data": None, "value": 0}
+    assert decoded["tx_payload"] == {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    }

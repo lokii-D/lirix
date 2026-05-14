@@ -4,7 +4,7 @@ import hashlib
 import json
 
 import pytest
-from lirix.core.exceptions import LirixPolicyViolationException
+from lirix.core.exceptions import ConfigurationGuardException, LirixPolicyViolationException
 from lirix.layers.l5_shadow_auditor import ShadowAuditor, ShadowPolicySchema
 
 
@@ -190,13 +190,12 @@ def test_shadow_auditor_import_export_policy_bundle_roundtrip() -> None:
 
 @pytest.mark.migration
 class TestShadowAuditorPolicyBundleMigrationCompatibility:
-    def test_shadow_auditor_legacy_lifecycle_input_is_ignored_and_instance_mode_is_source_of_truth(
+    def test_shadow_auditor_policy_bundle_respects_instance_lifecycle_mode(
         self,
     ) -> None:
         auditor = ShadowAuditor(lifecycle_mode="digest_verified")
         report = auditor.decision_report(
             security_policy={
-                "policy_lifecycle_mode": "legacy",
                 "policy_bundle": {
                     "bundle_id": "enterprise-pack",
                     "active_version": "2026.05",
@@ -214,15 +213,10 @@ class TestShadowAuditorPolicyBundleMigrationCompatibility:
         )
         assert report["lifecycle_mode"] == "digest_verified"
 
-    @pytest.mark.parametrize("legacy_alias", ["legacy", "signed_only"])
-    def test_shadow_auditor_legacy_alias_inputs_are_migration_only_and_do_not_override_instance(
-        self,
-        legacy_alias: str,
-    ) -> None:
+    def test_shadow_auditor_minimal_bundle_respects_instance_lifecycle_mode(self) -> None:
         auditor = ShadowAuditor(lifecycle_mode="digest_verified")
         report = auditor.decision_report(
             security_policy={
-                "policy_lifecycle_mode": legacy_alias,
                 "policy_bundle": {
                     "bundle_id": "alias-pack",
                     "versions": [_version(version="1", environment="prod", policy_id="prod")],
@@ -232,12 +226,19 @@ class TestShadowAuditorPolicyBundleMigrationCompatibility:
         )
         assert report["lifecycle_mode"] == "digest_verified"
 
+    def test_shadow_auditor_rejects_policy_lifecycle_mode_in_security_policy_mapping(self) -> None:
+        auditor = ShadowAuditor(lifecycle_mode="digest_verified")
+        with pytest.raises(ConfigurationGuardException) as excinfo:
+            auditor.decision_report(
+                security_policy={"policy_lifecycle_mode": "digest_verified"},
+            )
+        assert excinfo.value.context.get("reason") == "policy_lifecycle_mode_override_forbidden"
+
     def test_shadow_auditor_signed_only_alias_rejects_invalid_integrity_payload(self) -> None:
         auditor = ShadowAuditor(lifecycle_mode="digest_verified")
         with pytest.raises(LirixPolicyViolationException):
             auditor.decision_report(
                 security_policy={
-                    "policy_lifecycle_mode": "signed_only",
                     "policy_bundle": {
                         "bundle_id": "signed-pack",
                         "versions": [

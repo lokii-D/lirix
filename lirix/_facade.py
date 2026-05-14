@@ -272,6 +272,20 @@ class Lirix:
         decision = result.get("decision")
         status = result.get("status")
         strict_approved = decision == "approved" and status == "approved"
+        if not strict_approved:
+            raise LirixSecurityException(
+                error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                human_readable_reason=(
+                    "Broadcast fields may only be extracted when both decision and status "
+                    'are "approved".'
+                ),
+                context={
+                    "reason": "broadcast_extract_requires_dual_approved",
+                    "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                    "decision": decision,
+                    "status": status,
+                },
+            )
         raw = result.get("payload")
         pl: Dict[str, Any] = dict(raw) if isinstance(raw, Mapping) else {}
 
@@ -284,13 +298,6 @@ class Lirix:
                 return int(cast(Any, v))
             except (TypeError, ValueError):
                 return 0
-
-        if not strict_approved:
-            return {
-                "to": pl.get("to") if pl.get("to") not in (None, "") else None,
-                "data": pl.get("data") if pl.get("data") not in (None, "") else None,
-                "value": _coerce_value(pl.get("value", 0)),
-            }
 
         value = _coerce_value(pl.get("value", 0))
         to_v = pl.get("to")

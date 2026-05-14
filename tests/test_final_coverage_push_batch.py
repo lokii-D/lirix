@@ -57,7 +57,11 @@ def test_test_v15_final_coverage_push_4() -> None:
 async def test_langchain_ainvoke_returns_model_dump_json(monkeypatch: pytest.MonkeyPatch) -> None:
     class _Model:
         def model_dump_json(self) -> str:
-            return '{"ok":true}'
+            return (
+                '{"ok":true,"decision":"approved","status":"approved",'
+                '"payload":{"to":"0x0000000000000000000000000000000000000001",'
+                '"data":"0x","value":0}}'
+            )
 
     async def fake_async_validate(
         self: Any, intent: str, payload: dict[str, Any], **kwargs: Any
@@ -69,7 +73,11 @@ async def test_langchain_ainvoke_returns_model_dump_json(monkeypatch: pytest.Mon
     out = await validator._ainvoke_guardian("payload")
     decoded = json.loads(out)
     assert decoded["ok"] is True
-    assert decoded["tx_payload"] == {"to": None, "data": None, "value": 0}
+    assert decoded["tx_payload"] == {
+        "to": "0x0000000000000000000000000000000000000001",
+        "data": "0x",
+        "value": 0,
+    }
 
 
 def test_test_v15_final_coverage_push_5(tmp_path: Path) -> None:

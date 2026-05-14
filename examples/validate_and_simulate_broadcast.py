@@ -5,7 +5,9 @@
 
 This mirrors the signing path in the README: run the pipeline, then read
 ``to`` / ``data`` / ``value`` from the canonical ``result["payload"]`` subtree
-via :meth:`Lirix.extract_broadcast_fields`.
+via :meth:`Lirix.extract_broadcast_fields` **only** when both ``decision`` and
+``status`` are ``approved`` (``extract_broadcast_fields`` enforces this and
+raises otherwise).
 
 Configure ``rpc_urls`` for your network before expecting a successful simulation;
 without RPC the call may fail fast with a Lirix exception (still demonstrates
@@ -20,7 +22,7 @@ from lirix import Lirix, LirixConfig
 def main() -> None:
     cfg = LirixConfig(
         chain_id=1,
-        strict_mode=False,
+        strict_mode=True,
         rpc_urls=[],
         allowed_intents=["transfer"],
         whitelisted_addresses=["0x0000000000000000000000000000000000000001"],
@@ -35,6 +37,12 @@ def main() -> None:
             "value": 0,
         },
     )
+    if result.get("decision") != "approved" or result.get("status") != "approved":
+        print(
+            "Skipping extract_broadcast_fields: pipeline not dual-approved "
+            f"(decision={result.get('decision')!r}, status={result.get('status')!r})."
+        )
+        return
     tx_payload = Lirix.extract_broadcast_fields(result)
     print("extract_broadcast_fields:", tx_payload)
 

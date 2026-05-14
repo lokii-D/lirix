@@ -1019,12 +1019,16 @@ def test_lirix_resolve_failure_protocol_non_mapping_nested_uses_outer_context() 
     assert isinstance(out, dict) and out.get("reason_code")
 
 
-def test_extract_broadcast_fields_bool_coercion_on_loose_path() -> None:
+def test_extract_broadcast_fields_bool_coercion_on_approved_path() -> None:
     out = Lirix.extract_broadcast_fields(
         {
             "decision": "approved",
-            "status": "blocked",
-            "payload": {"to": "0x1", "data": "0x", "value": True},
+            "status": "approved",
+            "payload": {
+                "to": "0x4200000000000000000000000000000000000006",
+                "data": "0x",
+                "value": True,
+            },
         }
     )
     assert out["value"] == 1
