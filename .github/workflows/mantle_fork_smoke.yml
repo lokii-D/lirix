@@ -29,8 +29,8 @@ jobs:
           cache: true
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --timeout 60 --upgrade pip
+          python -m pip install --timeout 60 -e ".[dev]"
       - name: Run Mantle fork test
         shell: bash
         env:
@@ -43,7 +43,7 @@ jobs:
           anvil --fork-url "$MANTLE_MAINNET_RPC" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
           ANVIL_PID=$!
           for i in {1..30}; do
-            if curl -s http://127.0.0.1:8546 >/dev/null; then
+            if curl --max-time 60 -s http://127.0.0.1:8546 >/dev/null; then
               python -m pytest mantle_TT/tests/mantle/ -v
               kill $ANVIL_PID || true
               exit 0

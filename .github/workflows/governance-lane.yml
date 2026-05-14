@@ -31,13 +31,13 @@ jobs:
       - name: Repo exclusions alignment gate
         run: python tools/harness.py check-exclusions
 
-      - name: Import topology drift gate
-        run: python tools/gen_lirix_import_graph.py --check
+      - name: Preflight remediation status gate (topology + worktree SSOT)
+        run: python tools/harness.py preflight-remediation-status
 
       - name: Install dev dependencies (editable)
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --timeout 60 --upgrade pip
+          python -m pip install --timeout 60 -e ".[dev]"
 
       - name: Doc preamble hygiene gate (warn-only)
         run: python tools/harness.py doc-preamble-hygiene

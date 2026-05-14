@@ -27,12 +27,12 @@ jobs:
         run: python tools/harness.py hygiene
       - name: Repo exclusions alignment gate
         run: python tools/harness.py check-exclusions
-      - name: Import topology drift gate
-        run: python tools/harness.py import-topology
+      - name: Preflight remediation status gate (topology + worktree SSOT)
+        run: python tools/harness.py preflight-remediation-status
       - name: Install lint dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install --timeout 60 --upgrade pip
+          python -m pip install --timeout 60 -e ".[dev]"
       - name: Run Ruff
         run: python tools/harness.py lint
       - name: Run Black check
