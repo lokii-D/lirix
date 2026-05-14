@@ -10,6 +10,7 @@ from lirix.integrations.langchain.tool import (
     _format_payload_parse_feedback,
     _format_security_exception,
     _merge_raw_intent_overlay,
+    _new_agent_guardian_session,
     _serialize_guardian_success,
 )
 
@@ -50,11 +51,13 @@ def lirix_validate_intent(
         return _format_payload_parse_feedback(exc)
 
     guardian = Lirix(rpc_urls=rpc_urls)
+    agent_session = _new_agent_guardian_session()
     try:
         result = guardian.validate_and_simulate(
             resolved_intent,
             merged_payload,
             security_policy=dict(security_policy) if security_policy is not None else None,
+            session=agent_session,
         )
     except LirixBaseException as exc:
         return _format_security_exception(exc)

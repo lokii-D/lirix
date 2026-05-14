@@ -51,7 +51,7 @@ def build_for_chain_profile(
 def replay_session(
     bundle: Mapping[str, Any],
     *,
-    enforce_workflow_strict: bool = False,
+    enforce_agent_timeline_order: bool = False,
     enforce_replay_proof_strict: bool = False,
 ) -> Mapping[str, Any]:
     """
@@ -60,12 +60,12 @@ def replay_session(
     No chain-side re-execution is performed (zero-telemetry, local-only).
     """
     # Resolve via `lirix.core.session` so tests can patch `lirix.core.session.verify_replay_bundle`.
-    if not enforce_workflow_strict and not enforce_replay_proof_strict:
+    if not enforce_agent_timeline_order and not enforce_replay_proof_strict:
         _session_module.verify_replay_bundle(bundle)
     else:
         _session_module.verify_replay_bundle(
             bundle,
-            enforce_workflow_strict=enforce_workflow_strict,
+            enforce_agent_timeline_order=enforce_agent_timeline_order,
             enforce_replay_proof_strict=enforce_replay_proof_strict,
         )
     payload = bundle.get("payload")

@@ -22,6 +22,7 @@ from lirix.core.exceptions import (
     LirixBaseException,
     LirixPolicyViolationException,
 )
+from lirix.core.session import ValidationSession, new_validation_session_agent
 
 _LANGCHAIN_CORE_AVAILABLE: bool = False
 
@@ -135,6 +136,20 @@ def _format_security_exception(exc: LirixBaseException) -> str:
     if repair and repair.lower() not in base.lower():
         lines.append(f"Next step: {repair}")
     return "\n".join(lines)
+
+
+def _new_agent_guardian_session() -> ValidationSession:
+    """Fresh agent-mode session with real plan/draft/tool_call before pipeline ``decision``."""
+    sess = new_validation_session_agent()
+    sess.record_plan(objective="lirix.integrations.agent_surface", constraints=[])
+    sess.record_draft(label="tool_invocation", content={"surface": "integrations"})
+    sess.record_tool_call(
+        tool_name="lirix.integrations.guardian",
+        input_summary={"surface": "integrations"},
+        output_summary={},
+        ok=True,
+    )
+    return sess
 
 
 def _serialize_guardian_success(result: Any) -> str:
@@ -335,15 +350,17 @@ class LirixSecurityValidator(BaseTool):
         except ValueError as exc:
             return _format_payload_parse_feedback(exc)
         guardian = Lirix(rpc_urls=self._rpc_urls)
+        agent_session = _new_agent_guardian_session()
         try:
             token = str(mode or "validate_and_simulate").strip().lower()
             if token == "validate_only":
-                result = guardian.validate_only(resolved_intent, payload)
+                result = guardian.validate_only(resolved_intent, payload, session=agent_session)
             else:
                 result = guardian.validate_and_simulate(
                     resolved_intent,
                     payload,
                     security_policy=merged_security_policy or None,
+                    session=agent_session,
                 )
         except LirixBaseException as exc:
             return _format_security_exception(exc)
@@ -376,15 +393,19 @@ class LirixSecurityValidator(BaseTool):
         except ValueError as exc:
             return _format_payload_parse_feedback(exc)
         guardian = Lirix(rpc_urls=self._rpc_urls)
+        agent_session = _new_agent_guardian_session()
         try:
             token = str(mode or "validate_and_simulate").strip().lower()
             if token == "validate_only":
-                result = await guardian.async_validate_only(resolved_intent, payload)
+                result = await guardian.async_validate_only(
+                    resolved_intent, payload, session=agent_session
+                )
             else:
                 result = await guardian.async_validate_and_simulate(
                     resolved_intent,
                     payload,
                     security_policy=merged_security_policy or None,
+                    session=agent_session,
                 )
         except LirixBaseException as exc:
             return _format_security_exception(exc)

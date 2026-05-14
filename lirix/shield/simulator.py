@@ -12,6 +12,7 @@ from lirix.core.exceptions import (
     LirixDependencyError,
     LirixSimulationError,
     LirixStateAssertionError,
+    SimulationFailedException,
 )
 from web3 import Web3
 
@@ -50,11 +51,31 @@ class StateDeltaValidator:
         if raw_return_data is None:
             raw_return_data = "0x"
 
+        if not isinstance(raw_return_data, str):
+            raise SimulationFailedException(
+                human_readable_reason=(
+                    "Simulation return_data must be a 0x-prefixed hex string for assertion checks."
+                ),
+                context={
+                    "layer": "shield",
+                    "reason": "return_data_type_invalid",
+                },
+            )
+
         # Convert hex return_data into int.
         try:
             actual_int_val = int(raw_return_data, 16) if raw_return_data != "0x" else 0
-        except ValueError:
-            actual_int_val = 0
+        except ValueError as exc:
+            raise SimulationFailedException(
+                human_readable_reason=(
+                    "Unparseable simulation return_data hex payload; "
+                    "refusing silent coercion to zero."
+                ),
+                context={
+                    "layer": "shield",
+                    "reason": "return_data_hex_unparseable",
+                },
+            ) from exc
 
         for assertion in assertions:
             # Compatible with Pydantic v2 models or native dicts.

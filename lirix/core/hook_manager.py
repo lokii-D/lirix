@@ -67,6 +67,9 @@ from lirix.core.hook_contract import (
 from lirix.core.status_aggregation import aggregate_statuses
 from lirix.core.trace_recorder import TraceRecorder
 
+# Wall-clock ceiling for ``ainvoke_hooks`` (non-isolated async hook path).
+_AINVOKE_HOOKS_WALL_TIMEOUT_SEC = 30.0
+
 HookCallback = Union[Callable[..., Any], Callable[..., Awaitable[Any]]]
 
 
@@ -113,7 +116,9 @@ def _invoke_sync_hook_threaded(
             q.put(("ok", cb(*args, **kwargs)))
         except LirixSecurityException as exc:
             q.put(("lirix", exc))
-        except BaseException as exc:
+        except (
+            BaseException
+        ) as exc:  # noqa: BLE001 — isolate arbitrary hook failures from the worker thread
             q.put(("err", exc))
 
     th = threading.Thread(target=_worker, daemon=True, name="lirix-hook-isolated")
@@ -547,7 +552,9 @@ class HookManager:
                     apply_hook_patch(mutable_payload, out)
             except LirixSecurityException:
                 raise
-            except Exception as exc:
+            except (
+                Exception
+            ) as exc:  # noqa: BLE001 — hook isolation: record third-party callback failures
                 results.append(
                     self._hook_error_result(
                         hook_point,
@@ -571,12 +578,31 @@ class HookManager:
         with self._lock:
             callbacks = list(self._registry.get(hook_point, ()))
         results: List[Any] = []
+        loop = asyncio.get_running_loop()
+        wall_timeout = float(_AINVOKE_HOOKS_WALL_TIMEOUT_SEC)
         for cb in callbacks:
             try:
                 if inspect.iscoroutinefunction(cb):
-                    results.append(await cb(*args, **kwargs))
+                    results.append(
+                        await asyncio.wait_for(cb(*args, **kwargs), timeout=wall_timeout)
+                    )
                 else:
-                    results.append(cb(*args, **kwargs))
+                    exec_fn: Callable[..., Any] = functools.partial(
+                        cast(Callable[..., Any], cb), *args, **kwargs
+                    )
+                    results.append(
+                        await asyncio.wait_for(
+                            loop.run_in_executor(None, exec_fn), timeout=wall_timeout
+                        )
+                    )
+            except asyncio.TimeoutError as exc:
+                raise HookExecutionException(
+                    human_readable_reason="Hook exceeded wall-clock timeout during ainvoke_hooks.",
+                    context={
+                        "hook_point": hook_point,
+                        "timeout_sec": wall_timeout,
+                    },
+                ) from exc
             except LirixSecurityException:
                 raise
             except Exception as exc:
@@ -664,7 +690,9 @@ class HookManager:
                 )
             except LirixSecurityException:
                 raise
-            except Exception as exc:
+            except (
+                Exception
+            ) as exc:  # noqa: BLE001 — hook isolation: record third-party callback failures
                 results.append(
                     self._hook_error_result(
                         hook_point,

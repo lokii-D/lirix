@@ -256,12 +256,12 @@ class Lirix:
     def replay_from_bundle(
         bundle: Mapping[str, Any],
         *,
-        enforce_workflow_strict: bool = False,
+        enforce_agent_timeline_order: bool = False,
         enforce_replay_proof_strict: bool = False,
     ) -> Mapping[str, Any]:
         verify_replay_bundle(
             bundle,
-            enforce_workflow_strict=enforce_workflow_strict,
+            enforce_agent_timeline_order=enforce_agent_timeline_order,
             enforce_replay_proof_strict=enforce_replay_proof_strict,
         )
         payload = bundle.get("payload")
@@ -302,7 +302,7 @@ class Lirix:
         value = _coerce_value(pl.get("value", 0))
         to_v = pl.get("to")
         data_v = pl.get("data")
-        if to_v is None or (isinstance(to_v, str) and to_v.strip() == ""):
+        if to_v is None or not isinstance(to_v, str) or to_v.strip() == "":
             raise LirixSecurityException(
                 error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
                 human_readable_reason="Approved envelope missing broadcast `to`.",
@@ -311,10 +311,46 @@ class Lirix:
                     "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
                 },
             )
-        if data_v is None or (isinstance(data_v, str) and data_v.strip() == ""):
+        if data_v is None or not isinstance(data_v, str) or data_v.strip() == "":
             raise LirixSecurityException(
                 error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
                 human_readable_reason="Approved envelope missing broadcast `data`.",
+                context={
+                    "reason": "approved_broadcast_fields_invariant",
+                    "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                },
+            )
+        dnorm = data_v.strip()
+        if not dnorm.startswith(("0x", "0X")):
+            raise LirixSecurityException(
+                error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                human_readable_reason=(
+                    "Approved envelope broadcast `data` must be a 0x-prefixed hex string."
+                ),
+                context={
+                    "reason": "approved_broadcast_fields_invariant",
+                    "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                },
+            )
+        body = dnorm[2:].lower()
+        if len(body) % 2 != 0:
+            raise LirixSecurityException(
+                error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                human_readable_reason=(
+                    "Approved envelope broadcast `data` hex payload must have an even "
+                    "number of nibbles after the 0x prefix."
+                ),
+                context={
+                    "reason": "approved_broadcast_fields_invariant",
+                    "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                },
+            )
+        if body != "" and not all(c in "0123456789abcdef" for c in body):
+            raise LirixSecurityException(
+                error_code=LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
+                human_readable_reason=(
+                    "Approved envelope broadcast `data` contains invalid hexadecimal."
+                ),
                 context={
                     "reason": "approved_broadcast_fields_invariant",
                     "canonical_error_code": LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT,
@@ -444,7 +480,7 @@ class Lirix:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             fut = pool.submit(_thread_entry)
             try:
-                return fut.result()
+                return fut.result(timeout=30)
             except BaseException as outer:
                 cur: BaseException | None = outer
                 for _ in range(24):

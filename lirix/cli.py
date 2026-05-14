@@ -49,8 +49,8 @@ try:
     from lirix_policy import DEFAULT_STRICT_POLICY
 except ImportError as exc:
     raise SystemExit(
-        "Policy package not found. Install with: pip install 'lirix[policy]' "
-        "or run: lirix init (to generate lirix_policy.py in your project)."
+        "Policy module `lirix_policy` not found. Run `lirix init` to generate "
+        "lirix_policy.py in your project."
     ) from exc
 
 

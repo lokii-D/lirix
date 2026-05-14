@@ -137,7 +137,19 @@ class DeFiPayloadParser:
         }
         for plugin in self._decoder_plugins:
             if plugin.can_handle(selector=sel, to_address=outer_to):
-                plugin.decode_and_collect(selector=sel, body=body, payload=payload)
+                try:
+                    plugin.decode_and_collect(selector=sel, body=body, payload=payload)
+                except Exception as exc:
+                    raise MaliciousPayloadException(
+                        human_readable_reason=(
+                            "Decoder plugin raised an error while decoding calldata; "
+                            "refusing to propagate raw third-party failure."
+                        ),
+                        context={
+                            "error_type": exc.__class__.__name__,
+                            "plugin": plugin.name,
+                        },
+                    ) from exc
                 self._enforce_addresses({outer_to})
                 h = self._hooks
                 if h is not None:

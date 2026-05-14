@@ -90,7 +90,7 @@ class LirixConfig(BaseModel):
         description="L3：Uniswap V2 Router；None 且 chain_id==1 时使用以太坊主网常量",
     )
     hook_contract_mode: Literal["legacy", "warn", "shadow", "enforce"] = Field(
-        default="legacy",
+        default="shadow",
         description=(
             "Hook contract execution mode. legacy is migration-only; shadow/enforce are the "
             "stable operational modes."

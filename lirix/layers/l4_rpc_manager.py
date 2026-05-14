@@ -379,7 +379,9 @@ class RPCManager:
                 try:
                     u, bn = fut.result()
                     heights[u] = bn
-                except BaseException as exc:
+                except (
+                    BaseException
+                ) as exc:  # noqa: BLE001 — fut.result may surface CancelledError and RPC errors
                     errors[url] = exc
 
         with self._lock:
@@ -719,7 +721,9 @@ class AsyncQuorumProvider:
             provider = AsyncHTTPProvider(self._best_url, request_kwargs={"timeout": self._timeout})
             aw3 = AsyncWeb3(provider)
             return await aw3.eth.call(cast(Any, tx), block_identifier=cast(Any, block))
-        except BaseException as exc:
+        except (
+            BaseException
+        ) as exc:  # noqa: BLE001 — map any RPC/web3 failure into quorum-fail envelope
             best_url = cast(str, self._best_url)
             self._raise_quorum_failed(
                 "selected endpoint eth_call failed", failures={best_url: str(exc)}

@@ -10,7 +10,7 @@ from lirix.core.constants import canonicalize_error_code
 from lirix.core.contracts import is_hex_digest, stable_digest
 from lirix.core.evidence import trace_digest
 from lirix.core.exceptions import ConfigurationGuardException
-from lirix.core.session_fsm import SessionEvent, SessionFSM
+from lirix.core.session_fsm import SessionEvent, SessionFSM, _session_workflow_events_seen
 from lirix.core.status_aggregation import aggregate_statuses
 
 
@@ -128,8 +128,23 @@ class ValidationSession:
     state: Dict[str, Any] = field(default_factory=dict)
     _lifecycle: SessionLifecycleState = field(default="open", repr=False)
     _fsm: SessionFSM = field(default_factory=SessionFSM, repr=False)
+    workflow_mode: Literal["direct", "agent"] = field(default="direct", repr=False)
     workflow_strict: bool = field(default=False, repr=False)
     _mutation_lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.workflow_mode not in {"direct", "agent"}:
+            raise ConfigurationGuardException(
+                human_readable_reason="ValidationSession workflow_mode must be direct or agent.",
+                context={
+                    "reason": "session_workflow_mode_invalid",
+                    "workflow_mode": self.workflow_mode,
+                },
+            )
+        self.workflow_strict = bool(self.workflow_strict or self.workflow_mode == "agent")
+
+    def _effective_workflow_strict(self) -> bool:
+        return bool(self.workflow_strict or self.workflow_mode == "agent")
 
     def _ensure_not_finalized(self, *, context: str) -> None:
         if self._lifecycle == "finalized":
@@ -153,6 +168,8 @@ class ValidationSession:
             "state": dict(self.state),
             "decision_log": self.decision_log(),
             "lifecycle": self._lifecycle,
+            "workflow_mode": self.workflow_mode,
+            "workflow_strict": self._effective_workflow_strict(),
         }
 
     def decision_log(self) -> List[Dict[str, Any]]:
@@ -229,6 +246,8 @@ class ValidationSession:
             "correlation_ids": list(self.correlation_ids),
             "timeline": list(self.timeline),
             "state": dict(self.state),
+            "workflow_mode": self.workflow_mode,
+            "workflow_strict": self._effective_workflow_strict(),
         }
         meta = self._last_trace_metadata()
         migration_modes = dict(meta.get("migration_modes") or {})
@@ -495,7 +514,7 @@ class ValidationSession:
                 lifecycle=self._lifecycle,
                 timeline=self.timeline,
                 incoming=SessionEvent(kind="session_event", event_type=str(event_type)),
-                workflow_strict=self.workflow_strict,
+                workflow_strict=self._effective_workflow_strict(),
             )
             self.timeline.append(
                 {
@@ -506,6 +525,8 @@ class ValidationSession:
                     "payload": dict(payload),
                 }
             )
+            if event_type == "decision" and self._effective_workflow_strict():
+                self.state["workflow_decision_state"] = payload.get("verdict")
             prev_out = str(self.state.get("session_outcome", "info"))
             self.state["session_outcome"] = aggregate_statuses([prev_out, str(status)])
 
@@ -558,6 +579,13 @@ class ValidationSession:
         rationale: str,
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
+        if self.workflow_strict or self.workflow_mode == "agent":
+            seen = _session_workflow_events_seen(self.timeline)
+            if "plan" not in seen or "draft" not in seen:
+                raise ConfigurationGuardException(
+                    human_readable_reason="Missing FSM prerequisites",
+                    context={"reason": "missing_fsm_prerequisites"},
+                )
         if verdict not in DECISION_ALLOWED_VERDICTS:
             raise ConfigurationGuardException(
                 human_readable_reason="record_decision verdict must be approved, blocked, or info.",
@@ -580,8 +608,20 @@ class ValidationSession:
             self._lifecycle = "finalized"
 
 
+def new_validation_session_direct() -> ValidationSession:
+    """Orchestrator/direct: explicit ``workflow_mode="direct"`` (single construction site)."""
+
+    return ValidationSession(workflow_mode="direct")
+
+
+def new_validation_session_agent() -> ValidationSession:
+    """Agent/integration: ``workflow_mode="agent"`` (strict semantics in ``__post_init__``)."""
+
+    return ValidationSession(workflow_mode="agent")
+
+
 def ensure_session(session: Optional[ValidationSession]) -> ValidationSession:
-    return session if session is not None else ValidationSession()
+    return session if session is not None else new_validation_session_direct()
 
 
 def verify_replay_bundle(
@@ -589,8 +629,13 @@ def verify_replay_bundle(
     *,
     enforce_workflow_strict: bool = False,
     enforce_replay_proof_strict: bool = False,
+    enforce_agent_timeline_order: Optional[bool] = None,
 ) -> None:
-    """Fail-closed integrity check for replay bundles."""
+    """Fail-closed integrity check for replay bundles.
+
+    ``enforce_agent_timeline_order`` is a compatibility alias for older call sites.
+    When provided, it maps directly onto ``enforce_workflow_strict``.
+    """
     bver = bundle.get("bundle_version")
     if bver != REPLAY_BUNDLE_VERSION:
         raise ConfigurationGuardException(
@@ -615,12 +660,25 @@ def verify_replay_bundle(
             human_readable_reason="Replay bundle payload must be an object.",
             context={"reason": "replay_bundle_malformed"},
         )
+    mode = payload.get("workflow_mode")
+    if mode not in {"agent", "direct"}:
+        raise ConfigurationGuardException(
+            human_readable_reason=(
+                "Replay bundle payload is missing or has an invalid 'workflow_mode'."
+            ),
+            context={
+                "reason": "replay_bundle_workflow_mode_missing_or_invalid",
+                "found_mode": mode,
+            },
+        )
     timeline = payload.get("timeline")
     if not isinstance(timeline, list):
         raise ConfigurationGuardException(
             human_readable_reason="Replay bundle payload.timeline must be a list.",
             context={"reason": "replay_bundle_malformed"},
         )
+    if enforce_agent_timeline_order is not None:
+        enforce_workflow_strict = bool(enforce_agent_timeline_order)
     saw_finalize = False
     finalize_count = 0
     allowed_status = SESSION_ALLOWED_STATUS

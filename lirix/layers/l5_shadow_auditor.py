@@ -232,8 +232,9 @@ class ShadowAuditor:
         if isinstance(security_policy, ShadowPolicySchema):
             return security_policy, {"source": "direct_policy", "conflicts": []}
 
-        policy_dict = dict(security_policy)
-        if "policy_lifecycle_mode" in policy_dict:
+        # Never mutate the caller-supplied mapping: operate on a detached shallow copy.
+        policy_source = dict(security_policy)
+        if "policy_lifecycle_mode" in policy_source:
             raise ConfigurationGuardException(
                 human_readable_reason=(
                     "policy_lifecycle_mode is restricted and cannot be overridden via "
@@ -244,9 +245,14 @@ class ShadowAuditor:
                     "reason": "policy_lifecycle_mode_override_forbidden",
                 },
             )
-        bundle_raw = policy_dict.pop("policy_bundle", None)
-        environment = str(policy_dict.pop("policy_environment", "default"))
-        preferred_version = policy_dict.pop("policy_version", None)
+        bundle_raw = policy_source.get("policy_bundle")
+        environment = str(policy_source.get("policy_environment", "default"))
+        preferred_version = policy_source.get("policy_version")
+        policy_dict = {
+            k: v
+            for k, v in policy_source.items()
+            if k not in ("policy_bundle", "policy_environment", "policy_version")
+        }
         conflicts: List[PolicyConflict] = []
         source = "mapping_override"
 

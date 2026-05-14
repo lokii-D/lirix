@@ -44,7 +44,7 @@ RunKind: TypeAlias = Literal[
     "async_simulate_only",
 ]
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("lirix.core.orchestrator")
 
 
 class OrchestratorClient(Protocol):
