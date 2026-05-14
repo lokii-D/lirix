@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "title": "Lirix preflight remediation contract (machine-readable companion)",
+  "human_playbook": "docs/preflight_remediation_executor_handoff.md",
+  "harness_subcommand": "preflight-remediation-status",
+  "rules": [
+    {
+      "id": "R-001",
+      "severity": "P0",
+      "title": "Import topology drift (committed markdown vs lirix package AST)",
+      "localization": {
+        "generator": "tools/gen_lirix_import_graph.py",
+        "artifact": "docs/lirix_import_topology.md",
+        "wrapped_by": ["tools/validators.py:check_import_topology", "tools/validators.py:check_preflight_remediation_status"]
+      },
+      "symptoms_stderr_substrings": [
+        "import-topology-check: docs/lirix_import_topology.md is stale or hand-edited",
+        "preflight-remediation-status: FAIL rule R-001"
+      ],
+      "verify_commands": [
+        "python tools/gen_lirix_import_graph.py --check",
+        "python tools/harness.py import-topology",
+        "python tools/harness.py preflight-remediation-status"
+      ],
+      "remediation_commands": [
+        "python tools/gen_lirix_import_graph.py",
+        "git add docs/lirix_import_topology.md"
+      ],
+      "acceptance_criteria": [
+        "`gen_lirix_import_graph.py --check` exits 0",
+        "`docs/lirix_import_topology.md` contains only generator output (no manual edge edits)"
+      ],
+      "post_fix_tests": [
+        "python tools/harness.py preflight-remediation-status",
+        "python tools/harness.py contract-manifest",
+        "python -m pytest -q tests/test_tools/test_preflight_remediation_status_gate.py"
+      ]
+    },
+    {
+      "id": "R-002",
+      "severity": "P1",
+      "title": "Git index / worktree desync (tracked file deleted on disk, not staged)",
+      "localization": {
+        "known_hazard_paths": [
+          "tests/test_core/test_session_agent_timeline_order_happy_path.py"
+        ],
+        "implementation": "tools/validators.py:check_preflight_remediation_status (porcelain v1: leading ' D')"
+      },
+      "symptoms": [
+        "`git status --short` shows ` D <path>` for a still-tracked module",
+        "`preflight-remediation-status: FAIL rule R-002`"
+      ],
+      "verify_commands": [
+        "git status --porcelain=v1 -uno -- tests/test_core/test_session_agent_timeline_order_happy_path.py"
+      ],
+      "remediation_options": [
+        {
+          "intent": "Record intentional removal",
+          "commands": ["git add -u -- tests/test_core/test_session_agent_timeline_order_happy_path.py"]
+        },
+        {
+          "intent": "Restore last committed revision",
+          "commands": ["git restore --source=HEAD -- tests/test_core/test_session_agent_timeline_order_happy_path.py"]
+        }
+      ],
+      "acceptance_criteria": [
+        "No porcelain line begins with space + `D` for listed hazard paths when path remains tracked",
+        "If deletion is intentional, commit includes the staged deletion so CI checkout is self-consistent"
+      ],
+      "post_fix_tests": [
+        "python tools/harness.py preflight-remediation-status",
+        "python -m pytest -q"
+      ]
+    },
+    {
+      "id": "R-003",
+      "severity": "P2",
+      "title": "Process gap: code changed lirix→lirix imports without regenerating topology doc",
+      "localization": {
+        "process_owner": "release / merge checklist",
+        "related_docs": ["docs/pipeline_evidence_flow.md", "docs/ci_gate_matrix.md"]
+      },
+      "remediation_architecture": [
+        "Treat `docs/lirix_import_topology.md` as a build artifact tied to `lirix/**/*.py` import edges",
+        "On any PR touching `lirix/`, run `gen_lirix_import_graph.py` before merge if imports changed"
+      ],
+      "verify_commands": [
+        "git diff --name-only HEAD~1 -- lirix/ && python tools/gen_lirix_import_graph.py --check"
+      ]
+    },
+    {
+      "id": "R-004",
+      "severity": "P3",
+      "title": "Optional redundancy: governance-only harness gates not duplicated on PR Fast Required",
+      "localization": {
+        "workflows": [".github/workflows/ci.yml", ".github/workflows/governance-lane.yml"],
+        "gates_examples": [
+          "failure-surface-triage",
+          "legacy-sunset",
+          "phase-exit-checklists",
+          "branch-protection-drift"
+        ]
+      },
+      "note": "By design per docs/ci_gate_matrix.md; not a defect unless policy mandates single-lane full duplication.",
+      "remediation_architecture": [
+        "If policy changes: add selected gates to Fast Required or require governance lane as branch protection check"
+      ]
+    },
+    {
+      "id": "R-005",
+      "severity": "info",
+      "title": "Local environment: test-coverage-required without dev extras",
+      "localization": {
+        "gate": "tools/validators.py:check_test_coverage_required",
+        "ci_order": "pip install -e \".[dev]\" before coverage job"
+      },
+      "symptoms": [
+        "pytest: error: unrecognized arguments: --cov=lirix"
+      ],
+      "remediation_commands": [
+        "python -m pip install -e \".[dev]\"",
+        "python tools/harness.py test-coverage-required"
+      ]
+    }
+  ],
+  "executor_return_report_required_sections": [
+    "metadata_commit_sha",
+    "metadata_date_utc",
+    "rule_status_table",
+    "commands_executed_ordered",
+    "stdout_stderr_excerpts",
+    "files_changed_unified_diff_stat",
+    "pytest_summary_line",
+    "preflight_remediation_status_exit_code",
+    "auditor_signoff_blockers_remaining"
+  ],
+  "harness_backlog_optional": [
+    {
+      "id": "H-1",
+      "title": "Single `harness fast-required-local-chain` mirroring CI Fast Required order",
+      "rationale": "Extra redundancy for human operators; implemented as `python tools/harness.py fast-required-local-chain`",
+      "status": "implemented"
+    },
+    {
+      "id": "H-2",
+      "title": "Optional `--enforce` parity for doc-preamble on release tags",
+      "rationale": "Stricter zero-warning posture when noise is eliminated"
+    }
+  ]
+}

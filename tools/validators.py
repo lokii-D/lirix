@@ -9,13 +9,17 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# Harness-invoked pytest must not inherit ``pyproject.toml`` ``addopts`` (which pins the entire
+# ``tests/`` tree plus ``--pyargs lirix``); subsets would otherwise collect the full suite.
+_PYTEST_HARNESS_BASE_ADDOPTS = "--strict-markers --import-mode=importlib"
+
 # SSOT for `python tools/harness.py test-governance` (was previously duplicated in `ci.yml` `run: |`).
 GOVERNANCE_EXPLICIT_PYTEST_PATHS: tuple[str, ...] = (
     "tests/test_core/test_canonical_semantics.py",
     "tests/test_core/test_agent_feedback_reason_taxonomy_closure.py",
     "tests/test_core/test_session.py",
     "tests/test_core/test_session_replay_verifier_malformed_shapes.py",
-    "tests/test_core/test_session_workflow_strict_happy_path.py",
+    "tests/test_core/test_session_agent_timeline_order_happy_path.py",
     "tests/test_core/test_replay_registry_closure_binding.py",
     "tests/test_core/test_replay_registry_closure_parity_all_entrypoints.py",
     "tests/test_core/test_chain_adapter_profiles.py",
@@ -35,7 +39,7 @@ GOVERNANCE_EXPLICIT_PYTEST_PATHS: tuple[str, ...] = (
     "tests/test_integrations/test_langchain_tool_run_arun_delegate_to_guardian_paths.py",
 )
 
-_PR_COMPAT_SMOKE_PYTEST_PATHS: tuple[str, ...] = (
+PR_COMPAT_SMOKE_PYTEST_PATHS: tuple[str, ...] = (
     "tests/test_core/test_entrypoints.py",
     "tests/test_core/test_sync_async_contract_consistency.py",
     "tests/test_core/test_registry_authority_contract.py",
@@ -52,7 +56,7 @@ def check_lint() -> int:
 
 
 def check_format_check() -> int:
-    return _run_repo_command([sys.executable, "-m", "black", "--check", "."])
+    return _run_repo_command([sys.executable, "-m", "black", "--check", "--quiet", "."])
 
 
 def check_typecheck() -> int:
@@ -60,7 +64,15 @@ def check_typecheck() -> int:
 
 
 def check_test_governance() -> int:
-    cmd = [sys.executable, "-m", "pytest", "-q", *GOVERNANCE_EXPLICIT_PYTEST_PATHS]
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-o",
+        f"addopts={_PYTEST_HARNESS_BASE_ADDOPTS}",
+        *GOVERNANCE_EXPLICIT_PYTEST_PATHS,
+    ]
     return _run_repo_command(cmd)
 
 
@@ -78,7 +90,15 @@ def check_test_coverage_required() -> int:
 
 
 def check_test_pr_compat_smoke() -> int:
-    cmd = [sys.executable, "-m", "pytest", "-q", *PR_COMPAT_SMOKE_PYTEST_PATHS]
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-o",
+        f"addopts={_PYTEST_HARNESS_BASE_ADDOPTS}",
+        *PR_COMPAT_SMOKE_PYTEST_PATHS,
+    ]
     return _run_repo_command(cmd)
 
 
@@ -88,6 +108,8 @@ def check_test_compat_matrix() -> int:
         "-m",
         "pytest",
         "-q",
+        "-o",
+        f"addopts={_PYTEST_HARNESS_BASE_ADDOPTS}",
         "-m",
         "not slow and not e2e and not network and not perf and not migration",
     ]
@@ -98,6 +120,68 @@ def check_import_topology() -> int:
     return _run_repo_command(
         [sys.executable, str(_REPO_ROOT / "tools/gen_lirix_import_graph.py"), "--check"]
     )
+
+
+_PREFLIGHT_REMEDIATION_HANDOFF = _REPO_ROOT / "docs" / "preflight_remediation_executor_handoff.md"
+_PREFLIGHT_REMEDIATION_CONTRACT = _REPO_ROOT / "tools" / "preflight_remediation_contract.json"
+
+
+def check_preflight_remediation_status() -> int:
+    """Roll-up gate for release-preflight issues (topology drift + known git/worktree hazards).
+
+    Human playbook + machine-readable contract:
+    - ``docs/preflight_remediation_executor_handoff.md``
+    - ``tools/preflight_remediation_contract.json``
+    """
+
+    if check_import_topology() != 0:
+        print(
+            "preflight-remediation-status: FAIL rule R-001 (import topology drift). "
+            f"Playbook: `{_PREFLIGHT_REMEDIATION_HANDOFF.relative_to(_REPO_ROOT)}` § R-001; "
+            f"contract: `{_PREFLIGHT_REMEDIATION_CONTRACT.relative_to(_REPO_ROOT)}`.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not (_REPO_ROOT / ".git").is_dir():
+        print(
+            "preflight-remediation-status: ok (topology only; no `.git` — skipped R-002 scan)",
+            file=sys.stderr,
+        )
+        return 0
+
+    # Porcelain v1: first column = index, second = work tree. `` D`` = deleted in work tree, not staged.
+    hazards = ("tests/test_core/test_session_agent_timeline_order_happy_path.py",)
+    for rel in hazards:
+        proc = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-uno", "--", rel],
+            cwd=str(_REPO_ROOT),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            print(
+                f"preflight-remediation-status: git status failed ({proc.returncode}) for `{rel}`:\n"
+                f"{proc.stderr}",
+                file=sys.stderr,
+            )
+            return 1
+        for raw in proc.stdout.splitlines():
+            if len(raw) >= 2 and raw[0] == " " and raw[1] == "D":
+                print(
+                    "preflight-remediation-status: FAIL rule R-002 (tracked path deleted in worktree "
+                    "but not staged).\n"
+                    f"  Path: `{rel}`\n"
+                    f"  Porcelain: `{raw.rstrip()}`\n"
+                    f"  Fix: `git add -u -- {rel}` (record deletion) or restore from HEAD. "
+                    f"Playbook § R-002.",
+                    file=sys.stderr,
+                )
+                return 1
+
+    print("preflight-remediation-status: ok")
+    return 0
 
 
 def check_release_notes_gate() -> int:
@@ -142,12 +226,14 @@ def check_hygiene() -> int:
         "site-packages/**",
         # Caches / build artifacts
         "**/__pycache__/**",
+        "cache/**",
         ".pytest_cache/**",
         ".mypy_cache/**",
         ".ruff_cache/**",
         ".tox/**",
         ".nox/**",
         "htmlcov/**",
+        "out/**",
         # Coverage artifacts
         ".coverage",
         ".coverage.*",
@@ -700,14 +786,17 @@ def check_audit_internal_link() -> int:
     ROOT = Path(__file__).resolve().parents[1]
     DOCS = ROOT / "docs"
 
-    # Markdown files scanned for outbound links to docs/*.md with #fragments.
-    SOURCES = (
-        DOCS / "architecture_control_plane.md",
-        DOCS / "audit_path_map.md",
-        DOCS / "api_reference.md",
-        DOCS / "quickstart.md",
-        ROOT / "README.md",
-    )
+    # Markdown sources: all tracked-style docs under ``docs/`` plus root README.
+    _seen: set[Path] = set()
+    SOURCES: list[Path] = []
+    for p in sorted(DOCS.rglob("*.md")):
+        rp = p.resolve()
+        if rp not in _seen:
+            _seen.add(rp)
+            SOURCES.append(p)
+    readme = ROOT / "README.md"
+    if readme.resolve() not in _seen:
+        SOURCES.append(readme)
 
     # Regex: capture target path and optional fragment from (...) in markdown links.
     _LINK_RE = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(#[^)\s]+)?\)")
@@ -738,10 +827,13 @@ def check_audit_internal_link() -> int:
         base = source_file.parent
         candidate = (base / href_path).resolve()
         try:
-            candidate.relative_to(DOCS.resolve())
+            candidate.relative_to(ROOT.resolve())
         except ValueError:
             return None
-        return candidate if candidate.suffix.lower() == ".md" else None
+        suf = candidate.suffix.lower()
+        if suf not in {".md", ".py"}:
+            return None
+        return candidate
 
     def main() -> int:
         failures: list[str] = []
@@ -761,6 +853,8 @@ def check_audit_internal_link() -> int:
                     )
                     continue
                 if not frag:
+                    continue
+                if target.suffix.lower() != ".md":
                     continue
                 slug = frag.lstrip("#")
                 doc_slugs = _heading_slugs(target.read_text(encoding="utf-8"))
@@ -1615,3 +1709,63 @@ def check_contract_manifest() -> int:
     from tools import contract_manifest_gate
 
     return contract_manifest_gate.check_contract_manifest()
+
+
+def check_fast_required_local_chain() -> int:
+    """Run ``.github/workflows/ci.yml`` *fast_required* gates locally in CI step order.
+
+    Does not install dependencies; match CI by running ``pip install -e ".[dev]"`` first
+    for lint, format, typecheck, and test-backed gates that import the package.
+    """
+
+    import os
+    import sys
+    from collections.abc import Callable
+
+    def _monkey_strict() -> int:
+        saved = list(sys.argv)
+        try:
+            sys.argv = [saved[0] if saved else "harness.py", "--strict"]
+            return check_test_monkeypatch_convention()
+        finally:
+            sys.argv = saved
+
+    def _topology_ci_env() -> int:
+        os.environ.setdefault("TEST_TOPOLOGY_MAX_COST_SECONDS", "320")
+        os.environ.setdefault("TEST_TOPOLOGY_MAX_FAILURE_DENSITY", "0.02")
+        return check_test_topology_admission()
+
+    steps: tuple[tuple[str, Callable[[], int]], ...] = (
+        ("hygiene", check_hygiene),
+        ("check-exclusions", check_repo_exclusions_alignment),
+        ("preflight-remediation-status", check_preflight_remediation_status),
+        ("lint", check_lint),
+        ("format-check", check_format_check),
+        ("typecheck", check_typecheck),
+        ("test-governance", check_test_governance),
+        ("registry-authority-contract", check_registry_authority_contract),
+        ("release-notes-gate", check_release_notes_gate),
+        ("contract-manifest", check_contract_manifest),
+        ("required-check-policy", check_required_check_policy),
+        ("ci-lane-responsibility", check_ci_lane_responsibility),
+        ("compat-switch-expiry", check_compat_switch_expiry),
+        ("plan-to-pr-exit-metrics", check_plan_to_pr_exit_metrics),
+        ("audit-internal-link", check_audit_internal_link),
+        ("doc-preamble-hygiene", check_doc_preamble_hygiene),
+        ("no-internal-imports", check_no_internal_imports),
+        ("root-import-surface", check_root_import_surface),
+        ("test-monkeypatch-convention", _monkey_strict),
+        ("test-topology-admission", _topology_ci_env),
+        ("migration-observability-report", check_migration_observability_report),
+    )
+
+    for name, fn in steps:
+        rc = int(fn())
+        if rc != 0:
+            print(
+                f"fast-required-local-chain: FAIL at `{name}` (exit {rc})",
+                file=sys.stderr,
+            )
+            return rc
+    print("fast-required-local-chain: ok")
+    return 0
