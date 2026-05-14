@@ -37,7 +37,7 @@ def test_session_fsm_tail_and_finalize_rules() -> None:
 
 
 def test_validation_session_forensic_bundle_branch_coverage() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.extend(
         [
             {
@@ -125,7 +125,7 @@ def test_validation_session_forensic_bundle_branch_coverage() -> None:
 def test_validation_session_forensic_bundle_matrix(
     timeline: list[object], expected_layer: str | None, fatal_expected: bool
 ) -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.extend(timeline)
     fb = sess.forensic_bundle()
     layer = fb["last_rejected_step"]["layer"] if fb["last_rejected_step"] else None
@@ -134,7 +134,7 @@ def test_validation_session_forensic_bundle_matrix(
 
 
 def test_validation_session_finalized_fsm_rejects_non_annotation() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.finalize(outcome="ok", notes="x")
     with pytest.raises(ConfigurationGuardException):
         sess.record_plan(objective="x", constraints=[])

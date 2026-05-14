@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import threading
 from typing import Any
 
@@ -8,6 +9,7 @@ import pytest
 from lirix.core.exceptions import LirixSecurityException
 from lirix.layers.l3_proxy_piercer import AbiLRUCache, ProxyPiercer
 from web3 import Web3
+from web3.exceptions import ContractLogicError, Web3Exception
 
 
 class _Eth:
@@ -180,6 +182,117 @@ def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_5(
     monkeypatch.setattr(piercer, "_decode_abi_address", lambda w3, raw: None)
     raw = "0x" + ("00" * 32)
     assert piercer._resolve_beacon_implementation(_W3(_Eth(call_result=raw)), target) is None
+
+
+def test_abi_lru_cache_context_manager_exit_closes(tmp_path) -> None:
+    db = tmp_path / "ctx.sqlite3"
+    cache_ref: dict[str, AbiLRUCache] = {}
+    with AbiLRUCache(
+        sqlite_path=str(db),
+        ttl_seconds=30,
+        invalidation_interval_seconds=3600,
+    ) as cache:
+        cache_ref["c"] = cache
+        cache.set("0x0000000000000000000000000000000000000F01", [{"k": 1}])
+    assert cache_ref["c"]._closed is True
+
+
+def test_proxy_piercer_diamond_beacon_transport_and_decode_exception_paths() -> None:
+    target = Web3.to_checksum_address("0x0000000000000000000000000000000000000e20")
+    beacon = Web3.to_checksum_address("0x0000000000000000000000000000000000000e30")
+    piercer = ProxyPiercer()
+
+    class _ContractRevertEth:
+        def get_storage_at(self, address: str, slot: int) -> bytes:
+            return b"\x00" * 32
+
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise ContractLogicError("reverted")
+
+    assert piercer._resolve_diamond_facet(_W3(_ContractRevertEth()), target) is None
+
+    class _DiamondWeb3Exc:
+        def get_storage_at(self, address: str, slot: int) -> bytes:
+            return b"\x00" * 32
+
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise Web3Exception("transport")
+
+    with pytest.raises(LirixSecurityException) as d_w3:
+        piercer._resolve_diamond_facet(_W3(_DiamondWeb3Exc()), target)
+    assert d_w3.value.context.get("reason") == "diamond_facet_eth_call"
+
+    class _DiamondTimeout:
+        def get_storage_at(self, address: str, slot: int) -> bytes:
+            return b"\x00" * 32
+
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise TimeoutError()
+
+    with pytest.raises(LirixSecurityException) as d_to:
+        piercer._resolve_diamond_facet(_W3(_DiamondTimeout()), target)
+    assert d_to.value.context.get("reason") == "diamond_facet_transport"
+
+    class _BeaconContractLogic:
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise ContractLogicError("beacon revert")
+
+    assert piercer._resolve_beacon_implementation(_W3(_BeaconContractLogic()), beacon) is None
+
+    class _BeaconWeb3Exc:
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise Web3Exception("beacon transport")
+
+    with pytest.raises(LirixSecurityException) as b_w3:
+        piercer._resolve_beacon_implementation(_W3(_BeaconWeb3Exc()), beacon)
+    assert b_w3.value.context.get("reason") == "beacon_implementation_eth_call"
+
+    class _BeaconOSError:
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise OSError(errno.ETIMEDOUT, "timed out")
+
+    with pytest.raises(LirixSecurityException) as b_os:
+        piercer._resolve_beacon_implementation(_W3(_BeaconOSError()), beacon)
+    assert b_os.value.context.get("reason") == "beacon_implementation_transport"
+
+    class _BeaconUnexpected:
+        def call(self, payload: dict[str, Any]) -> Any:
+            raise RuntimeError("unexpected")
+
+    with pytest.raises(LirixSecurityException) as b_un:
+        piercer._resolve_beacon_implementation(_W3(_BeaconUnexpected()), beacon)
+    assert b_un.value.context.get("reason") == "beacon_implementation_unexpected"
+
+
+def test_proxy_piercer_decode_abi_address_surfaces_web3_and_unexpected_errors() -> None:
+    original = piercer_mod.abi_decode
+    piercer = ProxyPiercer()
+    try:
+        piercer_mod.abi_decode = None
+
+        class _CodecWeb3Exc:
+            def decode(self, _types: object, _raw: object) -> None:
+                raise Web3Exception("codec boom")
+
+        class _W3CodecA:
+            codec = _CodecWeb3Exc()
+
+        with pytest.raises(LirixSecurityException) as ei:
+            piercer._decode_abi_address(_W3CodecA(), b"\x22" * 32)
+        assert ei.value.context.get("reason") == "proxy_address_abi_decode"
+
+        class _CodecUnexpected:
+            def decode(self, _types: object, _raw: object) -> None:
+                raise RuntimeError("codec surprise")
+
+        class _W3CodecB:
+            codec = _CodecUnexpected()
+
+        with pytest.raises(LirixSecurityException) as ei2:
+            piercer._decode_abi_address(_W3CodecB(), b"\x22" * 32)
+        assert ei2.value.context.get("reason") == "proxy_address_decode_unexpected"
+    finally:
+        piercer_mod.abi_decode = original
 
 
 def test_test_proxy_piercer_abi_cache_db_stale_set_update_close_idempotent_6() -> None:

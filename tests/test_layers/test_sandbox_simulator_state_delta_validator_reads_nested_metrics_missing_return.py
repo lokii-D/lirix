@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import pytest
+from lirix.core.exceptions import SimulationFailedException
 from lirix.shield.simulator import SimulationEngine, StateDeltaValidator
 
 
@@ -28,7 +29,9 @@ async def test_state_delta_validator_handles_invalid_hex_and_unknown_assertions(
             {"assertion_type": "unsupported", "expected_value": 1},
         ]
     }
-    assert await validator.validate(payload, {"return_data": "not-hex"}) is True
+    with pytest.raises(SimulationFailedException):
+        await validator.validate(payload, {"return_data": "not-hex"})
+    assert await validator.validate(payload, {"return_data": "0x00"}) is True
 
 
 def test_test_sandbox_simulator_state_delta_validator_reads_nested_metrics_missing_return() -> None:

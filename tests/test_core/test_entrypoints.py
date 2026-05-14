@@ -12,7 +12,7 @@ def test_build_for_chain_profile_constructs_lirix() -> None:
 
 
 def test_replay_session_returns_payload_after_verification() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     rb = sess.replay_bundle()
     snap = replay_session(rb)
     assert snap.get("session_id") == sess.session_id

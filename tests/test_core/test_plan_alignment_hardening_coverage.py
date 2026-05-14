@@ -154,7 +154,7 @@ def test_replay_api_without_sessionized_compat_wrappers() -> None:
     assert not hasattr(g, "validate_only_sessionized")
     assert not hasattr(g, "simulate_only_sessionized")
 
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "c", "steps": [{"status": "ok"}]},
@@ -286,7 +286,7 @@ def test_config_fingerprint_evidence_and_session_error_branches() -> None:
 
     assert LayerEvidenceV2(layer="L1", status="ok", details={}).to_dict()["layer"] == "L1"
 
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "c", "steps": [{"status": "ok"}]},
@@ -317,11 +317,11 @@ def test_config_fingerprint_evidence_and_session_error_branches() -> None:
 
 
 def test_session_forensic_trace_full_and_last_trace_metadata_branches() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.timeline.append("bad-shape")
     assert s._last_trace_metadata() == {}
 
-    s2 = ValidationSession()
+    s2 = ValidationSession(workflow_mode="direct")
     s2.record_trace(
         kind="simulate_only",
         trace={
@@ -339,7 +339,7 @@ def test_session_forensic_trace_full_and_last_trace_metadata_branches() -> None:
     )
     fb = s2.forensic_bundle()
     assert "E1" in fb["reason_codes"]
-    s3 = ValidationSession()
+    s3 = ValidationSession(workflow_mode="direct")
     s3.timeline.append(
         {
             "kind": "simulate_only",
@@ -363,7 +363,7 @@ def test_external_session_failure_branches_not_auto_finalize(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     g = Lirix(LirixConfig(chain_id=1, rpc_urls=[], strict_mode=False))
-    ext = ValidationSession()
+    ext = ValidationSession(workflow_mode="direct")
 
     def _boom(*args: Any, **kwargs: Any) -> None:
         raise HookExecutionException(
@@ -396,7 +396,7 @@ def test_external_session_success_branches_not_auto_finalize(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     g = Lirix(LirixConfig(chain_id=1, rpc_urls=[], strict_mode=False))
-    ext = ValidationSession()
+    ext = ValidationSession(workflow_mode="direct")
 
     monkeypatch.setattr(
         "lirix._client_core.IntentValidator.validate", lambda self, intent, draft: True

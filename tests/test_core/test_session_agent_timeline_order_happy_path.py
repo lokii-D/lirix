@@ -8,8 +8,8 @@ from lirix.core.exceptions import ConfigurationGuardException
 from lirix.core.session import ValidationSession
 
 
-def test_session_workflow_strict_happy_path_allows_ordered_events() -> None:
-    s = ValidationSession(workflow_strict=True)
+def test_session_agent_timeline_order_happy_path_allows_ordered_events() -> None:
+    s = ValidationSession(workflow_mode="agent")
     s.record_plan(objective="ship safe tx", constraints=["fail-closed"])
     s.record_draft(label="draft-1", content={"to": "0x1", "data": "0x"})
     s.record_tool_call(
@@ -19,10 +19,11 @@ def test_session_workflow_strict_happy_path_allows_ordered_events() -> None:
     s.finalize(outcome="ok", notes="done")
     snap = s.snapshot()
     assert snap["lifecycle"] == "finalized"
+    assert snap["workflow_mode"] == "agent"
 
 
-def test_session_workflow_strict_finalized_allows_only_annotation() -> None:
-    s = ValidationSession(workflow_strict=True)
+def test_session_agent_timeline_order_finalized_allows_only_annotation() -> None:
+    s = ValidationSession(workflow_mode="agent")
     s.record_plan(objective="o")
     s.record_draft(label="d", content={})
     s.record_tool_call(tool_name="t", input_summary={}, output_summary={}, ok=True)

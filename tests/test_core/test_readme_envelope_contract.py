@@ -113,6 +113,28 @@ def test_extract_broadcast_fields_non_approved_raises() -> None:
     assert excinfo.value.context.get("reason") == "broadcast_extract_requires_dual_approved"
 
 
+def test_extract_broadcast_fields_approved_data_must_be_0x_prefixed_hex() -> None:
+    base = {
+        "decision": "approved",
+        "status": "approved",
+        "payload": {"to": "0x0000000000000000000000000000000000000001", "data": "deadbeef"},
+    }
+    with pytest.raises(LirixSecurityException) as excinfo:
+        Lirix.extract_broadcast_fields(base)
+    assert "0x-prefixed" in (excinfo.value.human_readable_reason or "")
+
+    # Body after ``0x`` must be an even nibble count; ``0f`` is two nibbles (valid).
+    base["payload"]["data"] = "0xf"
+    with pytest.raises(LirixSecurityException) as excinfo2:
+        Lirix.extract_broadcast_fields(base)
+    assert "even" in (excinfo2.value.human_readable_reason or "").lower()
+
+    base["payload"]["data"] = "0x0g"
+    with pytest.raises(LirixSecurityException) as excinfo3:
+        Lirix.extract_broadcast_fields(base)
+    assert "invalid hexadecimal" in (excinfo3.value.human_readable_reason or "").lower()
+
+
 def test_readme_real_e2e_docstring_mentions_integration_suite() -> None:
     """Keep README 5-minute flow aligned with tests/test_integration/test_real_e2e_paths.py."""
     text = _readme_text()

@@ -305,7 +305,7 @@ def test_verify_forensic_bundle_rejects_bad_nested_bundle_digest() -> None:
 
 
 def test_lirix_replay_from_bundle_strict_branch_calls_verify() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={
@@ -472,7 +472,7 @@ def test_session_fsm_skips_non_mapping_timeline_items() -> None:
 
 def test_verify_replay_bundle_ignores_decision_count_when_not_int() -> None:
     """decision_count cross-check runs only for int; other types are skipped (digest unchanged)."""
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     rb = dict(s.replay_bundle())
     rb["decision_count"] = "not-an-int"
     verify_replay_bundle(rb)
@@ -485,6 +485,7 @@ def test_verify_replay_bundle_decision_count_mismatch_from_minimal_bundle() -> N
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -510,6 +511,7 @@ def test_verify_replay_bundle_last_trace_digest_malformed() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -535,6 +537,7 @@ def test_verify_replay_bundle_artifact_key_empty_string() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -560,6 +563,7 @@ def test_verify_replay_bundle_replay_proof_not_mapping() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -579,7 +583,7 @@ def test_verify_replay_bundle_replay_proof_not_mapping() -> None:
 
 
 def test_verify_replay_bundle_integrity_raises_on_bundle_digest_mismatch() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "z", "steps": []},
@@ -600,6 +604,7 @@ def test_verify_replay_bundle_artifact_digest_values_must_be_hex() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -619,7 +624,7 @@ def test_verify_replay_bundle_artifact_digest_values_must_be_hex() -> None:
 
 
 def test_validation_session_registry_closure_digest_drift_raises() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.record_trace(
         kind="validate_only",
         trace={
@@ -652,6 +657,7 @@ def test_verify_replay_bundle_decoder_digest_malformed() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -677,6 +683,7 @@ def test_verify_replay_bundle_registry_source_not_string() -> None:
         "correlation_ids": [],
         "timeline": [],
         "state": {},
+        "workflow_mode": "direct",
     }
     b: dict[str, Any] = {
         "bundle_version": REPLAY_BUNDLE_VERSION,
@@ -704,6 +711,7 @@ async def test_langchain_tool_ainvoke_validate_only_branch(monkeypatch: pytest.M
         self: Any,
         intent: str,
         payload: Mapping[str, Any],
+        **kwargs: Any,
     ) -> dict[str, str]:
         return {"intent": intent, "mode": "validate_only"}
 
@@ -723,7 +731,7 @@ def test_lirix_raise_with_failure_context_when_agent_feedback_is_mapping_but_not
 ) -> None:
     monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
     guard = Lirix(rpc_urls=["https://example.invalid"])
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
 
     mf: Mapping[str, Any] = MappingProxyType(
         {
@@ -808,7 +816,7 @@ def test_request_normalization_deepcopy_error_raises_configuration_guard() -> No
         def __deepcopy__(self, memo: dict[int, Any]) -> Any:
             raise copy.Error("not copyable")
 
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     with pytest.raises(ConfigurationGuardException) as exc:
         request_normalization(
             session=sess,
@@ -1257,7 +1265,7 @@ def test_langchain_security_validator_validate_only_sync_path(
 ) -> None:
     monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
 
-    def fake_validate_only(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+    def fake_validate_only(self: Any, intent: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
         return {"decision": "approved", "status": "approved", "payload": {}}
 
     monkeypatch.setattr("lirix.Lirix.validate_only", fake_validate_only)
@@ -1276,7 +1284,7 @@ async def test_langchain_security_validator_ainvoke_guardian_validate_only(
 ) -> None:
     monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
 
-    async def fake_async(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+    async def fake_async(self: Any, intent: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
         return {"decision": "approved", "status": "approved", "payload": {}}
 
     monkeypatch.setattr("lirix.Lirix.async_validate_only", fake_async)
@@ -1314,7 +1322,7 @@ async def test_langchain_security_validator_ainvoke_guardian_value_error_overlay
 ) -> None:
     monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
 
-    async def fake_async(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+    async def fake_async(self: Any, intent: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
         return {"decision": "approved", "status": "approved", "payload": {}}
 
     monkeypatch.setattr("lirix.Lirix.async_validate_only", fake_async)
@@ -1350,7 +1358,7 @@ async def test_langchain_security_validator_ainvoke_guardian_lirix_exception(
 ) -> None:
     monkeypatch.delenv("LANGCHAIN_SDK_MOCK_ONLY", raising=False)
 
-    async def boom(self: Any, intent: str, payload: Any) -> dict[str, Any]:
+    async def boom(self: Any, intent: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
         raise LirixSecurityException(
             human_readable_reason="blocked",
             error_code="E_TEST",

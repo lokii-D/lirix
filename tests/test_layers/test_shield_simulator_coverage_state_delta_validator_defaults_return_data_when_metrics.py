@@ -8,7 +8,11 @@ from typing import Any
 
 import pytest
 from eth_abi.exceptions import DecodingError
-from lirix.core.exceptions import LirixDependencyError, LirixStateAssertionError
+from lirix.core.exceptions import (
+    LirixDependencyError,
+    LirixStateAssertionError,
+    SimulationFailedException,
+)
 from lirix.shield.simulator import SimulationEngine, StateDeltaValidator
 
 
@@ -201,3 +205,14 @@ def test_test_shield_simulator_coverage_state_delta_validator_defaults_return_da
     assert callable(decode_fn)
     assert hasattr(web3_cls, "to_checksum_address")
     assert engine._w3 is not None
+
+
+@pytest.mark.asyncio
+async def test_state_delta_validator_rejects_non_string_return_data() -> None:
+    validator = StateDeltaValidator(web3=None)
+    with pytest.raises(SimulationFailedException) as ei:
+        await validator.validate(
+            {"assertions": [{"assertion_type": "return_data_int_ge", "expected_value": 0}]},
+            {"return_data": b"0x01"},
+        )
+    assert ei.value.context.get("reason") == "return_data_type_invalid"

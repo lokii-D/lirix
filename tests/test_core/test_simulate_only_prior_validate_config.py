@@ -41,7 +41,7 @@ def test_validate_only_marks_session_l1_l3_ok_for_simulate_gate() -> None:
         whitelisted_addresses=["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"],
     )
     client = Lirix(cfg)
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     client.validate_only(
         "swap",
         {
@@ -72,7 +72,7 @@ def test_validate_and_simulate_marks_l1_l3_ok_then_simulate_only_passes(
 ) -> None:
     _install_success_monkeypatches(monkeypatch)
     client = Lirix(_gate_cfg())
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     payload = {
         "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
         "function_name": "swapExactTokensForTokens",
@@ -105,7 +105,7 @@ def test_validate_and_simulate_l4_failure_after_l3_keeps_l1_l3_ok_simulate_gate_
 
     monkeypatch.setattr("lirix._client_core.RPCManager.async_reconcile", _boom_once_then_ok_async)
     client = Lirix(_gate_cfg())
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     payload = {
         "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
         "function_name": "swapExactTokensForTokens",
@@ -124,7 +124,7 @@ async def test_async_validate_and_simulate_marks_l1_l3_ok_then_simulate_only_pas
 ) -> None:
     _install_success_monkeypatches(monkeypatch)
     client = Lirix(_gate_cfg())
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     payload = {
         "to": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
         "function_name": "swapExactTokensForTokens",

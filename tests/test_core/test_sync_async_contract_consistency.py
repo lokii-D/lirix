@@ -272,7 +272,7 @@ def test_simulate_only_blocking_hooks_after_prior_validate_sync_async_consistent
     monkeypatch.setattr("lirix._client_core.HookManager.ainvoke_hooks_isolated", _ablocked)
     guard = Lirix(_simulate_gate_config())
     payload = _valid_l1_payload()
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     guard.validate_only("swap", payload, session=sess)
 
     with pytest.raises(HookExecutionException) as sync_err:
@@ -540,7 +540,7 @@ def test_simulate_only_after_prior_validate_l4_failure_sync_async_parity(
     _install_success_monkeypatches(monkeypatch)
     guard = Lirix(_simulate_gate_config())
     payload = _valid_l1_payload()
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     guard.validate_only("swap", payload, session=sess)
 
     def _l4_boom_sync(self: Any) -> int:  # type: ignore[no-untyped-def]
@@ -564,7 +564,7 @@ def test_simulate_only_after_prior_validate_l5_failure_sync_async_parity(
     _install_success_monkeypatches(monkeypatch)
     guard = Lirix(_simulate_gate_config())
     payload = _valid_l1_payload()
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     guard.validate_only("swap", payload, session=sess)
 
     def _l5_boom(self: Any, *args: Any, **kwargs: Any) -> dict[str, Any]:  # type: ignore[no-untyped-def]

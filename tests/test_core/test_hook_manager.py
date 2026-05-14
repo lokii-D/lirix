@@ -9,6 +9,7 @@ import time
 from io import StringIO
 from typing import Any, cast
 
+import lirix.core.hook_manager as hook_manager_mod
 import pytest
 from lirix.audit.logger import AuditLogger
 from lirix.core.canonical_taxonomy import lookup_reason_taxon
@@ -106,6 +107,22 @@ def test_sync_invoke_raises_for_async_hook_registration() -> None:
     mgr.register_hook(HOOK_PRE_VALIDATE, acb)
     with pytest.raises(HookAsyncContextException):
         mgr.invoke_hooks(HOOK_PRE_VALIDATE)
+
+
+def test_ainvoke_hooks_raises_on_wall_clock_timeout_for_sync_hook(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(hook_manager_mod, "_AINVOKE_HOOKS_WALL_TIMEOUT_SEC", 0.05)
+    mgr = HookManager()
+
+    def slow(*args: object, **kwargs: object) -> None:
+        time.sleep(0.3)
+
+    mgr.register_hook(HOOK_PRE_VALIDATE, slow)
+    with pytest.raises(HookExecutionException) as ei:
+        asyncio.run(mgr.ainvoke_hooks(HOOK_PRE_VALIDATE))
+    assert "wall-clock timeout" in (ei.value.human_readable_reason or "").lower()
+    assert ei.value.context.get("hook_point") == HOOK_PRE_VALIDATE
 
 
 def test_ainvoke_hooks_runs_sync_and_async_hooks_in_order() -> None:

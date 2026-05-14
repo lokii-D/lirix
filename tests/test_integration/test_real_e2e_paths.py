@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from lirix import Lirix, LirixConfig
 from lirix.core import HookExecutionException
-from lirix.core.exceptions import RPCUnavailableException
+from lirix.core.exceptions import LirixBaseException, RPCUnavailableException
 from lirix.core.multicall import MulticallEncoder
 from tests.conftest import LOCAL_ANVIL_RPC_URL
 from web3 import Web3
@@ -79,7 +79,7 @@ def test_real_e2e_retry_after_fix_path(deploy_multicall3_locally: Web3) -> None:
         guard.validate_and_simulate("swap", bad_payload)
     except RPCUnavailableException:
         pytest.skip("Local RPC quorum unavailable for Lirix integration scenario.")
-    except Exception:
+    except LirixBaseException:
         pass
     else:
         pytest.fail("expected first swap attempt to raise")

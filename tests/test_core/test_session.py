@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from lirix import Lirix
 from lirix.core import ExecutionPlan, ValidationSession
@@ -15,6 +17,12 @@ from lirix.core.forensic_verifier import verify_forensic_bundle
 from lirix.core.session import verify_replay_bundle
 
 _SESSION_PIPELINE_PAYLOAD = {"to": "0x1111111111111111111111111111111111111111", "data": "0x"}
+
+
+def test_validation_session_rejects_invalid_workflow_mode() -> None:
+    with pytest.raises(ConfigurationGuardException) as ei:
+        ValidationSession(workflow_mode=cast(Any, "hybrid"))
+    assert ei.value.context.get("reason") == "session_workflow_mode_invalid"
 
 
 def _patch_success_pipeline_sync_async(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,7 +63,7 @@ def _patch_success_pipeline_sync_async(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_validation_session_links_multiple_traces(monkeypatch: pytest.MonkeyPatch) -> None:
     guard = Lirix(rpc_urls=["https://example.invalid"])
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
 
     _patch_success_pipeline_sync_async(monkeypatch)
 
@@ -75,7 +83,7 @@ def test_validation_session_links_multiple_traces(monkeypatch: pytest.MonkeyPatc
 
 
 def test_validation_session_records_lifecycle_events() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_plan(objective="ship safe tx", constraints=["fail-closed", "no secrets"])
     session.record_draft(label="draft-1", content={"to": "0x1", "data": "0x"})
     session.record_tool_call(
@@ -97,7 +105,7 @@ def test_validation_session_records_lifecycle_events() -> None:
 
 
 def test_verify_forensic_bundle_replay_bundle_digest_binding_passes() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_plan(objective="ship", constraints=["c"])
     session.record_draft(label="d1", content={"x": 1})
     session.record_decision(verdict="approved", rationale="ok")
@@ -108,7 +116,7 @@ def test_verify_forensic_bundle_replay_bundle_digest_binding_passes() -> None:
 
 
 def test_verify_forensic_bundle_rejects_replay_bundle_digest_mismatch() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_plan(objective="ship", constraints=["c"])
     session.record_draft(label="d1", content={"x": 1})
     session.record_decision(verdict="approved", rationale="ok")
@@ -122,7 +130,7 @@ def test_verify_forensic_bundle_rejects_replay_bundle_digest_mismatch() -> None:
 
 
 def test_validation_session_trace_summary_handles_non_list_and_non_dict_steps() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "c", "steps": "not-a-list"},
@@ -138,7 +146,7 @@ def test_validation_session_trace_summary_handles_non_list_and_non_dict_steps() 
 
 
 def test_validation_session_link_trace_dedup_and_empty() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.link_trace("")
     session.link_trace("c1")
     session.link_trace("c1")
@@ -146,7 +154,7 @@ def test_validation_session_link_trace_dedup_and_empty() -> None:
 
 
 def test_validation_session_forensic_bundle_handles_non_dict_payload_shapes() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.timeline.append(
         {"kind": "session_event", "status": "rejected", "payload": "not-a-dict"}
     )
@@ -161,7 +169,7 @@ def test_validation_session_forensic_bundle_handles_non_dict_payload_shapes() ->
 
 
 def test_forensic_bundle_extracts_hook_fatal_summary_from_decision_context() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     session.record_decision(
         verdict="blocked",
         rationale="blocked",
@@ -186,7 +194,7 @@ def test_forensic_bundle_extracts_hook_fatal_summary_from_decision_context() -> 
 
 def test_lirix_records_decision_and_finalize_events(monkeypatch: pytest.MonkeyPatch) -> None:
     guard = Lirix(rpc_urls=["https://example.invalid"])
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
 
     _patch_success_pipeline_sync_async(monkeypatch)
 
@@ -198,6 +206,8 @@ def test_lirix_records_decision_and_finalize_events(monkeypatch: pytest.MonkeyPa
         if isinstance(e, dict) and e.get("kind") == "session_event"
     ]
     assert "decision" in event_types
+    assert set(event_types) == {"decision"}
+    assert "lirix_internal_pipeline" not in str(timeline)
     # 外部传入的 ValidationSession 不自动 finalize，以便多轮 trace 共存
     assert "finalize" not in event_types
     assert out["agent_feedback"]["failure_type"] == "none"
@@ -249,15 +259,31 @@ def test_validate_and_simulate_failure_context_contains_validation_session(
     assert isinstance(ctx.get("failure_protocol"), dict)
 
 
-def test_validation_session_workflow_strict_requires_ordered_events() -> None:
-    s = ValidationSession(workflow_strict=True)
+def test_validation_session_workflow_mode_agent_requires_ordered_events() -> None:
+    s = ValidationSession(workflow_mode="agent")
     with pytest.raises(ConfigurationGuardException) as exc_info:
         s.record_draft(label="d", content={})
     assert exc_info.value.context.get("reason") == "session_fsm_workflow_order"
 
 
+def test_agent_mode_record_decision_raises_without_plan_or_draft() -> None:
+    s = ValidationSession(workflow_mode="agent")
+    with pytest.raises(ConfigurationGuardException) as exc_info:
+        s.record_decision(verdict="approved", rationale="orphan")
+    assert exc_info.value.context.get("reason") == "missing_fsm_prerequisites"
+    assert "Missing FSM prerequisites" in exc_info.value.resolution_for_agent
+
+
+def test_agent_mode_record_decision_raises_when_draft_missing() -> None:
+    s = ValidationSession(workflow_mode="agent")
+    s.record_plan(objective="o", constraints=[])
+    with pytest.raises(ConfigurationGuardException) as exc_info:
+        s.record_decision(verdict="approved", rationale="no draft")
+    assert exc_info.value.context.get("reason") == "missing_fsm_prerequisites"
+
+
 def test_replay_bundle_v2_verify_roundtrip_with_registry_closure_digest() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={
@@ -275,7 +301,7 @@ def test_replay_bundle_v2_verify_roundtrip_with_registry_closure_digest() -> Non
 
 
 def test_record_trace_rejects_invalid_status() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     with pytest.raises(ConfigurationGuardException) as exc_info:
         s.record_trace(
             kind="validate_only",
@@ -286,7 +312,7 @@ def test_record_trace_rejects_invalid_status() -> None:
 
 
 def test_record_event_rejects_invalid_status_and_event_type() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     with pytest.raises(ConfigurationGuardException):
         s.record_event(event_type="unknown", payload={}, status="info")  # type: ignore[arg-type]
     with pytest.raises(ConfigurationGuardException):
@@ -294,26 +320,26 @@ def test_record_event_rejects_invalid_status_and_event_type() -> None:
 
 
 def test_record_decision_rejects_unknown_verdict() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     with pytest.raises(ConfigurationGuardException) as exc_info:
         s.record_decision(verdict="allow", rationale="x")  # type: ignore[arg-type]
     assert exc_info.value.context.get("reason") == "session_decision_verdict_invalid"
 
 
 def test_record_decision_blocked_updates_session_outcome() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_decision(verdict="blocked", rationale="policy")
     assert s.state["session_outcome"] == "rejected"
 
 
 def test_finalize_non_ok_marks_session_outcome_rejected() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.finalize(outcome="aborted")
     assert s.state["session_outcome"] == "rejected"
 
 
 def test_session_outcome_monotonic_rejected_after_info_events() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_plan(objective="o", constraints=[])
     assert s.state["session_outcome"] == "info"
     s.record_decision(verdict="blocked", rationale="n")
@@ -321,7 +347,7 @@ def test_session_outcome_monotonic_rejected_after_info_events() -> None:
 
 
 def test_replay_bundle_rejects_non_string_registry_version() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "x", "steps": []},
@@ -335,7 +361,7 @@ def test_replay_bundle_rejects_non_string_registry_version() -> None:
 
 
 def test_replay_bundle_rejects_disallowed_artifact_digest_key() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "x", "steps": []},
@@ -349,7 +375,7 @@ def test_replay_bundle_rejects_disallowed_artifact_digest_key() -> None:
 
 
 def test_replay_bundle_detects_trace_metadata_drift() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "x1", "steps": []},
@@ -449,7 +475,7 @@ def test_build_failure_protocol_falls_back_to_taxon_remediation_without_resoluti
 
 
 def test_replay_bundle_v2_verify_roundtrip() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={
@@ -463,11 +489,12 @@ def test_replay_bundle_v2_verify_roundtrip() -> None:
     )
     rb = s.replay_bundle()
     assert rb["bundle_version"] == "2.0"
+    assert rb["payload"]["workflow_mode"] == "direct"
     verify_replay_bundle(rb)
 
 
 def test_replay_bundle_v2_verify_rejects_malformed_digest_fields() -> None:
-    s = ValidationSession()
+    s = ValidationSession(workflow_mode="direct")
     s.record_trace(
         kind="validate_only",
         trace={
@@ -515,6 +542,7 @@ def test_verify_replay_bundle_rejects_session_mutations_after_finalize() -> None
             "session_id": "s1",
             "created_at": "now",
             "correlation_ids": [],
+            "workflow_mode": "direct",
             "timeline": [
                 {
                     "kind": "session_event",
@@ -555,6 +583,7 @@ def test_verify_replay_bundle_rejects_duplicate_finalize() -> None:
             "session_id": "s1",
             "created_at": "now",
             "correlation_ids": [],
+            "workflow_mode": "direct",
             "timeline": [
                 {"kind": "session_event", "event_type": "finalize", "status": "ok", "payload": {}},
                 {"kind": "session_event", "event_type": "finalize", "status": "ok", "payload": {}},
@@ -585,6 +614,7 @@ def test_verify_replay_bundle_rejects_decision_count_mismatch() -> None:
             "session_id": "s1",
             "created_at": "now",
             "correlation_ids": [],
+            "workflow_mode": "direct",
             "timeline": [
                 {"kind": "session_event", "event_type": "plan", "status": "info", "payload": {}},
             ],
@@ -601,7 +631,7 @@ def test_verify_replay_bundle_rejects_decision_count_mismatch() -> None:
     assert exc_info.value.context.get("reason") == "replay_bundle_decision_count_mismatch"
 
 
-def test_verify_replay_bundle_enforce_workflow_strict_rejects_missing_prereq() -> None:
+def test_verify_replay_bundle_enforce_agent_timeline_order_rejects_missing_prereq() -> None:
     bundle = {
         "bundle_version": "2.0",
         "migration_modes": {},
@@ -614,6 +644,7 @@ def test_verify_replay_bundle_enforce_workflow_strict_rejects_missing_prereq() -
             "session_id": "s1",
             "created_at": "now",
             "correlation_ids": [],
+            "workflow_mode": "direct",
             "timeline": [
                 {
                     "kind": "session_event",
@@ -631,12 +662,12 @@ def test_verify_replay_bundle_enforce_workflow_strict_rejects_missing_prereq() -
     canonical = json.dumps(bundle, sort_keys=True, separators=(",", ":"), default=str)
     bundle["bundle_digest"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     with pytest.raises(ConfigurationGuardException) as exc_info:
-        verify_replay_bundle(bundle, enforce_workflow_strict=True)
+        verify_replay_bundle(bundle, enforce_agent_timeline_order=True)
     assert exc_info.value.context.get("reason") == "session_fsm_workflow_order"
 
 
 def test_validation_session_binds_execution_plan() -> None:
-    session = ValidationSession()
+    session = ValidationSession(workflow_mode="direct")
     plan = ExecutionPlan(
         plan_id="plan-1",
         objective="secure swap flow",

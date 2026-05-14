@@ -23,6 +23,7 @@ def _base_bundle() -> dict:
             "correlation_ids": [],
             "timeline": [],
             "state": {},
+            "workflow_mode": "direct",
         },
     }
 
@@ -65,6 +66,14 @@ def test_verify_replay_bundle_rejects_invalid_event_status() -> None:
     with pytest.raises(ConfigurationGuardException) as exc_info:
         verify_replay_bundle(b)
     assert exc_info.value.context.get("reason") == "replay_bundle_timeline_status"
+
+
+def test_verify_replay_bundle_rejects_invalid_workflow_mode() -> None:
+    b = _base_bundle()
+    b["payload"]["workflow_mode"] = "hybrid"
+    with pytest.raises(ConfigurationGuardException) as exc_info:
+        verify_replay_bundle(b)
+    assert exc_info.value.context.get("reason") == "replay_bundle_workflow_mode_missing_or_invalid"
 
 
 def test_verify_replay_bundle_rejects_timeline_size_mismatch() -> None:
@@ -110,7 +119,7 @@ def test_verify_replay_bundle_strict_requires_replay_proof_keys() -> None:
 
 
 def test_verify_replay_bundle_strict_full_contract_passes() -> None:
-    s = ValidationSession(workflow_strict=True)
+    s = ValidationSession(workflow_mode="agent")
     s.record_trace(
         kind="validate_only",
         trace={"trace_version": "1.0", "correlation_id": "x", "steps": []},
@@ -131,6 +140,6 @@ def test_verify_replay_bundle_strict_full_contract_passes() -> None:
     bundle = s.replay_bundle()
     verify_replay_bundle(
         bundle,
-        enforce_workflow_strict=True,
+        enforce_agent_timeline_order=True,
         enforce_replay_proof_strict=True,
     )

@@ -445,7 +445,7 @@ def test_shadow_auditor_verify_policy_integrity_false_when_digest_missing() -> N
 
 def test_forensic_bundle_decision_backfill_reversed_timeline_scan() -> None:
     """Cover reversed ``session_event`` decision scan when no layer/context hook summary landed."""
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -458,7 +458,7 @@ def test_forensic_bundle_decision_backfill_reversed_timeline_scan() -> None:
 
 
 def test_forensic_bundle_skips_non_dict_payload_on_rejected_decision() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -471,7 +471,7 @@ def test_forensic_bundle_skips_non_dict_payload_on_rejected_decision() -> None:
 
 
 def test_forensic_bundle_hook_result_non_mapping_skips_fatal_summary() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -492,7 +492,7 @@ def test_forensic_bundle_hook_result_non_mapping_skips_fatal_summary() -> None:
 
 
 def test_forensic_bundle_reversed_scan_skips_non_dict_timeline_wrappers() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         UserDict(
             {
@@ -507,7 +507,7 @@ def test_forensic_bundle_reversed_scan_skips_non_dict_timeline_wrappers() -> Non
 
 
 def test_forensic_bundle_reversed_skips_non_dict_details_and_context() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -528,7 +528,7 @@ def test_forensic_bundle_reversed_skips_non_dict_details_and_context() -> None:
 
 
 def test_forensic_bundle_second_context_skips_fatal_hook_re_extract() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -574,7 +574,7 @@ def test_forensic_bundle_second_context_skips_fatal_hook_re_extract() -> None:
 
 
 def test_forensic_bundle_reversed_skips_mapping_details_that_are_not_dicts() -> None:
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     sess.timeline.append(
         {
             "kind": "session_event",
@@ -642,7 +642,7 @@ async def test_async_validate_only_external_session_skips_finalize(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     guard = _install_min_client_success_patches(monkeypatch)
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     out = await guard.async_validate_only("swap", {"to": "0x1", "data": "0x"}, session=sess)
     assert out["decision"] == "approved"
 
@@ -651,7 +651,7 @@ async def test_async_simulate_only_external_session_skips_finalize(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     guard = _install_min_client_success_patches(monkeypatch)
-    sess = ValidationSession()
+    sess = ValidationSession(workflow_mode="direct")
     out = await guard.async_simulate_only({"to": "0x1", "data": "0x"}, session=sess)
     assert out["decision"] == "approved"
 
