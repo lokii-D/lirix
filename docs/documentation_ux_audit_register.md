@@ -26,6 +26,11 @@ purpose: close G-008 with a dated, audience-scoped read-through record (no subst
 - **Security ↔ contrib:** Triple-Zero and fail-closed language in `SECURITY.md` matches the non-negotiables list in `CONTRIBUTING.md` (no conflicting promises).
 - **Preflight R-002:** Human playbook (`docs/preflight_remediation_executor_handoff.md`) and `tools/preflight_remediation_contract.json` list the same hazard path as `tools/validators.py` (`test_session_agent_timeline_order_happy_path.py`).
 
+## Governance cross-refs (GOV-001 / GOV-002)
+
+- **GOV-001:** A **maintainer-only**, **narrow** `git commit --no-verify` policy for **generator-only** updates to `docs/lirix_import_topology.md` is documented in **`docs/release_pr_checklist.md`** § *Local CI-equivalent rehearsal* and summarized under **`docs/ci_gate_matrix.md`** § *Import topology artifact* (same PR must pass `gen_lirix_import_graph.py --check` and `preflight-remediation-status`).
+- **GOV-002:** This register remains a **spot read** with explicit non-claims (§ *Residual*); it must not be cited as “every `docs/**` file line-edited by a human editor.”
+
 ## Residual / explicit non-claims
 
 - This register is a **structured spot read**, not a line-by-line editorial pass of every file under `docs/**`.

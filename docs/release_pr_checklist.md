@@ -27,6 +27,9 @@ bash tools/final_regression_template.sh
 - **CI differences:** GitHub **test** matrix runs `python -m pytest tests/` on multiple OS/Python versions and starts Anvil for those jobs; this script runs **one** local interpreter and does **not** start Anvil unless you opt in. Optional workflow [`.github/workflows/e2e-anvil-optional.yml`](../.github/workflows/e2e-anvil-optional.yml) uploads E2E logs as artifacts for audit alignment.
 - **Doc preamble gate:** `python tools/harness.py doc-preamble-hygiene` is part of **Fast Required** and **governance-lane** in CI (**warn-only**; use `--enforce` locally to fail on drift).
 
+- **Import topology commit + `pre-commit` (GOV-001):** When the **only** substantive delta is regenerating **`docs/lirix_import_topology.md`** via `python tools/gen_lirix_import_graph.py`, local `pre-commit` (notably `end-of-file-fixer`) may oscillate against the generator output so a normal commit cannot finish. In that **narrow** case, a **maintainer** may record the regenerated file with `git commit --no-verify` **only if all** of the following hold: (1) the commit message explicitly ties the change to **R-001 / import topology** (e.g. `chore(docs): regenerate lirix import topology`); (2) the **same PR** passes `python tools/gen_lirix_import_graph.py --check` and `python tools/harness.py preflight-remediation-status`; (3) the PR description or sign-off brief notes the `--no-verify` exception so reviewers do not infer a blanket hook bypass. **Do not** generalize `--no-verify` to other paths or mixed commits.
+- **导入拓扑与 pre-commit（GOV-001，中文）：** 若变更实质仅为运行生成器更新 **`docs/lirix_import_topology.md`**，且本地 hook 与生成物出现往返差异导致无法普通提交，维护者可在**同一 PR** 内满足上文 (1)(2)(3) 时用 `--no-verify` **仅限该文件**；不得推广到其它路径。
+
 ## Must-have (blocking)
 
 - [ ] **Full pytest + coverage log** under `audit_artifacts/release_signoff/<YYYY-MM-DD>/`, e.g. `B4_pytest_full_cov*.log`, with **`[tool.coverage.report].fail_under = 100`** satisfied for `lirix/`.

@@ -36,6 +36,10 @@ Every workflow under `.github/workflows/` is indexed below (no orphan files).
 
 **Import topology artifact:** regenerate with `python tools/gen_lirix_import_graph.py`; **drift + preflight roll-up** (Fast Required / Governance, before dev install): `python tools/harness.py preflight-remediation-status` (includes the same `--check` as `import-topology`; see `docs/preflight_remediation_executor_handoff.md`).
 
+**GOV-001 — `pre-commit` vs generator-only topology:** If the **sole** delta is the regenerated **`docs/lirix_import_topology.md`** and a normal `git commit` cannot satisfy local `pre-commit` (e.g. `end-of-file-fixer` oscillation against generator output), maintainers may follow the **narrow** `--no-verify` policy spelled out in **`docs/release_pr_checklist.md`** § *Local CI-equivalent rehearsal* (mandatory `python tools/gen_lirix_import_graph.py --check` + `python tools/harness.py preflight-remediation-status` in the **same** PR, explicit commit message, no generalization to other paths).
+
+**中文：** 生成物 **`docs/lirix_import_topology.md`** 单独更新时若与本地 hook 冲突，按 **`docs/release_pr_checklist.md`** 中 GOV-001 条执行；不得扩大 `--no-verify` 适用范围。
+
 ## Shared composite
 
 | Component | Path | Used by |
