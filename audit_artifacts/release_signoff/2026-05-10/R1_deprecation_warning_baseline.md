@@ -35,4 +35,11 @@ Total expected migration-alias `DeprecationWarning` count: **5**.
 about an unset loop-scope config option. This is not a Lirix runtime migration warning; it is tooling-level and
 should be tracked separately from the migration-only deprecation policy.
 
+### Non-migration note (stdlib / asyncio, Python 3.14+)
+
+On Python 3.14+, the standard library emits `DeprecationWarning` for `asyncio.get_event_loop_policy` (scheduled
+removal in 3.16). The test suite runs with `filterwarnings = ["error"]`; a **narrow** `ignore:.*get_event_loop_policy.*`
+entry in `pyproject.toml` prevents unrelated stdlib churn from failing CI while keeping migration-alias warnings
+strict.
+
 Cross-link (post-bundle maintenance): [`docs/documentation_styleguide.md`](../../../docs/documentation_styleguide.md).
