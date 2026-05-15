@@ -112,9 +112,12 @@ markers = [
 ]
 filterwarnings = [
     "error",
-    # Python 3.14+: stdlib deprecates asyncio.get_event_loop_policy (removal in 3.16).
-    # pytest-asyncio still consults it during auto mode setup; narrow ignore only after ``error``.
-    "ignore:.*get_event_loop_policy.*:DeprecationWarning",
+    # Python 3.14+: stdlib deprecates asyncio {get,set}_event_loop_policy (removal in 3.16).
+    # pytest-asyncio still touches them during auto mode setup; narrow ignore only after ``error``.
+    "ignore:.*event_loop_policy.*:DeprecationWarning",
+    # When the above fires during pytest-asyncio fixture teardown, pluggy surfaces this wrapper warning;
+    # it is a consequence of the stdlib deprecation path, not an independent Lirix regression signal.
+    "ignore::pluggy.PluggyTeardownRaisedWarning",
     # 若有不可避免的第三方库弃用警告，在此用 "ignore:..." 逐条豁免；禁止全局放行。
 ]
 

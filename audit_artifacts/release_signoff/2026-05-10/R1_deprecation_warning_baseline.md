@@ -37,9 +37,13 @@ should be tracked separately from the migration-only deprecation policy.
 
 ### Non-migration note (stdlib / asyncio, Python 3.14+)
 
-On Python 3.14+, the standard library emits `DeprecationWarning` for `asyncio.get_event_loop_policy` (scheduled
-removal in 3.16). The test suite runs with `filterwarnings = ["error"]`; a **narrow** `ignore:.*get_event_loop_policy.*`
-entry in `pyproject.toml` prevents unrelated stdlib churn from failing CI while keeping migration-alias warnings
-strict.
+On Python 3.14+, the standard library emits `DeprecationWarning` for `asyncio.get_event_loop_policy` and
+`asyncio.set_event_loop_policy` (scheduled removal in 3.16). The test suite runs with `filterwarnings = ["error"]`;
+a **narrow** `ignore:.*event_loop_policy.*` entry in `pyproject.toml` prevents unrelated stdlib churn from failing CI
+while keeping migration-alias warnings strict.
+
+When those deprecations surface during `pytest-asyncio` fixture teardown, **pluggy** may also emit
+`PluggyTeardownRaisedWarning`; a matching narrow `ignore::pluggy.PluggyTeardownRaisedWarning` entry is included
+for the same CI stability reason (not a Lirix migration signal).
 
 Cross-link (post-bundle maintenance): [`docs/documentation_styleguide.md`](../../../docs/documentation_styleguide.md).
