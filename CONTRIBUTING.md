@@ -4,6 +4,13 @@
 
 Lirix welcomes contributors who respect deterministic systems, security boundaries, and production-grade engineering discipline. We are friendly, but we are exacting: if a change weakens the trust model, slips on quality, or introduces ambiguity, it will not be merged.
 
+## 🧭 At a glance
+
+- **Use one policy door** — every gate routes through `python tools/harness.py <subcommand>`.
+- **Meet the quality bar** — tests, types, lint, and formatting must all pass.
+- **Protect the boundary** — zero-key, zero-telemetry, and zero-trust are non-negotiable.
+- **Keep docs in sync** — release-facing docs must match the code and versioned contract.
+
 ## The 1000% 极客标准
 
 Every pull request must satisfy **all** of the following before review can proceed:
@@ -29,7 +36,7 @@ python tools/harness.py <subcommand>
 
 The subcommand map is `COMMANDS` in `tools/harness.py`; implementations live in `tools/validators.py`. `python tools/harness.py contract-manifest` wraps `tools/contract_manifest_gate.py` and enforces the docs / audit-table / README broadcast contract. Release-preflight roll-up (import-topology drift + documented git hazards): `python tools/harness.py preflight-remediation-status` — playbook `docs/preflight_remediation_executor_handoff.md`.
 
-**Fast Required parity for a typical PR:**
+### Fast Required parity for a typical PR:
 
 | Area | Canonical command(s) | Notes |
 | --- | --- | --- |
@@ -54,6 +61,8 @@ Keep these aligned with `docs/audit_path_map.md`, `docs/migration_legacy_to_v2.m
 - **`chain_validate`:** bool sugar on the same path as `validate_only` — use full entrypoints when you need evidence payloads.
 - **Audit table edits:** changing `docs/audit_path_map.md` § Core Assertions Map requires `python tools/harness.py contract-manifest` locally.
 
+## What we do not merge
+
 ## PR lifecycle
 
 1. Fork → narrow feature branch.
@@ -61,7 +70,7 @@ Keep these aligned with `docs/audit_path_map.md`, `docs/migration_legacy_to_v2.m
 3. Open PR only when the branch is clean and reproducible.
 4. Release and sign-off PRs: `docs/release_pr_checklist.md` plus `audit_artifacts/release_signoff/README.md`.
 
-## What we do not merge
+## 🚫 What we do not merge
 
 - Private-key handling inside the library
 - Hidden telemetry

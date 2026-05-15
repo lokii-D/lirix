@@ -1,7 +1,14 @@
-# Security Policy for Lirix
+# 🛡️ Security Policy for Lirix
 
-**EN:** Triple-Zero boundary, scope, and private disclosure process.
-**中文：** 三重零信任边界、漏洞收录范围与私下报告流程。漏洞报告**仅**通过下方 GitHub Private Security Advisory 受理（不设独立邮件/PGP 渠道，避免不可投递地址）。
+**EN:** Triple-Zero boundary, scope, and private disclosure process. Bilingual Markdown conventions: [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md) (SSOT).
+**中文：** 三重零边界、漏洞收录范围与私下报告流程。漏洞报告**仅**通过下方 GitHub Private Security Advisory 受理（不设独立邮件/PGP 渠道，避免不可投递地址）。
+
+## 🧭 At a glance
+
+- **Zero-Key** — no private keys, seed phrases, or signing secrets.
+- **Zero-Telemetry** — no analytics, beacons, or behavioral telemetry.
+- **Zero-Trust** — untrusted input must be validated, simulated, and rejected by default.
+- **Private disclosure only** — public issues are not the place for active vulnerabilities.
 
 ## The Triple-Zero Standard 🛡️
 
@@ -97,6 +104,13 @@ If a request cannot be verified with high confidence, it must not execute. If th
 ---
 
 ## 中文（完整对照）
+
+### 🧭 一眼看懂
+
+- **Zero-Key**：不索取、不保存、不推导、不加密传输私钥、助记词或签名材料。
+- **Zero-Telemetry**：默认不把分析探针、行为埋点或跟踪信标送出信任域。
+- **Zero-Trust**：凡不可信输入，必须经过校验与模拟；信心不足则默认拒绝。
+- **私下披露**：活跃漏洞只走 GitHub Private Security Advisories，不走公开 Issue。
 
 ### 三重零边界 🛡️
 

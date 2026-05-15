@@ -1,7 +1,14 @@
-# Contributor Covenant Code of Conduct v2.1
+# ⚔️ Code of Conduct for Lirix
 
 **EN:** Contributor Covenant **2.1** English text below is the canonical community rules for this repository.
 **中文：** 以下为 **Contributor Covenant 2.1** 英文权威正文；文末 **中文摘要** 为便于理解的非法律释义，冲突时以英文条文为准。体例见 [`docs/documentation_styleguide.md`](docs/documentation_styleguide.md)。
+
+## 🧭 At a glance
+
+- **Be evidence-driven** — critique the artifact, not the author.
+- **Keep the room safe** — no harassment, humiliation, or ad-hominem attacks.
+- **Protect review quality** — disagreement is welcome when it stays technical.
+- **Use the English text as canonical** — the Chinese summary is explanatory only.
 
 ## Preamble
 

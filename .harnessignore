@@ -1,18 +1,58 @@
 # Align with `.gitignore` and `docs/repo_exclusions.md` for local harness-style tooling (not Harness.io).
-tdsc/
-mantle_TT/
-checklists/
-prompts/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+out/
 cache/
+.tox/
+.nox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Virtual environments
 .venv/
 .venv*/
 venv/
 env/
-__pycache__/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+.venv_ci*/
+.venv_ci312/
+.lirix_audit_venv/
+.lirix_final_preflight_venv/
+.mantle_tt_venv/
+_lirix_launch_sandbox/
+
+# Secrets / local env
+.env
+.env.release
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# JavaScript tooling (if introduced locally)
+node_modules/
+
+# IDE / editor (local only)
 .cursor/
-*.egg-info/
-dist/
-build/
+
+# Local research/checklist artifacts (keep private)
+checklists/
+prompts/
+tdsc/
+mantle_TT/
+
+# Audit artifacts: only version release signoff evidence
+audit_artifacts/**
+!audit_artifacts/release_signoff/
+!audit_artifacts/release_signoff/**
+
+# Dev silos (local only)
+.lirix_launch_silo/

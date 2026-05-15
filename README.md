@@ -6,10 +6,12 @@
 </div>
 
 <p align="center">
-  <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="docs/migration_legacy_to_v2.md">Migration</a> | <a href="#-installation--setup">📦 Installation</a> | <a href="#-quickstart-five-minute-blitz">⚡ Quickstart</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Integrations</a> | <a href="#-architecture--security-trace">🏗️ Architecture</a> | <a href="#-support--faq">💬 Support</a>
+  <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="docs/migration_legacy_to_v2.md">Migration</a> | <a href="#-installation--setup">📦 Installation</a> | <a href="#-quickstart-five-minute-blitz">⚡ Quickstart</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Integrations</a> | <a href="#-architecture--security-trace">🏗️ Architecture</a> | <a href="#-support--faq">💬 Support</a> | <a href="CONTRIBUTING.md">🛠️ Contributing</a> | <a href="SECURITY.md">🛡️ Security</a> | <a href="CODE_OF_CONDUCT.md">⚔️ Conduct</a> | <a href="LICENSE">📜 License</a>
 </p>
 
 **Current version:** **v2.0.3** (see `[project].version` in `pyproject.toml`).
+
+> **Reading order:** start with the value proposition, then installation, then quickstart, then architecture, then security and support. The Chinese section below follows the same sequence and keeps the same section-level evidence boundaries.
 
 # Lirix 2.0 · The EVM-grade execution airlock for AI agents
 
@@ -18,13 +20,30 @@
 
 **Lirix is a fail-closed validation and simulation control plane that stands between untrusted agent payloads and anything that can move value.** It is not a signer; it is the execution airlock that forces intent, schema, ABI, RPC evidence, and local EVM simulation through L1–L5 before any broadcast handoff is emitted.
 
+## 🧭 At a glance
+
+- **Start here** — the value proposition explains the problem Lirix solves.
+- **Then install** — the recommended setup path keeps environments clean and reproducible.
+- **Then run quickstart** — a five-minute walkthrough shows the approved handoff.
+- **Then inspect the architecture** — the control-plane model explains how the layers fit together.
+- **Then read security and support** — the boundary rules and contributor norms are explicit.
+
+That sequence is deliberate: it matches how first-time visitors decide whether to trust, try, and then adopt a project.
+
 ## 🎯 Why Lirix?
 
 The Web3 agent stack fails in predictable ways: prompt injection becomes malicious calldata, toxic DeFi shapes pass review but fail on-chain, proxies hide real code paths, and RPC views diverge under load. Lirix collapses that attack surface into a single deterministic DAG: validate intent, decode and pierce contracts, reconcile RPC evidence, simulate with state overrides, and only then return an evidence-rich envelope that your orchestrator can retry, rewrite, or reject without guessing.
 
-## 📚 Stability & evidence sources
+## ✨ What you get
 
-This README is an orientation layer only. It is intentionally incomplete and must not be treated as the contract SSOT.
+- **Fail-closed by design** — blocked requests stay blocked unless every gate passes.
+- **Evidence-first output** — every approval carries structured feedback and replay-friendly artifacts.
+- **Agent-friendly integration** — a single control plane for LLM tools, signers, and orchestrators.
+- **Production-oriented guardrails** — architecture, tests, and docs are tied together by SSOT links.
+
+## 📚 Contract boundaries & evidence sources
+
+This README is an orientation layer only. It is intentionally incomplete and must not be treated as the contract SSOT. For any hard claim, prefer the evidence sources listed below.
 
 Use the dedicated docs for authoritative detail:
 
@@ -34,15 +53,32 @@ Use the dedicated docs for authoritative detail:
 - **Repository exclusions**: `docs/repo_exclusions.md`
 - **Security boundary**: `SECURITY.md`
 
+Core README claims should be auditable against code, tests, and evidence fields. The anchors below are the shortest path for that review:
+
+- **Production / Stable status**: `pyproject.toml`, `docs/release_notes.md`
+- **Fail-closed behavior**: implementation in `lirix/` and coverage in `tests/`
+- **Coverage and regression posture**: `tests/`, `docs/ci_gate_matrix.md`
+- **Audit / replay fields**: `docs/audit_path_map.md`, `docs/api_reference.md`
+
 If this README conflicts with code, tests, or SSOT docs, the latter win.
 
 **PyPI maturity:** package metadata lists **`Development Status :: 5 - Production/Stable`** for the **2.x** line on PyPI; semver and `docs/migration_legacy_to_v2.md` remain the authority for breaking-change cadence.
 
-**Public API vs migration shims:** Supported **2.x** import surfaces and payload contracts are treated as **stable** for integrators. `DeprecationWarning` paths and **legacy config alias coercion** exist only for **documented migration** and the **next-major removal window** described in `docs/migration_legacy_to_v2.md` and `docs/release_notes.md` — they do **not** contradict the Production/Stable classifier; they bound how long compatibility shims remain before a semver major.
+**Public API vs migration shims:** Supported **2.x** import surfaces and payload contracts are treated as **stable** for integrators. `DeprecationWarning` paths and **legacy config alias coercion** exist only for **documented migration** and the **next-major removal window** described in `docs/migration_legacy_to_v2.md` and `docs/release_notes.md` — they do **not** contradict the Production/Stable classifier; they simply bound compatibility shims before a semver major.
+
+## 🧩 How to read this repository
+
+If you only have a minute, read the sections in this order: value proposition, installation, quickstart, architecture, security, support.
+
+If you are integrating or upgrading, keep `docs/migration_legacy_to_v2.md`, `docs/api_reference.md`, and `docs/audit_path_map.md` open side by side with this README.
 
 ## 📦 Installation & Setup
 
 This README tracks **`v2.0.3`** with PyPI/source metadata in `pyproject.toml`.
+
+If you are new, use the recommended path below. If you are upgrading, skim the migration note first.
+
+### Recommended path
 
 ```bash
 python3 -m venv .venv
@@ -51,7 +87,17 @@ pip install lirix
 lirix init
 ```
 
+### If you are upgrading from an older line
+
+Read `docs/migration_legacy_to_v2.md` before changing imports, config aliases, or release assumptions. The migration guide is the source of truth for compatibility windows and breaking-change timing.
+
+### What to expect after install
+
+Lirix is designed to fail closed. If the boundary cannot be verified with enough confidence, the result is rejection rather than speculation.
+
 ## ⚡ Quickstart: Five-Minute Blitz
+
+The fastest path is intentionally linear: validate, inspect the handoff, then triage failures. If you only copy one section, copy this one.
 
 ### 1) Fail-closed validation and simulation
 
@@ -102,6 +148,8 @@ pytest -q tests/test_integration/test_real_e2e_paths.py
 ```
 
 ## 🌐 Ecosystem Integrations (LangChain & AutoGen)
+
+Use these patterns when Lirix sits between model output and a downstream signer or executor.
 
 **Rule:** `validate_and_simulate` takes `intent: str` and `payload: Mapping[str, Any]`. Always schema-lock model output before it crosses the Lirix boundary.
 
@@ -196,6 +244,8 @@ autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet
 
 ## 🏗️ Architecture & Security Trace
 
+This section explains the control plane after the quickstart has shown the outcome. Read it once for the model, then return to the tests and docs for detail.
+
 Public **`Lirix`** (`lirix/_facade.py`) composes **`HookManager`**, **`ClientPipelineProtocol`**, and **`LirixPipelineOrchestrator`** into a one-way pipeline with session and trace FSM semantics. Hooks extend policy at the perimeter; they do not bypass the core.
 
 For implementation details, prefer the architecture and audit docs plus the tests that pin behavior. This section is intentionally a compressed overview.
@@ -252,29 +302,38 @@ Full tree: **`docs/STRUCTURE.md`**. Control plane table: **`docs/architecture_co
 
 ## 🛡️ Security Model
 
-**Triple-Zero:** **Zero-Key · Zero-Telemetry · Zero-Trust** — see **`SECURITY.md`**.
+This repository’s trust boundary is intentionally narrow.
+
+**Triple-Zero:** **Zero-Key · Zero-Telemetry · Zero-Trust** — see **`SECURITY.md`**. If a request cannot be verified with high confidence, Lirix rejects it rather than guessing.
 
 ## ✅ Stability, guarantees, and evidence sources
 
-This README is a high-level entry point, not the SSOT for every operational claim.
+This README is a high-level entry point, not the SSOT for every operational claim. When a claim matters, trace it to code, tests, and the relevant evidence doc.
 
 - **API and behavior guarantees:** confirm against `docs/api_reference.md` and the public tests under `tests/`.
 - **Architecture and audit trace:** confirm against `docs/audit_path_map.md`, `docs/architecture_control_plane.md`, and `docs/lirix_import_topology.md`.
 - **Workflow / gate truth:** confirm against `docs/ci_gate_matrix.md` and `.github/workflows/*.yml`.
 - **Versioned packaging truth:** confirm against `pyproject.toml`.
+- **Repository exclusions:** confirm against `docs/repo_exclusions.md`, `.gitignore`, and `.harnessignore`.
 
 When this README and the evidence sources differ, the evidence sources win.
 
 ## 💬 Support & FAQ
 
+Use the support paths below after you have read the contract and the quickstart. Clear docs, narrow boundaries, and reproducible behavior are the preferred way to keep support useful.
+
 - **General:** [Discussions](https://github.com/lokii-D/lirix/discussions) / [Issues](https://github.com/lokii-D/lirix/issues)
 - **Security:** do **not** open public issues; follow **`SECURITY.md`**.
+- **Contributor norms:** follow **`CONTRIBUTING.md`** and **`CODE_OF_CONDUCT.md`** before opening a PR or joining the conversation.
 
 **Q: Why no private key?**<br>
 A: Lirix validates and simulates; **you** sign. Separation of duties is the model.
 
 **Q: `externally-managed-environment`?**<br>
 A: Use a venv; never `pip install --break-system-packages`.
+
+**Q: Where should I read first?**<br>
+A: Start with the value proposition, then installation, then quickstart, then architecture, then security. The Chinese section below follows the same order.
 
 ---
 
@@ -290,6 +349,12 @@ Web3 Agent 的常见死法非常一致：**Prompt 注入** 变成恶意 calldata
 
 **当前版本：v2.0.3**（与 `pyproject.toml` 中 `[project].version` 一致）。
 
+如果你是新读者，直接按下面的推荐方式开始；如果你在升级，请先看迁移说明。
+
+**阅读顺序：** 先看价值定义，再看安装，再看快速上手，再看架构，再看安全与支持。下方中文内容与英文部分在章节顺序上保持一致，并尽量保持语义与契约意图对齐。
+
+### 推荐方式
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate  # Windows：`.venv\\Scripts\\activate`
@@ -298,6 +363,8 @@ lirix init
 ```
 
 ## ⚡ 快速上手：五分钟闪电战
+
+最短路径是线性的：先校验，再看交接字段，最后做失败分流。
 
 ### 1) fail-closed 校验与模拟
 
@@ -346,6 +413,8 @@ pytest -q tests/test_integration/test_real_e2e_paths.py
 ```
 
 ## 🌐 生态集成（LangChain 与 AutoGen）
+
+当 Lirix 夹在模型输出与下游签名器 / 执行器之间时，请使用以下模式。
 
 **规则：** `validate_and_simulate` 只接受 `intent: str` 与 `payload: Mapping[str, Any]`。模型输出必须先做 JSON / schema-lock，再跨过 Lirix 边界。
 
@@ -440,6 +509,8 @@ autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet
 
 ## 🏗️ 架构与安全追踪
 
+这部分解释控制平面；读完快速上手后再看最顺。
+
 对外 **`Lirix`**（`lirix/_facade.py`）把 **`HookManager`**、**`ClientPipelineProtocol`**、**`LirixPipelineOrchestrator`** 组合成一条单向流水线；会话与追踪由 FSM 约束。Hook 是隔离契约面，只能扩展策略，**不能绕过核心层**。
 
 ```mermaid
@@ -494,7 +565,9 @@ lirix/
 
 ## 🛡️ 安全模型
 
-**Triple-Zero：零密钥 · 零遥测 · 零信任** — 详见 **`SECURITY.md`**。
+这份仓库的信任边界非常窄。
+
+**Triple-Zero：零密钥 · 零遥测 · 零信任** — 详见 **`SECURITY.md`**。如果请求无法被高置信验证，Lirix 会拒绝它，而不是猜测。
 
 ## 💬 支持与 FAQ
 
