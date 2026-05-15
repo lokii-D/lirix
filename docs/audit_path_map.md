@@ -108,7 +108,7 @@ These module-level entrypoints do **not** emit new pipeline `SecurityTrace` / se
 
 ## 🧭 Optional follow-ups (non-blocking)
 
-- **R2 (removed parse helper)**: `lirix.legacy` / `lirix.core.guard` deleted; canonical entry is [`from lirix import Lirix`](../../lirix/__init__.py) with implementation [`lirix/_facade.py`](../lirix/_facade.py) (single orchestrated DAG).
+- **R2 (removed parse helper)**: `lirix.legacy` / `lirix.core.guard` deleted; canonical entry is [`from lirix import Lirix`](../lirix/__init__.py) with implementation [`lirix/_facade.py`](../lirix/_facade.py) (single orchestrated DAG).
 
 ---
 
