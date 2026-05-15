@@ -14,6 +14,10 @@ Use this list when opening or reviewing a **version / release** pull request. Au
 
 **Full `pytest` skips (charter):** a default full-tree `pytest -q -rs` run may list **four** skips from `tests/test_core/test_pipeline_performance_gates.py` (perf baseline env) and `tests/test_integration/test_real_e2e_paths.py` (live RPC / Anvil). That is **expected** for default CI and local venvs; closing them is **optional** evidence (perf JSON, Anvil E2E log) per § **Recommended** below and `docs/ci_gate_matrix.md` § **Full default collection — expected `pytest` skips**.
 
+**Fast Required triage (Actions UI):** “first step failed” may mean **Checkout**, **Set up Python** (inside `lirix-ci-setup`), or **Hygiene gate** — different root causes. Before changing code, copy the **exact failed step title** plus log excerpts; then use `docs/ci_gate_matrix.md` § **Fast Required — first failure triage** and the **Dependabot / supply-chain** pointer in the same section.
+
+**中文：** 「第一步就红」在 UI 上可能是 **Checkout**、复合动作里的 **Set up Python**、或 **Hygiene**；须先抄 **失败 Step 精确名称与日志**，再查 **`docs/ci_gate_matrix.md`** 对应小节。
+
 Local shell wrappers that duplicated CI have been removed. From a clean venv with `pip install -e ".[dev]"`, mirror **`.github/workflows/ci.yml`** and capture logs under `audit_artifacts/release_signoff/<today>/` using the step-by-step **`tee`** block in [`audit_artifacts/release_signoff/README.md`](../audit_artifacts/release_signoff/README.md) § **How to generate (local CI-equivalent replay)** (set `OUT` / `RELEASE_SIGNOFF_OUT` as documented there). After Fast Required semantics, run `python tools/harness.py test-coverage-required` and `python tools/release_acceptance_report.py` as in that README.
 
 For the concise final-regression command set (A/B/C/D/E checklist), run:

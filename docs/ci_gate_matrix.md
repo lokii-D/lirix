@@ -111,10 +111,28 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 | Job (workflow `name:`) | `if:` / context | Steps / gates |
 | --- | --- | --- |
-| **Fast Required** | always on PR + push | `lirix-ci-setup` (Python 3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py lint` → `python tools/harness.py format-check` → `python tools/harness.py typecheck` → **`python tools/harness.py test-governance`** (explicit list SSOT: `GOVERNANCE_EXPLICIT_PYTEST_PATHS` in `tools/validators.py`) → `python tools/harness.py registry-authority-contract` → `python tools/harness.py release-notes-gate` → `python tools/harness.py contract-manifest` → `python tools/harness.py required-check-policy` → `python tools/harness.py ci-lane-responsibility` → `python tools/harness.py compat-switch-expiry` → `python tools/harness.py plan-to-pr-exit-metrics` → `python tools/harness.py audit-internal-link` → `python tools/harness.py doc-preamble-hygiene` → `python tools/harness.py no-internal-imports` → `python tools/harness.py root-import-surface` → `python tools/harness.py test-monkeypatch-convention --strict` → `python tools/harness.py test-topology-admission` → `python tools/harness.py migration-observability-report` |
+| **Fast Required** | always on PR + push | `actions/checkout@…` → `lirix-ci-setup` (Python 3.12, **`with-dev-install: false`** — **no** `pip install` yet) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py lint` → `python tools/harness.py format-check` → `python tools/harness.py typecheck` → **`python tools/harness.py test-governance`** (explicit list SSOT: `GOVERNANCE_EXPLICIT_PYTEST_PATHS` in `tools/validators.py`) → `python tools/harness.py registry-authority-contract` → `python tools/harness.py release-notes-gate` → `python tools/harness.py contract-manifest` → `python tools/harness.py required-check-policy` → `python tools/harness.py ci-lane-responsibility` → `python tools/harness.py compat-switch-expiry` → `python tools/harness.py plan-to-pr-exit-metrics` → `python tools/harness.py audit-internal-link` → `python tools/harness.py doc-preamble-hygiene` → `python tools/harness.py no-internal-imports` → `python tools/harness.py root-import-surface` → `python tools/harness.py test-monkeypatch-convention --strict` → `python tools/harness.py test-topology-admission` → `python tools/harness.py migration-observability-report` |
 | **Coverage Required (Single Authority)** | `github.event_name != 'pull_request'`; needs `fast_required` | `lirix-ci-setup` (3.12) → **`python tools/harness.py test-coverage-required`** (`pytest -q --cov=lirix … --cov-report=xml`, **`fail_under=100`** from `pyproject.toml`) |
 | **PR Compatibility Smoke (${{ matrix.os }}, py${{ matrix.python-version }})** | PR only; needs `fast_required` | `lirix-ci-setup` + pip cache → **`python tools/harness.py test-pr-compat-smoke`** |
 | **Compatibility Matrix (${{ matrix.os }}, py${{ matrix.python-version }})** | non-PR; needs `fast_required` | `lirix-ci-setup` + pip cache → **`python tools/harness.py test-compat-matrix`** (`pytest -q -m "not slow and not e2e and not network and not perf and not migration"`) |
+
+### Fast Required — first failure triage (UI vs `ci.yml`)
+
+**EN:** Do **not** debug a red job without the log. **Phase 0 (evidence):** record `run_id`, job **`Fast Required`**, the failed step’s **exact title** as shown in GitHub (including **composite inner** steps), the **commit SHA** on the run, and **~120 lines** from the **start** and **end** of that step’s stdout/stderr; paste into the issue/PR. Only then map to the table below.
+
+**中文：** 无日志不盲改；先记录 **run_id、失败 Step 精确标题、commit SHA、首尾各约 120 行日志**，再对照下表。
+
+| UI / log often says | Maps to | Typical root-cause direction |
+| --- | --- | --- |
+| **Checkout** / `Run actions/checkout@…` | First root step in `ci.yml`: `uses: actions/checkout@…` | Permissions, pinned SHA/ref, submodules, shallow clone |
+| **Set up Python** / **Lirix CI setup** / composite | `./.github/actions/lirix-ci-setup` with `with-dev-install: "false"` — inner **`Set up Python (pip cache)`** or **`Set up Python (no pip cache)`** (see `action.yml`; inner **Checkout** is usually skipped when `checkout-repository` stays `false`) | `python-version: "3.12"`, runner image drift, `actions/setup-python` pin / cache key |
+| **Hygiene gate (repo cleanliness + sign-off allowlist)** | First explicit `run:` after setup: `python tools/harness.py hygiene` | Tracked paths / `audit_artifacts` / `release_signoff` vs hygiene rules — reproduce **before** dev install: `python3.12 tools/harness.py hygiene` (same order as CI) |
+
+**Local mirror — Fast prelude trio (matches CI before `pip install -e ".[dev]"`):** `python tools/harness.py hygiene` → `check-exclusions` → `preflight-remediation-status` on **Python 3.12** without requiring an editable install. If any fail, fix the repo **before** merging Dependabot PRs.
+
+### Dependabot / supply-chain merge discipline (agent pointer)
+
+**Black:** `black==24.10.0` in `pyproject.toml` is a **charter pin** (see `CONTRIBUTING.md`, `docs/contributing_local_tests.md`). **Default:** do **not** merge `dependabot/pip/black-25.x` without a dedicated RFC PR (bump pin → `black` whole tree → update **every** doc that cites `24.10.0` → G-009 full harness + matrix). **Actions:** bump `actions/checkout`, `actions/setup-python`, `actions/download-artifact`, `softprops/action-gh-release` in **one** infra PR; run **`rg "actions/checkout@" .github`** and **`rg "actions/setup-python@" .github`** including **`.github/actions/lirix-ci-setup/action.yml`**. **pytest-asyncio / pytest-cov:** verify `pyproject.toml` bounds; run `test-coverage-required` and `test-compat-matrix` after each merge. After any bump: **`contract-manifest`**, **`required-check-policy`**, **`ci-lane-responsibility`**, and a **full** `python tools/harness.py` subcommand sweep (G-009).
 
 ---
 
@@ -125,7 +143,7 @@ It requires every `docs/audit_path_map.md` row with CI gate **Governance gate** 
 
 | Job | Context | Steps / gates |
 | --- | --- | --- |
-| **Governance Gates** | push / schedule / dispatch | `lirix-ci-setup` (3.12, **no** dev install) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py doc-preamble-hygiene` → **`python tools/cv_score_report.py`** (no `--enforce`) → `python tools/harness.py branch-protection-drift` → **`python tools/harness.py ci-lane-responsibility`** → `python tools/harness.py failure-surface-triage` → `python tools/harness.py legacy-sunset` → `python tools/harness.py phase-exit-checklists` |
+| **Governance Gates** | push / schedule / dispatch | `actions/checkout@…` → `lirix-ci-setup` (3.12, **`with-dev-install: false`**) → `python tools/harness.py hygiene` → `python tools/harness.py check-exclusions` → `python tools/harness.py preflight-remediation-status` → `pip install -e ".[dev]"` → `python tools/harness.py doc-preamble-hygiene` → **`python tools/cv_score_report.py`** (no `--enforce`) → `python tools/harness.py branch-protection-drift` → **`python tools/harness.py ci-lane-responsibility`** → `python tools/harness.py failure-surface-triage` → `python tools/harness.py legacy-sunset` → `python tools/harness.py phase-exit-checklists` |
 
 ### Governance vs `ci.yml` overlap
 
