@@ -1,13 +1,12 @@
 # Lirix Control Plane Architecture
 
-**EN:** Control-plane assertions (config, session, replay, hooks, chain profiles) mapped to code paths, tests, and evidence keys.<br>
-**中文：** 控制面断言（配置、会话、回放、钩子、链配置）与代码路径、测试与证据键的对照；审计入口见下。
+**EN:** Control-plane assertion table only (config, session, replay, hooks, chain profiles → code → tests → evidence keys). Not the audit index; not API contract prose.<br>
+**中文：** 仅承载控制面断言表（配置、会话、回放、钩子、链配置 → 代码 → 测试 → 证据键）。非审计总入口，非 API 契约正文。
 
 The control plane is the **auditable join** between configuration authority, layered validators, and typed evidence keys—nothing here is decorative prose.
 
-> Single audit entrypoint: **[`docs/audit_path_map.md`](audit_path_map.md)** (architecture → code → tests → evidence → CI)
-
-Authoritative semantics for `l1_l3_ok`: **[Session gate semantics (l1_l3_ok)](audit_path_map.md#session-gate-semantics-l1_l3_ok)** in `docs/audit_path_map.md`.
+> **Audit index (navigation):** [`docs/audit_path_map.md`](audit_path_map.md) — sole entry for architecture → code → tests → evidence → CI.<br>
+> **Gate semantics (`l1_l3_ok`, full-pipeline revalidation):** defined only in [`audit_path_map.md` § Session gate semantics](audit_path_map.md#session-gate-semantics-l1_l3_ok); this file links, does not restate.
 
 **Core vs layers (dependency inversion):** `lirix/core/layer_ports.py` defines the `Protocol` contracts (`RpcEvidenceSource`, `PipelineLayerExecutor`) so `lirix.core` orchestration stays free of `lirix.layers` imports; `lirix/_layer_factories.py` holds the concrete L4/L5 factory wiring consumed from `lirix/_facade.py`.
 
@@ -27,7 +26,8 @@ Authoritative semantics for `l1_l3_ok`: **[Session gate semantics (l1_l3_ok)](au
 | Chain profile registry is strict-mode gated by allowlist | `lirix/__init__.py`, `lirix/core/chain_adapter.py` | `tests/test_core/test_plan_alignment_hardening_coverage.py` | `ConfigurationGuardException.context.reason=registry_allowlist_required` |
 | Chain profile runtime policy is actually consumed by L4/L5 builders | `lirix/_facade.py::_build_rpc_manager`, `lirix/_facade.py::_build_sandbox_simulator`, `lirix/layers/l5_sandbox_simulator.py` | `tests/test_core/test_chain_adapter_profiles.py` | `security_trace.steps[].details.simulation.backend_profile` |
 | L4 evidence carries chain context for cross-layer explainability | `lirix/_facade.py`, `lirix/core/orchestrator.py` | `tests/test_core/test_coverage_closure_v16.py` | `security_trace.steps[].details.chain_context` |
-| Session `l1_l3_ok` aligns with L1–L3 completion across pipeline entrypoints | `lirix/_facade.py::_mark_session_l1_l3_ok`, `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_validate` | `tests/test_core/test_simulate_only_prior_validate_config.py` | **`validation_session.state.l1_l3_ok`** |
+| Session `l1_l3_ok` | `lirix/_facade.py::_mark_session_l1_l3_ok`, `lirix/core/orchestrator.py` (`run_validate`, `run_full`) | `tests/test_core/test_simulate_only_prior_validate_config.py`, `tests/test_core/test_simulate_only_gate_semantics.py`, `tests/test_core/test_simulate_only_gate_matrix.py`, `tests/test_core/test_run_full_l1_l3_revalidation.py` | **`validation_session.state.l1_l3_ok`** → [`§ Session gate semantics`](audit_path_map.md#session-gate-semantics-l1_l3_ok) |
+| `run_full` post–`HOOK_PRE_SIMULATION` L1–L3 revalidation (fail-closed; same draft) | `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_full` → `_run_l1_l3_validation`, `_record_failure` | `tests/test_core/test_run_full_l1_l3_revalidation.py` | `validation_session.timeline`, `exception.context.agent_feedback`, `exception.context.failure_protocol` → [`§ Session gate semantics`](audit_path_map.md#session-gate-semantics-l1_l3_ok) |
 
 ---
 

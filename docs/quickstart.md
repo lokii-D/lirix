@@ -83,7 +83,7 @@ See **`docs/migration_legacy_to_v2.md`** (Root export policy).
 
 - `validate_only`: L1-L3 validation only.
 - `simulate_only`: L4-L5 simulation facts only.
-- `validate_and_simulate`: full security pipeline.
+- `validate_and_simulate`: **`docs/pipeline_evidence_flow.md`** · [`l1_l3_ok` SSOT](audit_path_map.md#session-gate-semantics-l1_l3_ok).
 - `atomic_multicall`: batch packing with pre-validation.
 
 ### LangChain (optional extra)
@@ -224,7 +224,7 @@ pip install -e ".[langchain]"
 
 - `validate_only`：只做结构与语义校验（L1-L3）。
 - `simulate_only`：只做 RPC 对账与沙盒模拟（L4-L5）。
-- `validate_and_simulate`：完整路径（推荐默认）。
+- `validate_and_simulate`：**`docs/pipeline_evidence_flow.md`** · [`l1_l3_ok` SSOT](audit_path_map.md#session-gate-semantics-l1_l3_ok)。
 - `atomic_multicall`：批量交易打包后统一校验。
 
 ### 渐进式迁移开关

@@ -28,12 +28,14 @@ Authoritative code: **`lirix/core/orchestrator.py`** (`LirixPipelineOrchestrator
 | --- | --- | --- |
 | Session + trace bootstrap | `LirixPipelineOrchestrator._run_async_template_pipeline` → `ensure_session`, `sess.link_trace`, `request_normalization` builds `SecurityTrace` + `TraceRecorder` | `Lirix._run_full_pipeline` → `LirixPipelineOrchestrator.run_full` (same bootstrap pattern via orchestrator) |
 | Hooks before L1–L3 | `HOOK_PRE_VALIDATE` | `HOOK_PRE_VALIDATE` |
-| L1–L3 | `Lirix._run_l1_l3_validation` records steps | Same, then **`_mark_session_l1_l3_ok`** before simulation hooks |
+| L1–L3 | `Lirix._run_l1_l3_validation` records steps | First pass: same, then **`_mark_session_l1_l3_ok`** before `HOOK_PRE_SIMULATION` |
 | Isolated post-validate hook | `HOOK_POST_VALIDATE` **after** L1–L3, then `_mark_session_l1_l3_ok` | Full pipeline uses a **trailing** `HOOK_POST_VALIDATE` after L5 |
-| Simulation | *(not run)* | `HOOK_PRE_SIMULATION` → L4 `rpc_reconcile` → L5 `sandbox_simulation` → `HOOK_POST_SIMULATION` → trailing `HOOK_POST_VALIDATE` |
+| Hooks before simulation | *(not run)* | `HOOK_PRE_SIMULATION` |
+| L1–L3 (re-check) | *(not run)* | **`_run_l1_l3_validation` again** on the **same** normalized draft (fail-closed before L4) |
+| Simulation / policy | *(not run)* | L4 `rpc_reconcile` → L5 `sandbox_simulation` → policy audit → `HOOK_POST_SIMULATION` → trailing `HOOK_POST_VALIDATE` |
 | Success persistence | `_success_postlude_and_build_result` → `sess.record_trace` / `record_decision` / `finalize` → `_build_result` | `_record_full_pipeline_success` + `finalize` → `_build_result` |
 
-> **`l1_l3_ok`:** set **after** isolated `HOOK_POST_VALIDATE` on **`validate_only`**, but **before** `HOOK_PRE_SIMULATION` on the **full** pipeline. See [`docs/audit_path_map.md`](audit_path_map.md#session-gate-semantics-l1_l3_ok) § Session gate semantics.
+**`l1_l3_ok`:** definition only in [`docs/audit_path_map.md#session-gate-semantics-l1_l3_ok`](audit_path_map.md#session-gate-semantics-l1_l3_ok).
 
 ---
 
@@ -75,7 +77,7 @@ sequenceDiagram
   U->>F: validate_and_simulate(...)
   F->>S: bootstrap trace + recorder
   F->>F: HOOK_PRE_VALIDATE → L1–L3 → mark l1_l3_ok
-  F->>F: HOOK_PRE_SIMULATION → L4 → L5 → policy → HOOK_POST_SIMULATION → HOOK_POST_VALIDATE
+  F->>F: HOOK_PRE_SIMULATION → L1–L3 (re-check) → L4 → L5 → policy → HOOK_POST_SIMULATION → HOOK_POST_VALIDATE
   F->>S: record_trace (RPC/policy artifact digests)
   F->>S: record_decision → finalize
   F->>B: build_base_result(replay_bundle, forensic_bundle, security_trace, evidence_v2, …)
@@ -91,5 +93,5 @@ On `LirixBaseException`, `LirixPipelineOrchestrator._run_async_template_pipeline
 ## 中文（要点对照）
 
 - **编排真相源**：同步入口在 **`lirix/_facade.py`**，异步状态机在 **`lirix/core/orchestrator.py`**；不要再引用已删除的 mixin 文件名。
-- **阶段表**：`validate_only` 走 **`_run_async_template_pipeline` + `run_validate`**；全量路径走 **`run_full`**（经 `Lirix._run_full_pipeline` 委托）。
+- **阶段表**：`validate_only` 走 **`_run_async_template_pipeline` + `run_validate`**；全量路径走 **`run_full`**（经 `Lirix._run_full_pipeline` 委托）。全量路径在 **`HOOK_PRE_SIMULATION` 之后、L4 之前** 对同一规范化 draft **复验 L1–L3**（失败即阻断 L4/L5）；**`simulate_only` 不插入该复验**。门闩 **`l1_l3_ok`：**仅 [`docs/audit_path_map.md` § Session gate semantics](audit_path_map.md#session-gate-semantics-l1_l3_ok)。
 - **失败路径**：统一由 **`_record_failure`** 落盘拒绝态证据；更新语义时同步 **`docs/audit_path_map.md`** 与会话 gating 说明。

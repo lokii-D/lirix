@@ -5,10 +5,22 @@ purpose: align .gitignore, pytest norecursedirs, audit scope, and harness ignore
 
 # Repository exclusions
 
-This file is the repository-level exclusion SSOT.
+This file is the **sole SSOT for exclusion boundaries**. `.gitignore` and `.harnessignore` implement Git / local-tooling sync; they must not drift from this document.
 
 **EN:** Keep this document focused on exclusion boundaries only. For general architecture, release, or API contract guidance, use the dedicated docs in `docs/`.
 **中文：** 本文档仅负责排除边界；架构、发布与 API 契约请使用 `docs/` 下的专门文档。
+
+## Three-file maintenance rule
+
+When adding or renaming a non-package tree, cache dir, or local-only path:
+
+1. **Document here** — add a row under **Current exclusion set** (and **Scope** if it is a top-level research tree).
+2. **`.gitignore`** — add the path if it must never be tracked.
+3. **`.harnessignore`** — mirror the same pattern for local harness-style scans.
+4. **`pyproject.toml`** → `[tool.pytest.ini_options].norecursedirs` — add the directory name if pytest must not collect there.
+5. **`docs/audit_path_map.md`** → Scope / Exclusions — one line if the tree is out of audit scope.
+
+Do not update only one file; CI hygiene and local tooling assume four-way alignment (this doc states intent; the other three enforce it).
 
 ## Scope
 

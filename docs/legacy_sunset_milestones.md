@@ -25,7 +25,7 @@ Milestones are machine-checked by `tools/legacy_sunset_gate.py` via stable IDs.
    - Require all new examples/integrations to use canonical `Lirix`.
    - Ensure `tests/test_legacy` only verifies adapter compatibility.
 
-3. **v2.0.3 (sunset target)** `id=legacy-window-final`
+3. **v2.0.4 (sunset target)** `id=legacy-window-final`
    - Remove `lirix.legacy` exports from public API.
    - Remove `tests/test_legacy` compatibility-only assertions.
    - Update docs and release notes to finalize migration.

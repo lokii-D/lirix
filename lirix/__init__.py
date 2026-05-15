@@ -19,7 +19,7 @@ from lirix.core.session import verify_replay_bundle
 from lirix.core.signatures import SWAP_EXACT_TOKENS_FOR_TOKENS_SELECTOR
 from lirix.layers import ProxyPiercer, RPCManager, SandboxSimulator
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
 if sys.version_info < (3, 9) or sys.version_info >= (3, 15):
     raise ImportError("Lirix requires Python 3.9 through 3.14.")

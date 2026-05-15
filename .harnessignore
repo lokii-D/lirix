@@ -1,4 +1,4 @@
-# Align with `.gitignore` and `docs/repo_exclusions.md` for local harness-style tooling (not Harness.io).
+# Exclusion SSOT: docs/repo_exclusions.md — mirror .gitignore; update all four targets when adding paths (see repo_exclusions § Three-file maintenance rule).
 __pycache__/
 *.py[cod]
 *.egg-info/

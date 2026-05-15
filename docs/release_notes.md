@@ -9,6 +9,14 @@ This document records release-visible deltas and compatibility notes only. It is
 
 ## Unreleased
 
+**Release-review index:** the first bullet block is the authoritative **release-visible / public contract** boundary for pipeline consumers (use for compliance / regression audits; **not** implementation-only commentary).
+
+- **`public contract delta` / `release-visible delta` — `validate_and_simulate` / `async_validate_and_simulate`:** classify the following nested bullets as a **behavioral boundary for release review, regression, and audits** (not an internal implementation note). **Normative semantics:** `docs/audit_path_map.md` § Session gate semantics (`l1_l3_ok`).
+  - **Behavior:** after **`HOOK_PRE_SIMULATION`**, `LirixPipelineOrchestrator.run_full` runs **`_run_l1_l3_validation` a second time** on the **same** normalized draft **before** any L4/L5 work. Failure is **fail-closed** (no reconcile / simulate / post hooks) and follows the normal **`LirixBaseException` → `_record_failure`** audit path (session timeline, decision, enriched `exception.context`).
+  - **Unchanged:** **`simulate_only` / `async_simulate_only`** — still **no** extra L1–L3 pass; gate semantics for **`simulate_only_requires_prior_validate`** are **unchanged** (see **`docs/audit_path_map.md` § Session gate semantics**).
+  - **Session flag:** **`l1_l3_ok`** still means **initial** L1–L3 success only; it is **not** cleared when the post–`HOOK_PRE_SIMULATION` re-check fails (by design — see audit map).
+  - **Tests:** `tests/test_core/test_run_full_l1_l3_revalidation.py`, `tests/test_core/test_simulate_only_gate_semantics.py`, `tests/test_core/test_simulate_only_gate_matrix.py`; **SSOT:** `docs/audit_path_map.md` § Session gate semantics (`l1_l3_ok`).
+- **发布审阅索引：** 紧随其后的英文 **public contract delta** 子条为本次 **release-visible** 边界（行为变更 / 不变项 / SSOT / Tests）；发布审阅与合规审计**以此索引为准**，勿当作实现注释。
 - **G-008 documentation audit (closed cycle):** structured audience / consistency register at **`docs/documentation_ux_audit_register.md`** (not a line-by-line proof of every `docs/**` file).
 - **G-008（中文）：** 结构化读者矩阵与一致性核对见 **`docs/documentation_ux_audit_register.md`**（非对 `docs/**` 全量逐行审阅证明）。
 - **PyPI classifiers:** `Development Status` updated from **Beta** to **`Production/Stable`** to align PyPI metadata with the **2.x** stability narrative (README § Stability cross-reference). Semver and `docs/migration_legacy_to_v2.md` still govern breaking releases.

@@ -56,7 +56,8 @@ This document is the single audit entrypoint for Lirix. Each assertion maps to:
 | Governance mode overlap and dependency checks are closed-world | `lirix/core/config_governance.py` | `tests/test_core/test_config_governance_overlap_guards.py` | `ConfigurationGuardException.context.reason` | Governance gate |
 | Public exports and entrypoint symbols do not drift | `lirix/__init__.py`, `lirix/core/__init__.py`, `lirix/layers/__init__.py` | `tests/test_core/test_public_exports_contract.py`, `tests/test_core/test_entrypoint_symbol_binding_contract.py` | `__all__` surfaces | Governance gate |
 | Policy rollback behavior is evidence-visible | `lirix/layers/l5_shadow_auditor.py` | `tests/test_layers/test_shadow_auditor_policy_bundle.py` | `policy_decision.bundle.rollback_applied`, `policy_decision.lifecycle_mode` | Governance gate |
-| `l1_l3_ok` matches every entry that completes L1-L3 on a session | `lirix/_facade.py::_mark_session_l1_l3_ok`, `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_validate`, `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_full` | `tests/test_core/test_simulate_only_prior_validate_config.py` | `validation_session.state.l1_l3_ok`, `ConfigurationGuardException.context.reason` when gate blocks | Governance gate |
+| `l1_l3_ok` matches every entry that completes L1-L3 on a session | `lirix/_facade.py::_mark_session_l1_l3_ok`, `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_validate`, `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_full` | `tests/test_core/test_simulate_only_prior_validate_config.py`, `tests/test_core/test_simulate_only_gate_semantics.py`, `tests/test_core/test_simulate_only_gate_matrix.py`, `tests/test_core/test_run_full_l1_l3_revalidation.py` | `validation_session.state.l1_l3_ok`, `ConfigurationGuardException.context.reason` when gate blocks | Governance gate |
+| `run_full` L1–L3 re-check failure after `HOOK_PRE_SIMULATION` is fail-closed with full `_record_failure` audit (no L4/L5) | `lirix/core/orchestrator.py::LirixPipelineOrchestrator.run_full` → `_record_failure` | `tests/test_core/test_run_full_l1_l3_revalidation.py` | `validation_session.timeline` (`kind=validate_and_simulate`, `status=rejected`), `exception.context.agent_feedback`, `exception.context.failure_protocol` | Governance gate |
 | Broadcast extract is strict (fail-closed) only on dual `approved`; integrations add `tx_payload` on JSON success | `lirix/_facade.py` (`Lirix.extract_broadcast_fields`, dual-`approved` strict `to`/`data`), `lirix/integrations/langchain/tool.py::_serialize_guardian_success`, `lirix/integrations/autogen/tool.py` | `tests/test_core/test_readme_envelope_contract.py`, `tests/test_integrations/test_langchain_tool_run_arun_delegate_to_guardian_paths.py` | `context["reason"] == "approved_broadcast_fields_invariant"`, `canonical_error_code == "LIRIX_ERR_BROADCAST_PAYLOAD_INVARIANT"`; success JSON additive `tx_payload` mirrors `extract_broadcast_fields` (non-JSON fallback `str(result)` does not inject) | Governance gate + Docs contract gate (`python tools/harness.py contract-manifest`) |
 | Root `from lirix import` usage in ancillary trees stays within frozen `lirix.__all__` | `tools/validators.py::check_root_import_surface` | `tests/test_core/test_public_exports_contract.py` | `lirix.__all__` bounded surface (scanner-enforced) | Root import surface gate |
 | CLI scaffold (`lirix init`) stays stable | `lirix/cli.py` | `tests/test_core/test_cli_public_contract.py`（parser / scaffold / `python -m lirix.cli`、README `lirix init`、冻结子命令集合） | generated scaffold files + exit code `0` | Governance gate |
@@ -114,13 +115,36 @@ These module-level entrypoints do **not** emit new pipeline `SecurityTrace` / se
 
 ## Session gate semantics (l1_l3_ok)
 
-`ValidationSession.state["l1_l3_ok"]` gates `simulate_only` / `async_simulate_only` when `LirixConfig.simulate_only_requires_prior_validate` is true.
+**Single authoritative definition.** **Normative rule for docs:** define timing, consumers, and re-check behavior **only in this section**. Other documents (`README`, `docs/pipeline_evidence_flow.md`, `docs/architecture_control_plane.md`, `docs/api_reference.md`, `docs/quickstart.md`, `docs/release_notes.md`) must **link here** instead of restating gate logic, so wording cannot drift.
 
-- **Meaning**: set when the **L1–L3 validation stages succeeded** for that invocation (Intent / Schema / DeFi layers and blocking hook rules up to the point where the runtime marks the gate).
-- **`simulate_only_requires_prior_validate`** (`LirixConfig`): requires prior L1–L3 success on the session so a later `simulate_only` can run; it does **not** require parity with a completed successful `validate_only` hook sequence when the prior attempt was a partial full pipeline.
-- **`validate_only` / `async_validate_only`**: `_mark_session_l1_l3_ok` runs **after** isolated `HOOK_POST_VALIDATE` completes successfully.
-- **`validate_and_simulate` / `async_validate_and_simulate`**: `_mark_session_l1_l3_ok` runs **after** the L3 `payload_parse` step is recorded and **before** `HOOK_PRE_SIMULATION` and L4. If L4, L5, policy, or later hooks fail, **`l1_l3_ok` may remain true on the session** while the overall call raises—the gate intentionally means “L1–L3 passed for this session”, not “the full pipeline call succeeded”.
-- **Versus end-of-pipeline `HOOK_POST_VALIDATE`**: on the full pipeline, the trailing `HOOK_POST_VALIDATE` (after simulation) may **not** run if an earlier stage fails. That state is **not** equivalent to “a completed successful `validate_only` hook closure”; if strict parity is required, define an ADR and change ordering explicitly (do not infer from `l1_l3_ok` alone).
+### Field and consumers
+
+- **Field:** `ValidationSession.state["l1_l3_ok"]` (bool), written only by **`Lirix._mark_session_l1_l3_ok`** (via orchestrator paths).
+- **Consumers:** when **`LirixConfig.simulate_only_requires_prior_validate`** is **true**, `simulate_only` / `async_simulate_only` require this flag on the **same** session before entering L4/L5. **`simulate_only` does not run the full pipeline’s post–`HOOK_PRE_SIMULATION` L1–L3 re-check**; that re-check exists **only** in `LirixPipelineOrchestrator.run_full`.
+
+### Meaning (one sentence)
+
+**`l1_l3_ok` means “initial L1–L3 validation succeeded and the runtime marked the session gate”** — not “simulate_only ran”, not “full pipeline completed”, not “post–`HOOK_PRE_SIMULATION` re-check succeeded”.
+
+### When the flag is set (by entrypoint)
+
+- **`validate_only` / `async_validate_only`:** set **after** isolated **`HOOK_POST_VALIDATE`** completes successfully (same `run_validate` path as today).
+- **`validate_and_simulate` / `async_validate_and_simulate`:** set **after** the **first** successful **`_run_l1_l3_validation`** and **before** **`HOOK_PRE_SIMULATION`**, on the **same** normalized `draft_payload` produced by `request_normalization` for that call.
+
+### Full pipeline: second L1–L3 pass (re-check)
+
+- **Where:** `LirixPipelineOrchestrator.run_full` — immediately **after** **`HOOK_PRE_SIMULATION`** (and its fatal hook aggregate), **before** **`_build_rpc_manager()`** / L4.
+- **Payload:** the **same** in-memory `draft` mapping (no second normalization pass).
+- **Role:** fail-closed **re-validation** after hooks that may observe or transform perimeter policy; **does not** set or clear **`l1_l3_ok`**.
+- **On re-check failure:** raises **`LirixBaseException`**; **`_record_failure`** records rejected **`validation_session.timeline`** entry, blocked **decision**, and **enriched** `exception.context` (`agent_feedback`, `failure_protocol`, bundles). **L4/L5 and post-simulation / post-validate hooks do not run.** **`l1_l3_ok` is not cleared** by design — the gate still reflects **initial** L1–L3 success; callers must not infer “safe to broadcast” from this flag alone after a failed full pipeline.
+
+### `simulate_only_requires_prior_validate`
+
+- Requires prior L1–L3 success on the session so a later **`simulate_only`** can run; it does **not** require a completed successful **`validate_only`** hook closure when the prior attempt was a **partial** full pipeline (see **`HOOK_POST_VALIDATE`** note below).
+
+### Versus end-of-pipeline `HOOK_POST_VALIDATE` (full pipeline)
+
+- Trailing **`HOOK_POST_VALIDATE`** (after L5) may **not** run if an earlier stage fails. That is **not** equivalent to a completed successful **`validate_only`**; do **not** infer hook parity from **`l1_l3_ok`** alone.
 
 ---
 
@@ -199,12 +223,17 @@ The repo uses tests as explicit governance gates. The minimum contract is:
 
 ## 📚 Where each doc fits / 文档分工（避免多入口漂移）
 
-- **`docs/architecture_control_plane.md`**: “断言→代码→测试→证据键”的总表（审计主索引）。
-- **`docs/api_reference.md`**: 面向调用方的稳定契约（返回键名、兼容策略、入口路径）。
-- **`docs/evidence_schema_v2.md`**: v2 证据封装与 single-stack 运行语义（`rpc_evidence_mode=v2_only`，alias 仅输入兼容）。
-- **`docs/migration_legacy_to_v2.md`**: 迁移顺序与风险控制（runtime 已 single-stack，仅保留 alias 输入兼容窗口）。
-- **`docs/checklist_implementation_matrix.md`**: 发布/回归清单到代码落点的闭环矩阵（发布签署用）。
-- **`docs/release_notes.md`**: 变更声明（必须 additive-only，且可映射到测试与证据键）。
+| Layer | Doc | Role |
+| --- | --- | --- |
+| Navigation | **`README.md`** | Entry guide: value prop, install, quickstart, links only — not contract SSOT. |
+| Audit index | **`docs/audit_path_map.md`** (this file) | Sole audit entry: assertions → code → tests → evidence → CI; **`l1_l3_ok` / revalidation** normative text in § Session gate semantics. |
+| Control plane | **`docs/architecture_control_plane.md`** | Assertion table + evidence-key join only; links here for gate semantics. |
+| API contract | **`docs/api_reference.md`** | Stable caller contract (keys, compatibility, entry paths). |
+| Evidence schema | **`docs/evidence_schema_v2.md`** | v2 evidence envelope (`rpc_evidence_mode=v2_only`; aliases input-only). |
+| Migration | **`docs/migration_legacy_to_v2.md`** | Legacy → v2 order and risk controls. |
+| Release checklist | **`docs/checklist_implementation_matrix.md`** | Sign-off matrix (assertions → code). |
+| Release delta | **`docs/release_notes.md`** | Version-visible deltas; maps to tests and evidence keys. |
+| Exclusions | **`docs/repo_exclusions.md`** | Exclusion boundary SSOT (`.gitignore`, `.harnessignore`, pytest `norecursedirs`). |
 
 ---
 

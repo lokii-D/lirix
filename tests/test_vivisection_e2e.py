@@ -71,6 +71,9 @@ async def test_v15_vivisection_e2e(
     )
     events: list[str] = []
     l4_state: dict[str, Any] = {}
+    resolved_targets: list[str] = []
+    l3_draft_snaps: list[tuple[int, str, str, int, str]] = []
+    l5_draft_snaps: list[tuple[int, str, str, int, str]] = []
 
     monkeypatch.setattr(
         "lirix._client_core.IntentValidator.validate",
@@ -84,6 +87,16 @@ async def test_v15_vivisection_e2e(
         payload["data"] = "0x38ed173900000000"
         payload["expected_return"] = 0
         payload["_l3_proxy_inspection"] = inspection
+        resolved_targets.append(str(inspection["resolved_target"]))
+        l3_draft_snaps.append(
+            (
+                id(payload),
+                str(payload["to"]),
+                str(payload["data"]),
+                int(payload["expected_return"]),
+                str(inspection["resolved_target"]),
+            )
+        )
         events.append("L3")
         return True
 
@@ -116,7 +129,17 @@ async def test_v15_vivisection_e2e(
         await async_web3.eth.call(
             {"to": payload["to"], "data": payload["data"]}, block_identifier=block_number
         )
-        return {
+        ins = payload["_l3_proxy_inspection"]
+        l5_draft_snaps.append(
+            (
+                id(payload),
+                str(payload["to"]),
+                str(payload["data"]),
+                int(payload["expected_return"]),
+                str(ins["resolved_target"]),
+            )
+        )
+        out: dict[str, Any] = {
             "layer": "L5",
             "simulation_ok": True,
             "block_number": block_number,
@@ -127,6 +150,9 @@ async def test_v15_vivisection_e2e(
             },
             "agent_assertion": {"expected_return": payload["expected_return"]},
         }
+        # L5 must surface the same inspection object produced by L3 (no re-derivation / replacement).
+        assert out["proxy_inspection"] is payload["_l3_proxy_inspection"]
+        return out
 
     monkeypatch.setattr(SandboxSimulator, "simulate_async", fake_simulate_async)
     monkeypatch.setattr(
@@ -148,7 +174,28 @@ async def test_v15_vivisection_e2e(
         state_delta_assertions={"expected_return": 0},
     )
 
-    assert events == ["L3", "L4"]
+    # Full pipeline re-runs L1–L3 after HOOK_PRE_SIMULATION on the same draft.
+    assert events == ["L3", "L3", "L4"]
+    assert len(resolved_targets) == 2
+    assert resolved_targets[0] == resolved_targets[1] == str(implementation_address)
+    assert len(l3_draft_snaps) == 2
+    assert (
+        l3_draft_snaps[0][0] == l3_draft_snaps[1][0]
+    ), "both L1–L3 passes must mutate the same draft object"
+    assert (
+        l3_draft_snaps[0] == l3_draft_snaps[1]
+    ), "re-check must not drift normalized draft semantics"
+    assert (
+        l3_draft_snaps[0][2] == l3_draft_snaps[1][2] == "0x38ed173900000000"
+    ), "calldata must not be rewritten across re-check"
+    assert (
+        l3_draft_snaps[0][3] == l3_draft_snaps[1][3] == 0
+    ), "expected_return must stay stable across re-check"
+    assert len(l5_draft_snaps) == 1
+    # Facade passes ``dict(draft)`` into the simulator; identity may differ, semantics must not.
+    assert (
+        l5_draft_snaps[0][1:] == l3_draft_snaps[-1][1:]
+    ), "L5 must consume the same post-re-check field values"
     assert isinstance(result, str)
     assert "Transaction Blocked by Lirix Policy:" in result
     assert "max_slippage_bps violated" in result

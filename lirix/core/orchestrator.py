@@ -547,6 +547,9 @@ class LirixPipelineOrchestrator:
             self._raise_if_hook_blocked(
                 self._has_blocking_hook_result(pre_sim_hook), simulation=True
             )
+            # Re-run L1–L3 on the same normalized draft after pre-simulation hooks.
+            # Fail-closed: blocks L4/L5 if validation regresses post-hook.
+            client._run_l1_l3_validation(intent=intent, payload=draft, recorder=recorder)
             rpc = client._build_rpc_manager()
             block_number = await reconcile(rpc)
             l4_details = client._l4_orchestration_details(rpc=rpc, block_number=block_number)

@@ -1,3 +1,4 @@
+# Exclusion SSOT: docs/repo_exclusions.md — mirror paths here; see § Three-file maintenance rule (also update .harnessignore, pytest norecursedirs, audit map Scope).
 __pycache__/
 *.py[cod]
 *.egg-info/

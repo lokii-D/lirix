@@ -203,7 +203,7 @@ All high-level returns now include additive metadata:
 - `created_at`：创建时间
 - `correlation_ids`：本会话内产生的 `security_trace.correlation_id` 列表
 - `timeline[]`：会话时间线（`record_trace` 与 `session_event` 两类条目）
-- `state`：会话级可变状态（供上层编排器写入）。若启用 `LirixConfig.simulate_only_requires_prior_validate`，集成方应在日志/告警中关注 **`state["l1_l3_ok"]`**（亦见于 `validation_session` 快照）；语义与钩子顺序见 **[Session gate semantics (l1_l3_ok)](audit_path_map.md#session-gate-semantics-l1_l3_ok)**。
+- `state`：会话级可变状态。启用 **`LirixConfig.simulate_only_requires_prior_validate`** 时关注 **`state["l1_l3_ok"]`** — [`l1_l3_ok` SSOT](audit_path_map.md#session-gate-semantics-l1_l3_ok)。
 - `decision_log`：结构化决策事件日志
 - `lifecycle`：会话生命周期状态
 

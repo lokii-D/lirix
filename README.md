@@ -9,9 +9,9 @@
   <b>English</b> | <a href="#-简体中文-chinese-version">🇨🇳 简体中文</a> | <a href="docs/migration_legacy_to_v2.md">Migration</a> | <a href="#-installation--setup">📦 Installation</a> | <a href="#-quickstart-five-minute-blitz">⚡ Quickstart</a> | <a href="#-ecosystem-integrations-langchain--autogen">🌐 Integrations</a> | <a href="#-architecture--security-trace">🏗️ Architecture</a> | <a href="#-support--faq">💬 Support</a> | <a href="CONTRIBUTING.md">🛠️ Contributing</a> | <a href="SECURITY.md">🛡️ Security</a> | <a href="CODE_OF_CONDUCT.md">⚔️ Conduct</a> | <a href="LICENSE">📜 License</a>
 </p>
 
-**Current version:** **v2.0.3** (see `[project].version` in `pyproject.toml`).
+**Current version:** **v2.0.4** — edit **`[project].version`** in `pyproject.toml` only; `lirix.__version__` and this README follow that anchor.
 
-> **Reading order:** start with the value proposition, then installation, then quickstart, then architecture, then security and support. The Chinese section below follows the same sequence and keeps the same section-level evidence boundaries.
+> **Reading order:** value proposition → installation → quickstart → architecture (overview) → security and support. The Chinese section mirrors this order. Contract fields, version, and gate semantics are single-sourced — see **Document layers** below; do not restate them in both languages differently.
 
 # Lirix 2.0 · The EVM-grade execution airlock for AI agents
 
@@ -41,40 +41,26 @@ The Web3 agent stack fails in predictable ways: prompt injection becomes malicio
 - **Agent-friendly integration** — a single control plane for LLM tools, signers, and orchestrators.
 - **Production-oriented guardrails** — architecture, tests, and docs are tied together by SSOT links.
 
-## 📚 Contract boundaries & evidence sources
+## 📚 Document layers (do not treat this file as contract SSOT)
 
-This README is an orientation layer only. It is intentionally incomplete and must not be treated as the contract SSOT. For any hard claim, prefer the evidence sources listed below.
+| Layer | Document | Use for |
+| --- | --- | --- |
+| **Navigation** | `README.md` (this file) | Value prop, install, quickstart, links |
+| **Audit index** | `docs/audit_path_map.md` | Assertions → code → tests → evidence → CI; **`l1_l3_ok` / full-pipeline revalidation** |
+| **Control plane** | `docs/architecture_control_plane.md` | Assertion ↔ evidence-key table (links audit map for gate semantics) |
+| **API contract** | `docs/api_reference.md` + `tests/` | Stable keys, behavior, integrator surface |
+| **Pipeline order** | `docs/pipeline_evidence_flow.md` | Stage order for `validate_and_simulate` |
+| **CI / gates** | `docs/ci_gate_matrix.md`, `.github/workflows/` | Workflow truth |
+| **Exclusions** | `docs/repo_exclusions.md` | `.gitignore` / `.harnessignore` / pytest alignment |
+| **Security** | `SECURITY.md` | Disclosure and trust boundary |
 
-Use the dedicated docs for authoritative detail:
+**Bilingual rule:** English and Chinese below share the same contract intent. Change version, gate, or evidence claims in **one** place (`pyproject.toml`, `docs/audit_path_map.md`, or the SSOT doc for that topic), then mirror wording in both languages — no independent paraphrase of normative semantics.
 
-- **API and behavior contract**: `docs/api_reference.md` plus the public tests under `tests/`
-- **Architecture and audit topology**: `docs/architecture_control_plane.md` and `docs/audit_path_map.md`
-- **Workflow / gate truth**: `docs/ci_gate_matrix.md` and the GitHub workflows under `.github/workflows/`
-- **Repository exclusions**: `docs/repo_exclusions.md`
-- **Security boundary**: `SECURITY.md`
+If this README conflicts with code, tests, or SSOT docs, **the SSOT docs and code win**.
 
-Core README claims should be auditable against code, tests, and evidence fields. The anchors below are the shortest path for that review:
-
-- **Production / Stable status**: `pyproject.toml`, `docs/release_notes.md`
-- **Fail-closed behavior**: implementation in `lirix/` and coverage in `tests/`
-- **Coverage and regression posture**: `tests/`, `docs/ci_gate_matrix.md`
-- **Audit / replay fields**: `docs/audit_path_map.md`, `docs/api_reference.md`
-
-If this README conflicts with code, tests, or SSOT docs, the latter win.
-
-**PyPI maturity:** package metadata lists **`Development Status :: 5 - Production/Stable`** for the **2.x** line on PyPI; semver and `docs/migration_legacy_to_v2.md` remain the authority for breaking-change cadence.
-
-**Public API vs migration shims:** Supported **2.x** import surfaces and payload contracts are treated as **stable** for integrators. `DeprecationWarning` paths and **legacy config alias coercion** exist only for **documented migration** and the **next-major removal window** described in `docs/migration_legacy_to_v2.md` and `docs/release_notes.md` — they do **not** contradict the Production/Stable classifier; they simply bound compatibility shims before a semver major.
-
-## 🧩 How to read this repository
-
-If you only have a minute, read the sections in this order: value proposition, installation, quickstart, architecture, security, support.
-
-If you are integrating or upgrading, keep `docs/migration_legacy_to_v2.md`, `docs/api_reference.md`, and `docs/audit_path_map.md` open side by side with this README.
+**PyPI maturity:** `Development Status :: 5 - Production/Stable` on the **2.x** line; breaking cadence: `docs/migration_legacy_to_v2.md`. **Migration shims** (`DeprecationWarning`, legacy config aliases) are documented compatibility only — see `docs/release_notes.md`.
 
 ## 📦 Installation & Setup
-
-This README tracks **`v2.0.3`** with PyPI/source metadata in `pyproject.toml`.
 
 If you are new, use the recommended path below. If you are upgrading, skim the migration note first.
 
@@ -139,7 +125,7 @@ else:
 
 When a request is blocked, inspect **`agent_feedback.remediation`**, then **`agent_feedback.reason_code`**, then resolve the protocol with **`resolve_failure_protocol(...)`** or **`Lirix.resolve_failure_protocol(...)`**. Stable audit fields include **`canonical_error_code`**, **`failure_type_canonical`**, **`canonical_reason_codes`**, and the replay-facing aliases inside **`forensic_bundle`**.
 
-For the lower-level contract and the exact recovery order, use the SSOT docs and tests listed in **`docs/audit_path_map.md`** rather than extending this README narrative.
+For recovery order and audit fields (`canonical_error_code`, `failure_type_canonical`, `canonical_reason_codes`, `forensic_bundle`), use **`docs/audit_path_map.md`** and **`docs/api_reference.md`** — not extended narrative here.
 
 ### 4) E2E regression mirror
 
@@ -244,11 +230,9 @@ autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet
 
 ## 🏗️ Architecture & Security Trace
 
-This section explains the control plane after the quickstart has shown the outcome. Read it once for the model, then return to the tests and docs for detail.
+Compressed overview only — assertion tables and gate semantics live in **`docs/architecture_control_plane.md`** and **`docs/audit_path_map.md`**.
 
-Public **`Lirix`** (`lirix/_facade.py`) composes **`HookManager`**, **`ClientPipelineProtocol`**, and **`LirixPipelineOrchestrator`** into a one-way pipeline with session and trace FSM semantics. Hooks extend policy at the perimeter; they do not bypass the core.
-
-For implementation details, prefer the architecture and audit docs plus the tests that pin behavior. This section is intentionally a compressed overview.
+Public **`Lirix`** (`lirix/_facade.py`) composes **`HookManager`**, **`ClientPipelineProtocol`**, and **`LirixPipelineOrchestrator`** into a one-way pipeline. Hooks extend policy at the perimeter; they do not bypass the core.
 
 ```mermaid
 flowchart LR
@@ -284,6 +268,10 @@ flowchart LR
 - **`atomic_multicall`** — multicall packing with L1–L3 alignment.
 - **Layer types** — prefer **`from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator`**; use **`lirix.layers`** / **`lirix.core`** when you need the full catalog (e.g. `ShadowAuditor`, `MulticallEncoder`).
 
+### Full pipeline order (`validate_and_simulate` / `async_validate_and_simulate`)
+
+**Stage order:** [`docs/pipeline_evidence_flow.md`](docs/pipeline_evidence_flow.md). **`l1_l3_ok` and post–`HOOK_PRE_SIMULATION` L1–L3 revalidation:** [`docs/audit_path_map.md` § Session gate semantics](docs/audit_path_map.md#session-gate-semantics-l1_l3_ok) only.
+
 ### Progressive migration flags
 
 `LirixConfig` exposes **`hook_contract_mode`**, **`policy_lifecycle_mode`**, and **`rpc_evidence_mode`**. Move `hook_contract_mode` from **`shadow`** to **`enforce`** only after the hook evidence is clean and the v2 rails are verified.
@@ -305,18 +293,6 @@ Full tree: **`docs/STRUCTURE.md`**. Control plane table: **`docs/architecture_co
 This repository’s trust boundary is intentionally narrow.
 
 **Triple-Zero:** **Zero-Key · Zero-Telemetry · Zero-Trust** — see **`SECURITY.md`**. If a request cannot be verified with high confidence, Lirix rejects it rather than guessing.
-
-## ✅ Stability, guarantees, and evidence sources
-
-This README is a high-level entry point, not the SSOT for every operational claim. When a claim matters, trace it to code, tests, and the relevant evidence doc.
-
-- **API and behavior guarantees:** confirm against `docs/api_reference.md` and the public tests under `tests/`.
-- **Architecture and audit trace:** confirm against `docs/audit_path_map.md`, `docs/architecture_control_plane.md`, and `docs/lirix_import_topology.md`.
-- **Workflow / gate truth:** confirm against `docs/ci_gate_matrix.md` and `.github/workflows/*.yml`.
-- **Versioned packaging truth:** confirm against `pyproject.toml`.
-- **Repository exclusions:** confirm against `docs/repo_exclusions.md`, `.gitignore`, and `.harnessignore`.
-
-When this README and the evidence sources differ, the evidence sources win.
 
 ## 💬 Support & FAQ
 
@@ -341,17 +317,28 @@ A: Start with the value proposition, then installation, then quickstart, then ar
 
 **一句话定义：** Lirix 是夹在「不可信模型输出」与「私钥 / 广播」之间的 **fail-closed 校验 + 模拟控制平面**。它不是钱包，也不是 Signer；它是 **EVM-grade execution airlock**，要求意图、Payload、RPC 证据与本地 EVM 模拟逐层通过 **L1–L5 单向 DAG**，然后才吐出可交接的广播字段。
 
+**当前版本：v2.0.4** — 仅改 `pyproject.toml` 中 `[project].version`；`lirix.__version__` 与上文英文版本行与之对齐。
+
+## 📚 文档分层（本文件非契约 SSOT）
+
+| 层级 | 文档 | 用途 |
+| --- | --- | --- |
+| **导航** | `README.md`（本节） | 价值、安装、快速上手、链接 |
+| **审计索引** | `docs/audit_path_map.md` | 断言 → 代码 → 测试 → 证据 → CI；**`l1_l3_ok` / 全链路 L1–L3 复检** |
+| **控制面** | `docs/architecture_control_plane.md` | 断言 ↔ 证据键表（门闩语义链至 audit map） |
+| **API 契约** | `docs/api_reference.md` + `tests/` | 稳定键名与行为 |
+| **流水线顺序** | `docs/pipeline_evidence_flow.md` | `validate_and_simulate` 阶段顺序 |
+| **排除边界** | `docs/repo_exclusions.md` | `.gitignore` / `.harnessignore` 对齐 |
+
+**双语维护：** 版本、门禁、证据字段以 SSOT 文档为准，中英文同步改写，勿各自意译规范语义。与代码或 SSOT 冲突时，**以 SSOT 与代码为准**。
+
 ## 🎯 为什么需要 Lirix？
 
 Web3 Agent 的常见死法非常一致：**Prompt 注入** 变成恶意 calldata，**有毒 DeFi 形状** 在审查时看似合理、上线后却 Revert 或失血，**Proxy / Router** 把真实执行路径藏起来，RPC 视图还会在高压下分叉。Lirix 把这些风险压成一条确定性 DAG：先校验意图与结构，再做 ABI 解码与 Proxy 穿透，必要时进行多节点 RPC 对账，并配合 **State Overrides** 做沙盒模拟，最后输出带 **`security_trace`** 与 **`replay_bundle`** 的证据信封——由你的编排器决定重试、改写，还是直接硬拒绝。
 
 ## 📦 安装与初始化
 
-**当前版本：v2.0.3**（与 `pyproject.toml` 中 `[project].version` 一致）。
-
-如果你是新读者，直接按下面的推荐方式开始；如果你在升级，请先看迁移说明。
-
-**阅读顺序：** 先看价值定义，再看安装，再看快速上手，再看架构，再看安全与支持。下方中文内容与英文部分在章节顺序上保持一致，并尽量保持语义与契约意图对齐。
+如果你是新读者，直接按下面的推荐方式开始；如果你在升级，请先看 `docs/migration_legacy_to_v2.md`。
 
 ### 推荐方式
 
@@ -404,7 +391,7 @@ else:
 
 ### 3) 失败排查
 
-被阻断时，按顺序查看 **`agent_feedback.remediation`**、**`agent_feedback.reason_code`**，再用 **`resolve_failure_protocol(...)`** 或 **`Lirix.resolve_failure_protocol(...)`** 定位。稳定审计字段包括 **`canonical_error_code`**、**`failure_type_canonical`**、**`canonical_reason_codes`**，以及 **`forensic_bundle`** 中面向回放的别名字段。
+被阻断时，按顺序查看 **`agent_feedback.remediation`**、**`agent_feedback.reason_code`**，再用 **`resolve_failure_protocol(...)`** 定位。审计字段与恢复顺序见 **`docs/audit_path_map.md`**、**`docs/api_reference.md`**（含 **`canonical_error_code`**、**`failure_type_canonical`**、**`canonical_reason_codes`**、**`forensic_bundle`**）。
 
 ### 4) E2E 回归镜像
 
@@ -509,9 +496,9 @@ autogen_lirix = AutoGenLirixBridge(guardian=Lirix(rpc_urls=["https://eth-mainnet
 
 ## 🏗️ 架构与安全追踪
 
-这部分解释控制平面；读完快速上手后再看最顺。
+仅为压缩概览；断言表与门闩语义见 **`docs/architecture_control_plane.md`**、**`docs/audit_path_map.md`**。
 
-对外 **`Lirix`**（`lirix/_facade.py`）把 **`HookManager`**、**`ClientPipelineProtocol`**、**`LirixPipelineOrchestrator`** 组合成一条单向流水线；会话与追踪由 FSM 约束。Hook 是隔离契约面，只能扩展策略，**不能绕过核心层**。
+对外 **`Lirix`**（`lirix/_facade.py`）组合 **`HookManager`**、**`ClientPipelineProtocol`**、**`LirixPipelineOrchestrator`** 为单向流水线。Hook 只能扩展策略，**不能绕过核心层**。
 
 ```mermaid
 flowchart LR
@@ -543,9 +530,13 @@ flowchart LR
 
 - **`validate_only` / `async_validate_only`** — L1–L3 + evidence。
 - **`simulate_only` / `async_simulate_only`** — L4–L5，可按配置在前面挂验证门。
-- **`validate_and_simulate` / `async_validate_and_simulate`** — 全 DAG 路径。
+- **`validate_and_simulate` / `async_validate_and_simulate`** — 全 DAG。
 - **`atomic_multicall`** — 与 L1–L3 对齐的 multicall 打包。
 - **Layer 类型** — 优先 **`from lirix import HookManager, ProxyPiercer, RPCManager, SandboxSimulator`**；需要完整目录（如 `ShadowAuditor`、`MulticallEncoder`）时再用 **`lirix.layers`** / **`lirix.core`**。
+
+### 全链路顺序（`validate_and_simulate` / `async_validate_and_simulate`）
+
+**阶段顺序：** [`docs/pipeline_evidence_flow.md`](docs/pipeline_evidence_flow.md)。**`l1_l3_ok` 与 `HOOK_PRE_SIMULATION` 后 L1–L3 复检：** 仅以 [`docs/audit_path_map.md` § Session gate semantics](docs/audit_path_map.md#session-gate-semantics-l1_l3_ok) 为准。
 
 ### 渐进式迁移开关
 
