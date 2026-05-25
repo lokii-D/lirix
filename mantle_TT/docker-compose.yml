@@ -1,0 +1,31 @@
+services:
+  streamlit:
+    build:
+      context: ..
+      dockerfile: mantle_TT/Dockerfile
+    ports:
+      - "7860:7860"
+    environment:
+      - MANTLE_RPC_URLS=${MANTLE_RPC_URLS:-}
+      - MANTLE_MAINNET_RPC=${MANTLE_MAINNET_RPC:-}
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    command:
+      - streamlit
+      - run
+      - mantle_TT/app.py
+      - --server.address=0.0.0.0
+      - --server.port=7860
+
+  anvil:
+    image: foundryrs/foundry:latest
+    profiles: ["anvil"]
+    command: >-
+      sh -lc 'if [ -n "${MANTLE_MAINNET_RPC:-}" ]; then
+      anvil --fork-url "$MANTLE_MAINNET_RPC" --host 0.0.0.0 --port 8545;
+      else
+      anvil --host 0.0.0.0 --port 8545;
+      fi'
+    ports:
+      - "8545:8545"
+    environment:
+      - MANTLE_MAINNET_RPC=${MANTLE_MAINNET_RPC:-}

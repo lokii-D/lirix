@@ -32,6 +32,7 @@ Every workflow under `.github/workflows/` is indexed below (no orphan files).
 | `e2e-anvil-optional.yml` | Optional Anvil E2E | § `e2e-anvil-optional.yml` |
 | `sbom-optional.yml` | Optional SBOM (CycloneDX) | § `sbom-optional.yml` |
 | `mantle_fork_smoke.yml` | Mantle fork smoke | § `mantle_fork_smoke.yml` |
+| `mantle-harness-ci.yml` | Mantle Harness CI | § `mantle-harness-ci.yml` |
 | `release.yml` | Release | § `release.yml` |
 
 **Import topology artifact:** regenerate with `python tools/gen_lirix_import_graph.py`; **drift + preflight roll-up** (Fast Required / Governance, before dev install): `python tools/harness.py preflight-remediation-status` (includes the same `--check` as `import-topology`; see `docs/preflight_remediation_executor_handoff.md`).
@@ -198,6 +199,18 @@ No gate was removed from either workflow; `docs/branch_protection_required_check
 | Job | Steps |
 | --- | --- |
 | **sbom** | `lirix-ci-setup` → `pip install cyclonedx-bom` → `cyclonedx-py environment -o lirix-sbom.json` → upload SBOM artifact |
+
+---
+
+## `.github/workflows/mantle-harness-ci.yml` — **Mantle Harness CI**
+
+**Triggers:** `push` / `pull_request` on `mantle-turing-*` and `mantle/**`; `workflow_dispatch`.<br>
+**Does not run on `main` PRs by default** (branch filter). See **`docs/mantle_mainline_split.md`**.
+
+| Job | Steps |
+| --- | --- |
+| **Mantle Harness Required** | `lirix-ci-setup` (3.12) → verify `mantle_TT/README.md` → `bash mantle_TT/scripts/validate_harness.sh` → `ruff check mantle_TT` → `black --check mantle_TT` |
+| **Mantle fork smoke (optional secret)** | needs harness job → Foundry → Anvil fork → `pytest mantle_TT/tests/mantle/` (public testnet RPC fallback if secret unset) |
 
 ---
 

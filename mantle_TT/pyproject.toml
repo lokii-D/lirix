@@ -1,0 +1,11 @@
+# Mantle harness lane — local Ruff/Black config (does not affect mainline ``lirix`` gates).
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+extend-select = ["BLE"]
+
+[tool.black]
+line-length = 120
+target-version = ["py39"]

@@ -30,6 +30,7 @@ This repository uses an **A+ fast/slow split**:
 - optional workflows:
   - `.github/workflows/e2e-anvil-optional.yml`
   - `.github/workflows/mantle_fork_smoke.yml`
+  - `.github/workflows/mantle-harness-ci.yml`
   - `.github/workflows/sbom-optional.yml`
   - `.github/workflows/slow-lane-schedule.yml`
 

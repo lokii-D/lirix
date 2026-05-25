@@ -1,0 +1,11 @@
+{
+  "scenario": "malicious_swap",
+  "chain": "mantle_mainnet",
+  "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
+  "function_name": "swap",
+  "value": 0,
+  "notes": [
+    "Router is real Mantle Merchant Moe router",
+    "Payload is crafted to demonstrate slippage / route abuse rejection"
+  ]
+}
