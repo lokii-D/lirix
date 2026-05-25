@@ -118,6 +118,12 @@ filterwarnings = [
     # When the above fires during pytest-asyncio fixture teardown, pluggy surfaces this wrapper warning;
     # it is a consequence of the stdlib deprecation path, not an independent Lirix regression signal.
     "ignore::pluggy.PluggyTeardownRaisedWarning",
+    # macOS system Python 3.9 may link LibreSSL; urllib3 v2 emits this at import time and
+    # ``filterwarnings = error`` would fail collection — Ubuntu CI uses OpenSSL and is unaffected.
+    # Use ``Warning`` (not ``urllib3.exceptions.NotOpenSSLWarning``) so pytest need not import urllib3 to parse filters.
+    "ignore:urllib3 v2 only supports OpenSSL.*:Warning",
+    # web3 → websockets.legacy import path (third-party; not a Lirix regression signal).
+    "ignore:websockets\\.legacy is deprecated:DeprecationWarning",
     # 若有不可避免的第三方库弃用警告，在此用 "ignore:..." 逐条豁免；禁止全局放行。
 ]
 

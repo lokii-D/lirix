@@ -45,6 +45,9 @@ PR_COMPAT_SMOKE_PYTEST_PATHS: tuple[str, ...] = (
     "tests/test_core/test_registry_authority_contract.py",
 )
 
+# Mainline lint/format scope only — ``mantle_TT/``, ``tdsc/``, and root harness duplicates are out of band.
+_MAINLINE_LINT_PATHS: tuple[str, ...] = ("lirix", "tests", "tools")
+
 
 def _run_repo_command(argv: list[str]) -> int:
     proc = subprocess.run(argv, cwd=_REPO_ROOT, check=False)
@@ -52,11 +55,13 @@ def _run_repo_command(argv: list[str]) -> int:
 
 
 def check_lint() -> int:
-    return _run_repo_command([sys.executable, "-m", "ruff", "check", "."])
+    return _run_repo_command([sys.executable, "-m", "ruff", "check", *_MAINLINE_LINT_PATHS])
 
 
 def check_format_check() -> int:
-    return _run_repo_command([sys.executable, "-m", "black", "--check", "--quiet", "."])
+    return _run_repo_command(
+        [sys.executable, "-m", "black", "--check", "--quiet", *_MAINLINE_LINT_PATHS]
+    )
 
 
 def check_typecheck() -> int:
