@@ -18,6 +18,7 @@ FILES=(
   docs
   examples
   mantle
+  type1
   scripts
   tests
 )
