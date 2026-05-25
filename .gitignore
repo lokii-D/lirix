@@ -1,41 +1,96 @@
 # Exclusion SSOT: docs/repo_exclusions.md — mirror paths here; see § Three-file maintenance rule (also update .harnessignore, pytest norecursedirs, audit map Scope).
-__pycache__/
-*.py[cod]
-*.egg-info/
-.eggs/
-dist/
-build/
-out/
-cache/
-.tox/
-.nox/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
 
 # Virtual environments
 .venv/
 .venv*/
-venv/
-env/
+.venv*
 .venv_ci*/
-.venv_ci312/
-.lirix_audit_venv/
-.lirix_final_preflight_venv/
-.mantle_tt_venv/
-_lirix_launch_sandbox/
+.venv_cursor*/
+.venv312/
+venv/
+ENV/
+env/
 
-# Secrets / local env
+# Environment files / secrets
+.env/
 .env
+.env.*
+*.env
 .env.release
+.secret
+.secrets
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
 
-# OS files
+# Python caches and build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+site/
+.build/
+build/
+dist/
+*.egg-info/
+*.dist-info/
+
+# Test / benchmark / local output artifacts
+out/
+output/
+artifacts/
+logs/
+*.log
+benchmark-artifacts*/
+benchmarks-artifacts*.md
+benchmarks-todos-output*.md
+change_log/
+.pendingchanges/
+pendingchanges/
+
+# Cursor / editor / workspace state
+.cursor/
+.cursor-cache/
+.cursorignore
+.cursorrules
+worktrees.json
+*.code-workspace
+
+# OS junk
 .DS_Store
 Thumbs.db
+
+# Package / archive outputs
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+mantle-harness.tar.gz
+
+# Misc local state
+*.swp
+*.swo
+*~
+
+# Root Mantle harness duplicates (SSOT: mantle_TT/) — prevents mainline lint/pytest pollution
+/app.py
+/tests/mantle/
+/Dockerfile.submission
+/README_submission.md
+/requirements_submission.txt
+/docker-compose.yml
+/contracts/LirixShield.sol
 
 # JavaScript tooling (if introduced locally)
 node_modules/
@@ -56,3 +111,7 @@ audit_artifacts/**
 
 # Dev silos (local only)
 .lirix_launch_silo/
+.lirix_audit_venv/
+.lirix_final_preflight_venv/
+.mantle_tt_venv/
+_lirix_launch_sandbox/
