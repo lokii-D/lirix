@@ -62,7 +62,27 @@ jobs:
         env:
           MANTLE_MAINNET_RPC: ${{ secrets.MANTLE_MAINNET_RPC }}
         run: |
-          FORK_URL="${MANTLE_MAINNET_RPC:-https://rpc.testnet.mantle.xyz}"
+          # Default aligns with lirix MANTLE_MAINNET_RPC_URLS[0]; rpc.testnet.mantle.xyz returns 404/301.
+          pick_fork_url() {
+            if [ -n "${MANTLE_MAINNET_RPC:-}" ]; then
+              echo "$MANTLE_MAINNET_RPC"
+              return 0
+            fi
+            for candidate in \
+              https://rpc.mantle.xyz \
+              https://mantle.drpc.org \
+              https://rpc.sepolia.mantle.xyz; do
+              if curl -sf -m 15 -X POST -H "Content-Type: application/json" \
+                --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+                "$candidate" | grep -q '"result"'; then
+                echo "$candidate"
+                return 0
+              fi
+            done
+            return 1
+          }
+          FORK_URL="$(pick_fork_url)" || { echo "No reachable Mantle RPC for anvil fork"; exit 1; }
+          echo "Using fork URL: $FORK_URL"
           anvil --fork-url "$FORK_URL" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
           ANVIL_PID=$!
           for i in {1..30}; do

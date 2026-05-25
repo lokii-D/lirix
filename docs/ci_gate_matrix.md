@@ -210,7 +210,7 @@ No gate was removed from either workflow; `docs/branch_protection_required_check
 | Job | Steps |
 | --- | --- |
 | **Mantle Harness Required** | `lirix-ci-setup` (3.12) → verify `mantle_TT/README.md` → `bash mantle_TT/scripts/validate_harness.sh` → `ruff check mantle_TT` → `black --check mantle_TT` |
-| **Mantle fork smoke (optional secret)** | needs harness job → Foundry → Anvil fork → `pytest mantle_TT/tests/mantle/` (public testnet RPC fallback if secret unset) |
+| **Mantle fork smoke (optional secret)** | needs harness job → Foundry → Anvil fork → `pytest mantle_TT/tests/mantle/` (secret `MANTLE_MAINNET_RPC` or public mainnet RPC probe: `rpc.mantle.xyz`, `mantle.drpc.org`, `rpc.sepolia.mantle.xyz`) |
 
 ---
 
