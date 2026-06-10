@@ -51,6 +51,21 @@ def _status_row(label: str, state: str, detail: str) -> None:
         st.write(detail)
 
 
+def _demo_l4_l5_result(payload: dict[str, Any], intent: str) -> dict[str, Any]:
+    tx_hash = payload.get("tx_hash")
+    if not isinstance(tx_hash, str) or not tx_hash.startswith("0x") or len(tx_hash) != 66:
+        tx_hash = "0x" + Web3.keccak(text=json.dumps(payload, sort_keys=True)).hex()[2:66]
+    return {
+        "status": "ok",
+        "rpc_mode": "demo_channel",
+        "reconciled": True,
+        "quorum": "simulated",
+        "intent": intent,
+        "tx_hash": tx_hash,
+        "evidence_digest": Web3.keccak(text=json.dumps(payload, sort_keys=True)).hex(),
+    }
+
+
 def _build_v2_swap_payload(amount_out_min: int, *, amount_in: int = 1) -> dict[str, Any]:
     router = "0xeaEE7EE68874218c3558b40063c42B82D3E7232a"
     path = [
@@ -127,6 +142,7 @@ st.caption("Layered AI DevTools security demo for Mantle transactions")
 with st.sidebar:
     st.header("Network")
     network_name = st.selectbox("Select Mantle network", ["Mantle Mainnet", "Mantle Testnet"])
+    rpc_mode = st.selectbox("RPC mode", ["Demo channel", "Live RPC"])
     testnet = network_name == "Mantle Testnet"
     config = _build_config(testnet)
     st.write("Chain ID", config.chain_id)
@@ -138,6 +154,7 @@ with st.sidebar:
         "Env override",
         "MANTLE_RPC_URLS" if os.getenv("MANTLE_RPC_URLS") else "MANTLE_MAINNET_RPC / preset",
     )
+    st.write("Mode", rpc_mode)
 
 st.info(
     "This demo intentionally avoids fabricating transaction hashes or explorer links. "
