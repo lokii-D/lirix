@@ -4,10 +4,10 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from contextlib import suppress
 from pathlib import Path
 
 from huggingface_hub import HfApi
+from huggingface_hub.errors import RepositoryNotFoundError
 
 SPACE_README = """---
 title: Lirix
@@ -49,6 +49,15 @@ def build_staging(root: Path) -> Path:
     return staging
 
 
+def upload_space(api: HfApi, staging: Path, repo_id: str) -> None:
+    api.upload_folder(
+        folder_path=str(staging),
+        repo_id=repo_id,
+        repo_type="space",
+        commit_message="sync: update from GitHub Actions",
+    )
+
+
 def main() -> int:
     token = os.environ.get("HF_TOKEN", "").strip()
     repo_id = os.environ.get("HF_SPACE_REPO", "").strip()
@@ -60,7 +69,10 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     staging = build_staging(root)
     api = HfApi(token=token)
-    with suppress(Exception):
+
+    try:
+        upload_space(api, staging, repo_id)
+    except RepositoryNotFoundError:
         api.create_repo(
             repo_id=repo_id,
             repo_type="space",
@@ -68,12 +80,8 @@ def main() -> int:
             exist_ok=True,
             private=False,
         )
-    api.upload_folder(
-        folder_path=str(staging),
-        repo_id=repo_id,
-        repo_type="space",
-        commit_message="sync: update from GitHub Actions",
-    )
+        upload_space(api, staging, repo_id)
+
     return 0
 
 
