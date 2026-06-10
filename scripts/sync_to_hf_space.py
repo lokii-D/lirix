@@ -15,7 +15,7 @@ emoji: 🛡️
 colorFrom: blue
 colorTo: indigo
 sdk: streamlit
-app_file: app.py
+app_file: mantle_TT/app.py
 pinned: false
 license: mit
 ---
