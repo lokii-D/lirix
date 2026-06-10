@@ -16,39 +16,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify Hugging Face token
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          if [ -z "${HF_TOKEN}" ]; then
-            echo "HF_TOKEN is not configured. Add a write token in repository secrets." >&2
-            exit 1
-          fi
-
       - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_REPO: lokiii07/lirix-mantle-harness
+          HF_SPACE_REPO: lokii07/lirix-mantle-harness
         run: |
           python3 -m pip install --upgrade pip huggingface_hub
           python3 - <<'PY'
           import os
+          import shutil
+          import tempfile
+          from pathlib import Path
           from huggingface_hub import HfApi
 
-          token = os.environ["HF_TOKEN"]
-          repo_id = os.environ["HF_SPACE_REPO"]
-          api = HfApi(token=token)
+          root = Path.cwd()
+          staging = Path(tempfile.mkdtemp(prefix="lirix-space-"))
+
+          for item in root.iterdir():
+              if item.name in {".git", ".github", ".cursor", "terminals"}:
+                  continue
+              dest = staging / item.name
+              if item.is_dir():
+                  shutil.copytree(item, dest, dirs_exist_ok=True)
+              else:
+                  shutil.copy2(item, dest)
+
+          readme = "\n".join([
+              "---",
+              "title: Lirix",
+              "emoji: 🛡️",
+              "colorFrom: blue",
+              "colorTo: indigo",
+              "sdk: docker",
+              "app_file: app.py",
+              "pinned: false",
+              "license: mit",
+              "---",
+              "",
+              "# Lirix",
+              "",
+              "Lirix is a fail-closed validation and simulation control plane for AI agent payloads that may touch EVM value flows.",
+              "",
+          ])
+          (staging / "README.md").write_text(readme, encoding="utf-8")
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
           api.upload_folder(
-              folder_path=".",
-              repo_id=repo_id,
+              folder_path=str(staging),
+              repo_id=os.environ["HF_SPACE_REPO"],
               repo_type="space",
               commit_message="sync: update from GitHub Actions",
-              ignore_patterns=[
-                  ".git/*",
-                  ".github/workflows/*",
-                  ".cursor/*",
-                  "terminals/*",
-                  "mantle_TT/*",
-              ],
           )
           PY
