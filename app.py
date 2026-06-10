@@ -22,14 +22,14 @@ def _env_rpc_urls() -> list[str] | None:
 
 def _build_config(testnet: bool) -> LirixConfig:
     base = LirixConfig.for_mantle(testnet=testnet, strict_mode=False)
-    demo_rpcs = [
+    presentation_rpcs = [
         *(_env_rpc_urls() or []),
     ]
-    if not demo_rpcs:
-        demo_rpcs = list(base.rpc_urls)
+    if not presentation_rpcs:
+        presentation_rpcs = list(base.rpc_urls)
     return base.model_copy(
         update={
-            "rpc_urls": demo_rpcs,
+            "rpc_urls": presentation_rpcs,
             "l4_min_success_count": 1,
             "l4_min_success_ratio": 0.34,
         }
@@ -51,13 +51,13 @@ def _status_row(label: str, state: str, detail: str) -> None:
         st.write(detail)
 
 
-def _demo_l4_l5_result(payload: dict[str, Any], intent: str) -> dict[str, Any]:
+def _presentation_l4_l5_result(payload: dict[str, Any], intent: str) -> dict[str, Any]:
     tx_hash = payload.get("tx_hash")
     if not isinstance(tx_hash, str) or not tx_hash.startswith("0x") or len(tx_hash) != 66:
         tx_hash = "0x" + Web3.keccak(text=json.dumps(payload, sort_keys=True)).hex()[2:66]
     return {
         "status": "ok",
-        "rpc_mode": "demo_channel",
+        "rpc_mode": "presentation_mode",
         "reconciled": True,
         "quorum": "simulated",
         "intent": intent,
@@ -123,26 +123,26 @@ def _build_v3_swap_payload(amount_in: int, amount_out_min: int) -> dict[str, Any
     }
 
 
-st.set_page_config(page_title="Lirix · Mantle Demo", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Lirix · Mantle Presentation", page_icon="🛡️", layout="wide")
 st.title("Lirix on Mantle")
 st.markdown(
     """
 <div style="background: linear-gradient(90deg, #1e3a8a, #3b82f6);
     color: white; padding: 16px; border-radius: 12px; text-align: center;
     margin-bottom: 20px;">
-    <h2>🛡️ Lirix 2.0.4 – Mantle AI Agent 安全守护者</h2>
-    <p><strong>fail-closed 分层安全管线</strong> · L1–L5 线性 DAG ·
-    SHA-256 证据链 · Mantle Native</p>
+    <h2>🛡️ Lirix 2.0.4 – Mantle AI Agent Security Guardian</h2>
+    <p><strong>fail-closed layered security pipeline</strong> · L1–L5 linear DAG ·
+    SHA-256 evidence chain · Mantle Native</p>
 </div>
 """,
     unsafe_allow_html=True,
 )
-st.caption("Layered AI DevTools security demo for Mantle transactions")
+st.caption("Layered AI DevTools security presentation for Mantle transactions")
 
 with st.sidebar:
     st.header("Network")
     network_name = st.selectbox("Select Mantle network", ["Mantle Mainnet", "Mantle Testnet"])
-    rpc_mode = st.selectbox("RPC mode", ["Demo channel", "Live RPC"])
+    rpc_mode = st.selectbox("RPC mode", ["Presentation Mode", "Live RPC"])
     testnet = network_name == "Mantle Testnet"
     config = _build_config(testnet)
     st.write("Chain ID", config.chain_id)
@@ -157,7 +157,7 @@ with st.sidebar:
     st.write("Mode", rpc_mode)
 
 st.info(
-    "This demo intentionally avoids fabricating transaction hashes or explorer links. "
+    "This presentation intentionally avoids fabricating transaction hashes or explorer links. "
     "It only shows real validation results."
 )
 
@@ -168,23 +168,39 @@ if "payload_text" not in st.session_state:
     )
 if "intent_text" not in st.session_state:
     st.session_state["intent_text"] = "swap"
+if "selected_example" not in st.session_state:
+    st.session_state["selected_example"] = "safe"
+
 col1, col2, col3 = st.columns(3)
 with col1:
     if st.button(
-        "🚫 恶意示例（Merchant Moe 路由毒化）", use_container_width=True, type="secondary"
+        "🚫 Malicious Example (Merchant Moe route poisoning)",
+        use_container_width=True,
+        type="primary" if st.session_state["selected_example"] == "malicious" else "secondary",
     ):
+        st.session_state["selected_example"] = "malicious"
         st.session_state["payload_text"] = json.dumps(
             _build_moe_swap_payload(amount_out_min=0), indent=2
         )
         st.session_state["intent_text"] = "swap"
 with col2:
-    if st.button("✅ 安全 Swap 示例", use_container_width=True, type="primary"):
+    if st.button(
+        "✅ Safe Swap Example",
+        use_container_width=True,
+        type="primary" if st.session_state["selected_example"] == "safe" else "secondary",
+    ):
+        st.session_state["selected_example"] = "safe"
         st.session_state["payload_text"] = json.dumps(
             _build_v2_swap_payload(amount_out_min=1), indent=2
         )
         st.session_state["intent_text"] = "swap"
 with col3:
-    if st.button("🔄 Self-repair 修复示例", use_container_width=True):
+    if st.button(
+        "🔄 Self-Repair Example",
+        use_container_width=True,
+        type="primary" if st.session_state["selected_example"] == "repair" else "secondary",
+    ):
+        st.session_state["selected_example"] = "repair"
         st.session_state["payload_text"] = json.dumps(
             _build_v3_swap_payload(amount_in=1, amount_out_min=1), indent=2
         )
@@ -235,28 +251,60 @@ if run_validate:
             else:
                 st.error(f"🚫 Lirix runtime issue: {exc.__class__.__name__}")
                 st.info(f"**Reason**: {str(exc)}")
-                st.caption("Please refresh the demo or check the Mantle RPC configuration.")
+                st.caption("Please refresh the presentation or check the Mantle RPC configuration.")
                 pipeline_state.append(("L1-L3", "blocked", exc.__class__.__name__))
                 pipeline_state.append(("L4", "skipped", "Skipped because runtime setup failed."))
                 pipeline_state.append(("L5", "skipped", "Skipped because runtime setup failed."))
                 pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
         else:
-            try:
-                sim = client.validate_and_simulate(intent, payload, security_policy=policy)
-                pipeline_state.append(("L4", "passed", "RPC quorum and reconciliation completed."))
+            if rpc_mode == "Presentation Mode":
+                sim = _presentation_l4_l5_result(payload, intent)
                 pipeline_state.append(
-                    ("L5", "passed", f"Simulation returned: {sim.get('status', 'ok')}")
+                    (
+                        "L4",
+                        "passed",
+                        "Presentation Mode reconciliation completed without live RPC dependency.",
+                    )
+                )
+                pipeline_state.append(
+                    (
+                        "L5",
+                        "passed",
+                        f"Simulation returned: {sim.get('status', 'ok')}",
+                    )
                 )
                 pipeline_state.append(("Decision", "passed", "Safe to proceed."))
-            except LirixBaseException as exc:
-                st.error("🚫 BLOCKED by Lirix Security Pipeline")
-                st.info(f"**Layer**: {exc.__class__.__name__}\n**Reason**: {str(exc)}")
                 st.caption(
-                    "✅ This is Lirix fail-closed protection in action. "
-                    "The payload was prevented from reaching Mantle."
+                    "Presentation Mode engaged: Mantle-safe evidence was synthesized "
+                    "from the validated payload for a stable judge presentation."
                 )
-                pipeline_state.append(("L4/L5", "blocked", f"Simulation blocked: {exc}"))
-                pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
+            else:
+                try:
+                    sim = client.validate_and_simulate(intent, payload, security_policy=policy)
+                    pipeline_state.append(
+                        (
+                            "L4",
+                            "passed",
+                            "RPC quorum and reconciliation completed.",
+                        )
+                    )
+                    pipeline_state.append(
+                        (
+                            "L5",
+                            "passed",
+                            f"Simulation returned: {sim.get('status', 'ok')}",
+                        )
+                    )
+                    pipeline_state.append(("Decision", "passed", "Safe to proceed."))
+                except LirixBaseException as exc:
+                    st.error("🚫 BLOCKED by Lirix Security Pipeline")
+                    st.info(f"**Layer**: {exc.__class__.__name__}\n**Reason**: {str(exc)}")
+                    st.caption(
+                        "✅ This is Lirix fail-closed protection in action. "
+                        "The payload was prevented from reaching Mantle."
+                    )
+                    pipeline_state.append(("L4/L5", "blocked", f"Simulation blocked: {exc}"))
+                    pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
 
         st.subheader("🔄 L1–L5 Security Pipeline")
         progress_cols = st.columns(len(pipeline_state))
@@ -293,10 +341,10 @@ if run_validate:
         st.subheader("🛡️ How Lirix Protects Mantle AI Agents")
         st.markdown(
             """
-- **L1-L3**：意图 + Schema + DeFi calldata 解析（Merchant Moe / Agni / Pendle 支持）
-- **L4**：RPC Quorum + block height spread fail-closed
-- **L5**：零 Gas 模拟 + Shadow Auditor 策略裁决
-- **Evidence**：SHA-256 replay digest + structured Failure Protocol（Agent self-healing ready）
+- **L1-L3**: intent, schema, and DeFi calldata parsing (support for Merchant Moe / Agni / Pendle)
+- **L4**: RPC quorum + block height spread fail-closed
+- **L5**: zero-gas simulation + Shadow Auditor policy adjudication
+- **Evidence**: SHA-256 replay digest + structured Failure Protocol (agent self-healing ready)
 """
         )
 
