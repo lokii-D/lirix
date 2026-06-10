@@ -16,55 +16,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip huggingface_hub
+
       - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_REPO: lokii07/lirix-mantle-harness
         run: |
-          python3 -m pip install --upgrade pip huggingface_hub
-          python3 - <<'PY'
-          import os
-          import shutil
-          import tempfile
-          from pathlib import Path
-          from huggingface_hub import HfApi
-
-          root = Path.cwd()
-          staging = Path(tempfile.mkdtemp(prefix="lirix-space-"))
-
-          for item in root.iterdir():
-              if item.name in {".git", ".github", ".cursor", "terminals"}:
-                  continue
-              dest = staging / item.name
-              if item.is_dir():
-                  shutil.copytree(item, dest, dirs_exist_ok=True)
-              else:
-                  shutil.copy2(item, dest)
-
-          readme = "\n".join([
-              "---",
-              "title: Lirix",
-              "emoji: 🛡️",
-              "colorFrom: blue",
-              "colorTo: indigo",
-              "sdk: docker",
-              "app_file: app.py",
-              "pinned: false",
-              "license: mit",
-              "---",
-              "",
-              "# Lirix",
-              "",
-              "Lirix is a fail-closed validation and simulation control plane for AI agent payloads that may touch EVM value flows.",
-              "",
-          ])
-          (staging / "README.md").write_text(readme, encoding="utf-8")
-
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          api.upload_folder(
-              folder_path=str(staging),
-              repo_id=os.environ["HF_SPACE_REPO"],
-              repo_type="space",
-              commit_message="sync: update from GitHub Actions",
-          )
-          PY
+          python scripts/sync_to_hf_space.py

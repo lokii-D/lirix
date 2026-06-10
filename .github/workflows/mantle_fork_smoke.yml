@@ -18,12 +18,12 @@ jobs:
     name: Mantle fork (Anvil + mantle_TT)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
       - uses: ./.github/actions/lirix-ci-setup
         with:
           python-version: "3.12"
           with-dev-install: "false"
-      - uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d  # v1
+      - uses: foundry-rs/foundry-toolchain@c7450ba673e133f5ee30098b3b54f444d3a2ca2d # v1
         with:
           version: "v1.6.0-rc1"
           cache: true
@@ -34,18 +34,32 @@ jobs:
       - name: Run Mantle fork test
         shell: bash
         env:
+          MANTLE_ARCHIVE_RPC: ${{ secrets.MANTLE_ARCHIVE_RPC }}
           MANTLE_MAINNET_RPC: ${{ secrets.MANTLE_MAINNET_RPC }}
+          MANTLE_RPC_URLS: ${{ secrets.MANTLE_RPC_URLS }}
         run: |
-          if [ -z "$MANTLE_MAINNET_RPC" ]; then
-            echo "Skipping: MANTLE_MAINNET_RPC secret is not configured for this repo/fork."
+          set -euo pipefail
+          RPC_URL="${MANTLE_ARCHIVE_RPC:-${MANTLE_MAINNET_RPC:-}}"
+          if [ -z "${RPC_URL}" ] && [ -n "${MANTLE_RPC_URLS:-}" ]; then
+            RPC_URL="${MANTLE_RPC_URLS%%,*}"
+          fi
+          if [ -z "${RPC_URL}" ]; then
+            echo "Skipping: no Mantle RPC secret is configured for this repo/fork."
             exit 0
           fi
-          anvil --fork-url "$MANTLE_MAINNET_RPC" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
+
+          if ! python scripts/check_mantle_archive_rpc.py "$RPC_URL"; then
+            echo "Skipping: selected RPC does not support archive history; provide MANTLE_ARCHIVE_RPC or a true archive endpoint." >&2
+            exit 0
+          fi
+
+          anvil --fork-url "$RPC_URL" --host 127.0.0.1 --port 8546 > mantle-anvil.log 2>&1 &
           ANVIL_PID=$!
+          trap 'kill $ANVIL_PID >/dev/null 2>&1 || true' EXIT
+
           for i in {1..30}; do
             if curl --max-time 60 -s http://127.0.0.1:8546 >/dev/null; then
               python -m pytest mantle_TT/tests/mantle/ -v
-              kill $ANVIL_PID || true
               exit 0
             fi
             if ! kill -0 $ANVIL_PID 2>/dev/null; then
