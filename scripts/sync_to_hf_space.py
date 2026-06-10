@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from huggingface_hub import HfApi
@@ -59,6 +60,14 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     staging = build_staging(root)
     api = HfApi(token=token)
+    with suppress(Exception):
+        api.create_repo(
+            repo_id=repo_id,
+            repo_type="space",
+            space_sdk="docker",
+            exist_ok=True,
+            private=False,
+        )
     api.upload_folder(
         folder_path=str(staging),
         repo_id=repo_id,
