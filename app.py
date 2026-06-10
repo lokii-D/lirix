@@ -80,9 +80,9 @@ st.info(
 st.subheader("🚀 Quick Test Scenarios")
 example = {
     "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-    "function_name": "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+    "function_name": "swapExactTokensForTokens",
     "value": 0,
-    "data": "0x" + "00" * 64,
+    "data": "0x38ed1739" + "00" * 32 * 4,
 }
 if "payload_text" not in st.session_state:
     st.session_state["payload_text"] = json.dumps(example, indent=2)
@@ -98,7 +98,7 @@ with col1:
                 "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
                 "function_name": "swap",
                 "value": 0,
-                "data": "0x" + "00" * 64,
+                "data": "0xd004f0f8" + "00" * 32 * 2,
             },
             indent=2,
         )
@@ -108,9 +108,9 @@ with col2:
         st.session_state["payload_text"] = json.dumps(
             {
                 "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-                "function_name": "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+                "function_name": "swapExactTokensForTokens",
                 "value": 0,
-                "data": "0x" + "00" * 128,
+                "data": "0x38ed1739" + "00" * 32 * 4,
             },
             indent=2,
         )
@@ -120,7 +120,7 @@ with col3:
         st.session_state["payload_text"] = json.dumps(
             {
                 "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-                "function_name": "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+                "function_name": "exactInput",
                 "value": 0,
                 "data": "0x" + "00" * 128,
             },
