@@ -21,11 +21,19 @@ def _env_rpc_urls() -> list[str] | None:
 
 
 def _build_config(testnet: bool) -> LirixConfig:
-    base = LirixConfig.for_mantle(testnet=testnet)
-    env_urls = _env_rpc_urls()
-    if env_urls:
-        return base.model_copy(update={"rpc_urls": env_urls})
-    return base
+    base = LirixConfig.for_mantle(testnet=testnet, strict_mode=False)
+    demo_rpcs = [
+        *(_env_rpc_urls() or []),
+    ]
+    if not demo_rpcs:
+        demo_rpcs = list(base.rpc_urls)
+    return base.model_copy(
+        update={
+            "rpc_urls": demo_rpcs,
+            "l4_min_success_count": 1,
+            "l4_min_success_ratio": 0.34,
+        }
+    )
 
 
 def _status_row(label: str, state: str, detail: str) -> None:
