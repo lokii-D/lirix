@@ -7,7 +7,7 @@ from typing import Any
 import streamlit as st
 from eth_abi import encode as eth_abi_encode
 from lirix import Lirix, LirixConfig
-from lirix.core.exceptions import LirixSecurityException
+from lirix.core.exceptions import LirixBaseException, LirixSecurityException
 from lirix.layers.l5_shadow_auditor import ShadowPolicySchema
 from web3 import Web3
 
@@ -191,21 +191,30 @@ if run_validate:
             pipeline_state.append(("L1", "passed", "Intent allowed and payload accepted."))
             pipeline_state.append(("L2", "passed", "Schema validation passed."))
             pipeline_state.append(("L3", "passed", "DeFi parser and whitelist checks passed."))
-        except LirixSecurityException as exc:
-            st.error("🚫 BLOCKED by Lirix Security Pipeline")
-            st.info(f"**Layer**: {exc.__class__.__name__}\n**Reason**: {str(exc)}")
-            st.caption(
-                "✅ This is Lirix fail-closed protection in action. "
-                "The payload was prevented from reaching Mantle."
-            )
-            pipeline_state.append(("L1-L3", "blocked", f"Blocked: {exc}"))
-            pipeline_state.append(
-                ("L4", "skipped", "Skipped because validation failed before RPC quorum.")
-            )
-            pipeline_state.append(
-                ("L5", "skipped", "Skipped because validation failed before simulation.")
-            )
-            pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
+        except LirixBaseException as exc:
+            if isinstance(exc, LirixSecurityException):
+                st.error("🚫 BLOCKED by Lirix Security Pipeline")
+                st.info(f"**Layer**: {exc.__class__.__name__}\n**Reason**: {str(exc)}")
+                st.caption(
+                    "✅ This is Lirix fail-closed protection in action. "
+                    "The payload was prevented from reaching Mantle."
+                )
+                pipeline_state.append(("L1-L3", "blocked", f"Blocked: {exc}"))
+                pipeline_state.append(
+                    ("L4", "skipped", "Skipped because validation failed before RPC quorum.")
+                )
+                pipeline_state.append(
+                    ("L5", "skipped", "Skipped because validation failed before simulation.")
+                )
+                pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
+            else:
+                st.error(f"🚫 Lirix runtime issue: {exc.__class__.__name__}")
+                st.info(f"**Reason**: {str(exc)}")
+                st.caption("Please refresh the demo or check the Mantle RPC configuration.")
+                pipeline_state.append(("L1-L3", "blocked", exc.__class__.__name__))
+                pipeline_state.append(("L4", "skipped", "Skipped because runtime setup failed."))
+                pipeline_state.append(("L5", "skipped", "Skipped because runtime setup failed."))
+                pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
         else:
             try:
                 sim = client.validate_and_simulate(intent, payload, security_policy=policy)
@@ -214,7 +223,13 @@ if run_validate:
                     ("L5", "passed", f"Simulation returned: {sim.get('status', 'ok')}")
                 )
                 pipeline_state.append(("Decision", "passed", "Safe to proceed."))
-            except LirixSecurityException as exc:
+            except LirixBaseException as exc:
+                st.error("🚫 BLOCKED by Lirix Security Pipeline")
+                st.info(f"**Layer**: {exc.__class__.__name__}\n**Reason**: {str(exc)}")
+                st.caption(
+                    "✅ This is Lirix fail-closed protection in action. "
+                    "The payload was prevented from reaching Mantle."
+                )
                 pipeline_state.append(("L4/L5", "blocked", f"Simulation blocked: {exc}"))
                 pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
 
