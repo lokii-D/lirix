@@ -19,21 +19,16 @@ jobs:
       - name: Verify Hugging Face token
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
         run: |
           if [ -z "${HF_TOKEN}" ]; then
             echo "HF_TOKEN is not configured. Add a write token in repository secrets." >&2
-            exit 1
-          fi
-          if [ -z "${HF_SPACE_REPO}" ]; then
-            echo "HF_SPACE_REPO is not configured. Set it to the target Space repo id, for example: username/space-name." >&2
             exit 1
           fi
 
       - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+          HF_SPACE_REPO: lokiii07/lirix-mantle-harness
         run: |
           python3 -m pip install --upgrade pip huggingface_hub
           python3 - <<'PY'
