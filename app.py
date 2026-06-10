@@ -5,9 +5,11 @@ import os
 from typing import Any
 
 import streamlit as st
+from eth_abi import encode as eth_abi_encode
 from lirix import Lirix, LirixConfig
 from lirix.core.exceptions import LirixSecurityException
 from lirix.layers.l5_shadow_auditor import ShadowPolicySchema
+from web3 import Web3
 
 
 def _env_rpc_urls() -> list[str] | None:
@@ -39,6 +41,63 @@ def _status_row(label: str, state: str, detail: str) -> None:
             st.warning(label)
     with right:
         st.write(detail)
+
+
+def _build_v2_swap_payload(amount_out_min: int, *, amount_in: int = 1) -> dict[str, Any]:
+    router = "0xeaEE7EE68874218c3558b40063c42B82D3E7232a"
+    path = [
+        Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+        Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+    ]
+    data = eth_abi_encode(
+        ["uint256", "uint256", "address[]", "address", "uint256"],
+        [amount_in, amount_out_min, path, router, 0],
+    )
+    return {
+        "to": router,
+        "function_name": "swapExactTokensForTokens",
+        "value": 0,
+        "data": "0x38ed1739" + data.hex(),
+    }
+
+
+def _build_moe_swap_payload(amount_out_min: int, *, amount_in: int = 1) -> dict[str, Any]:
+    router = "0xeaEE7EE68874218c3558b40063c42B82D3E7232a"
+    path = [
+        Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+        Web3.to_checksum_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+    ]
+    data = eth_abi_encode(
+        ["uint256", "uint256", "address[]", "address", "uint256"],
+        [amount_in, amount_out_min, path, router, 0],
+    )
+    return {
+        "to": router,
+        "function_name": "swap",
+        "value": 0,
+        "data": "0xd004f0f8" + data.hex(),
+    }
+
+
+def _build_v3_swap_payload(amount_in: int, amount_out_min: int) -> dict[str, Any]:
+    router = "0xeaEE7EE68874218c3558b40063c42B82D3E7232a"
+    v3_path = bytes.fromhex(
+        "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        + "000bb8"
+        + "C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    )
+    data = eth_abi_encode(
+        ["bytes", "address", "uint256", "uint256", "uint256", "bytes"],
+        [v3_path, router, amount_in, amount_out_min, 0, b""],
+    )
+    return {
+        "to": router,
+        "function_name": "exactInput",
+        "value": 0,
+        "data": "0x"
+        + Web3.keccak(text="exactInput((bytes,address,uint256,uint256,uint256,bytes))")[:4].hex()
+        + data.hex(),
+    }
 
 
 st.set_page_config(page_title="Lirix · Mantle Demo", page_icon="🛡️", layout="wide")
@@ -78,14 +137,10 @@ st.info(
 )
 
 st.subheader("🚀 Quick Test Scenarios")
-example = {
-    "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-    "function_name": "swapExactTokensForTokens",
-    "value": 0,
-    "data": "0x38ed1739" + "00" * 32 * 4,
-}
 if "payload_text" not in st.session_state:
-    st.session_state["payload_text"] = json.dumps(example, indent=2)
+    st.session_state["payload_text"] = json.dumps(
+        _build_v2_swap_payload(amount_out_min=1), indent=2
+    )
 if "intent_text" not in st.session_state:
     st.session_state["intent_text"] = "swap"
 col1, col2, col3 = st.columns(3)
@@ -94,37 +149,19 @@ with col1:
         "🚫 恶意示例（Merchant Moe 路由毒化）", use_container_width=True, type="secondary"
     ):
         st.session_state["payload_text"] = json.dumps(
-            {
-                "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-                "function_name": "swap",
-                "value": 0,
-                "data": "0xd004f0f8" + "00" * 32 * 2,
-            },
-            indent=2,
+            _build_moe_swap_payload(amount_out_min=0), indent=2
         )
         st.session_state["intent_text"] = "swap"
 with col2:
     if st.button("✅ 安全 Swap 示例", use_container_width=True, type="primary"):
         st.session_state["payload_text"] = json.dumps(
-            {
-                "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-                "function_name": "swapExactTokensForTokens",
-                "value": 0,
-                "data": "0x38ed1739" + "00" * 32 * 4,
-            },
-            indent=2,
+            _build_v2_swap_payload(amount_out_min=1), indent=2
         )
         st.session_state["intent_text"] = "swap"
 with col3:
     if st.button("🔄 Self-repair 修复示例", use_container_width=True):
         st.session_state["payload_text"] = json.dumps(
-            {
-                "to": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
-                "function_name": "exactInput",
-                "value": 0,
-                "data": "0x" + "00" * 128,
-            },
-            indent=2,
+            _build_v3_swap_payload(amount_in=1, amount_out_min=1), indent=2
         )
         st.session_state["intent_text"] = "swap"
 raw = st.text_area("Enter JSON payload", key="payload_text", height=240)
