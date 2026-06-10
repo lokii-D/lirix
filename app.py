@@ -123,6 +123,12 @@ def _build_v3_swap_payload(amount_in: int, amount_out_min: int) -> dict[str, Any
     }
 
 
+def _select_example(name: str, payload_builder: callable) -> None:
+    st.session_state["selected_example"] = name
+    st.session_state["payload_text"] = json.dumps(payload_builder(), indent=2)
+    st.session_state["intent_text"] = "swap"
+
+
 st.set_page_config(page_title="Lirix · Mantle Presentation", page_icon="🛡️", layout="wide")
 st.title("Lirix on Mantle")
 st.markdown(
@@ -161,6 +167,33 @@ st.info(
     "It only shows real validation results."
 )
 
+story_summary = {
+    "malicious": "Current story: Malicious Block",
+    "safe": "Current story: Safe Pass",
+    "repair": "Current story: Repair & Re-run",
+}
+story_theme = {
+    "malicious": {"accent": "#ef4444", "soft": "rgba(239, 68, 68, 0.16)", "label": "BLOCKED"},
+    "safe": {"accent": "#10b981", "soft": "rgba(16, 185, 129, 0.16)", "label": "SAFE TO EXECUTE"},
+    "repair": {"accent": "#8b5cf6", "soft": "rgba(139, 92, 246, 0.16)", "label": "REPAIRED"},
+}
+active_story = st.session_state.get("selected_example", "safe")
+active_theme = story_theme.get(active_story, story_theme["safe"])
+st.markdown(
+    f"""
+<div style="background: linear-gradient(90deg, {active_theme['accent']}, #1f2937);
+    color: white; padding: 12px 16px; border-radius: 12px; margin: 14px 0 6px 0;
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 0 0 2px {active_theme['soft']};">
+  <div style="font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0.75; margin-bottom: 4px;">Current story</div>
+  <div style="font-size: 1.05rem; font-weight: 700;">
+    {story_summary.get(active_story, story_summary['safe'])}
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
 st.subheader("🚀 Quick Test Scenarios")
 if "payload_text" not in st.session_state:
     st.session_state["payload_text"] = json.dumps(
@@ -171,40 +204,90 @@ if "intent_text" not in st.session_state:
 if "selected_example" not in st.session_state:
     st.session_state["selected_example"] = "safe"
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button(
-        "🚫 Malicious Example (Merchant Moe route poisoning)",
-        use_container_width=True,
-        type="primary" if st.session_state["selected_example"] == "malicious" else "secondary",
-    ):
-        st.session_state["selected_example"] = "malicious"
+
+def _apply_example(name: str) -> None:
+    st.session_state["selected_example"] = name
+    if name == "malicious":
         st.session_state["payload_text"] = json.dumps(
             _build_moe_swap_payload(amount_out_min=0), indent=2
         )
-        st.session_state["intent_text"] = "swap"
-with col2:
-    if st.button(
-        "✅ Safe Swap Example",
-        use_container_width=True,
-        type="primary" if st.session_state["selected_example"] == "safe" else "secondary",
-    ):
-        st.session_state["selected_example"] = "safe"
+    elif name == "safe":
         st.session_state["payload_text"] = json.dumps(
             _build_v2_swap_payload(amount_out_min=1), indent=2
         )
-        st.session_state["intent_text"] = "swap"
-with col3:
-    if st.button(
-        "🔄 Self-Repair Example",
-        use_container_width=True,
-        type="primary" if st.session_state["selected_example"] == "repair" else "secondary",
-    ):
-        st.session_state["selected_example"] = "repair"
+    else:
         st.session_state["payload_text"] = json.dumps(
             _build_v3_swap_payload(amount_in=1, amount_out_min=1), indent=2
         )
-        st.session_state["intent_text"] = "swap"
+    st.session_state["intent_text"] = "swap"
+
+
+current_example = st.radio(
+    "Select a story to preview",
+    ["malicious", "safe", "repair"],
+    horizontal=True,
+    key="selected_example",
+    format_func=lambda x: {
+        "malicious": "🚫 Malicious Example (Merchant Moe route poisoning)",
+        "safe": "✅ Safe Swap Example",
+        "repair": "🔄 Self-Repair Example",
+    }[x],
+    on_change=lambda: _apply_example(st.session_state["selected_example"]),
+)
+
+if st.session_state["payload_text"] == "":
+    _apply_example(current_example)
+
+story_cols = st.columns(3)
+stories = [
+    (
+        "malicious",
+        "🚫 Malicious Block",
+        "Merchant Moe route poisoning",
+        "Intentionally unsafe payload that should be stopped by the security pipeline.",
+        "BLOCKED",
+    ),
+    (
+        "safe",
+        "✅ Safe Pass",
+        "Clean swap path",
+        "A valid swap story designed to proceed through the full pipeline and reach safe output.",
+        "SAFE TO EXECUTE",
+    ),
+    (
+        "repair",
+        "🔄 Repair & Re-run",
+        "Recovered route",
+        "A repaired intent path that demonstrates the agent can recover and re-submit safely.",
+        "REPAIRED",
+    ),
+]
+for col, (name, title, subtitle, desc, badge) in zip(story_cols, stories):
+    active = st.session_state["selected_example"] == name
+    border = "#ef4444" if active else "#1f2937"
+    background = "rgba(239, 68, 68, 0.18)" if active else "rgba(17, 24, 39, 0.04)"
+    shadow = "0 0 0 2px rgba(239, 68, 68, 0.35)" if active else "none"
+    badge_bg = "#ef4444" if active else "#374151"
+    with col:
+        st.markdown(
+            f"""
+<div style="border: 2px solid {border}; background: {background}; box-shadow: {shadow};
+    padding: 16px; border-radius: 14px; min-height: 150px;">
+  <div style="display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 10px;">
+    <div style="font-weight: 800; font-size: 1.02rem;">{title}</div>
+    <div style="background: {badge_bg}; color: white; padding: 4px 10px;
+      border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.04em;">{badge}</div>
+  </div>
+  <div style="font-size: 0.88rem; font-weight: 700; opacity: 0.92; margin-bottom: 8px;">
+    {subtitle}
+  </div>
+  <div style="font-size: 0.92rem; line-height: 1.45; opacity: 0.92;">{desc}</div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 raw = st.text_area("Enter JSON payload", key="payload_text", height=240)
 intent = st.text_input("Intent", key="intent_text")
 
