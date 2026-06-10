@@ -3,7 +3,10 @@ name: Sync to Hugging Face Space
 on:
   push:
     branches:
-      - mantle-turing-2026-harness   # 只监听 harness 分支
+      - mantle-turing-2026-harness
+
+permissions:
+  contents: read
 
 jobs:
   sync:
@@ -11,17 +14,46 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: mantle-turing-2026-harness   # 明确指定分支
+        uses: actions/checkout@v4
+
+      - name: Verify Hugging Face token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+        run: |
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "HF_TOKEN is not configured. Add a write token in repository secrets." >&2
+            exit 1
+          fi
+          if [ -z "${HF_SPACE_REPO}" ]; then
+            echo "HF_SPACE_REPO is not configured. Set it to the target Space repo id, for example: username/space-name." >&2
+            exit 1
+          fi
 
       - name: Sync to Hugging Face Space
-        uses: huggingface/hub-sync@v0.1.0
-        with:
-          github_repo_id: ${{ github.repository }}
-          huggingface_repo_id: lokii07/lirix-mantle-harness   # 您的 Space 全名
-          hf_token: ${{ secrets.HF_TOKEN }}
-          repo_type: space
-          space_sdk: docker                    # 必须使用 Docker（您的 Dockerfile.submission）
-          private: false
-          subdirectory: ''                     # 同步整个根目录
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+        run: |
+          python3 -m pip install --upgrade pip huggingface_hub
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          token = os.environ["HF_TOKEN"]
+          repo_id = os.environ["HF_SPACE_REPO"]
+          api = HfApi(token=token)
+          api.upload_folder(
+              folder_path=".",
+              repo_id=repo_id,
+              repo_type="space",
+              commit_message="sync: update from GitHub Actions",
+              ignore_patterns=[
+                  ".git/*",
+                  ".github/workflows/*",
+                  ".cursor/*",
+                  "terminals/*",
+                  "mantle_TT/*",
+              ],
+          )
+          PY
