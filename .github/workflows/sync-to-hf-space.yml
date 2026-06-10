@@ -1,0 +1,27 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - mantle-turing-2026-harness   # 只监听 harness 分支
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: mantle-turing-2026-harness   # 明确指定分支
+
+      - name: Sync to Hugging Face Space
+        uses: huggingface/hub-sync@v0.1.0
+        with:
+          github_repo_id: ${{ github.repository }}
+          huggingface_repo_id: lokii07/lirix-mantle-harness   # 您的 Space 全名
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: space
+          space_sdk: docker                    # 必须使用 Docker（您的 Dockerfile.submission）
+          private: false
+          subdirectory: ''                     # 同步整个根目录
