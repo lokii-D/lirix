@@ -28,6 +28,6 @@ jobs:
       - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_REPO: lokii07/lirix-mantle-harness
+          HF_SPACE_REPO: lokiii07/lirix-mantle-harness
         run: |
           python scripts/sync_to_hf_space.py
