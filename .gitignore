@@ -15,6 +15,8 @@ env/
 .env/
 .env
 .env.*
+!.env.example
+!.env.release.example
 *.env
 .env.release
 .secret
@@ -77,6 +79,9 @@ Thumbs.db
 *.tgz
 *.zip
 mantle-harness.tar.gz
+/dist/mantle_TT_submission_bundle.tar.gz
+/dist/*.tar.gz
+/dist/*.zip
 
 # Misc local state
 *.swp
@@ -87,10 +92,8 @@ mantle-harness.tar.gz
 /app.py
 /tests/mantle/
 /Dockerfile.submission
-/README_submission.md
 /requirements_submission.txt
 /docker-compose.yml
-/contracts/LirixShield.sol
 
 # JavaScript tooling (if introduced locally)
 node_modules/
