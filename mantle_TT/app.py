@@ -78,9 +78,7 @@ def _pipeline_stage_html(label: str, state: str, detail: str) -> str:
     color, badge, icon, fill = _PIPELINE_DISPLAY.get(state, _PIPELINE_DISPLAY["pending"])
     subtitle = _LAYER_NAMES.get(label, "")
     subtitle_html = (
-        f'<div style="font-size:0.7rem;opacity:0.75;margin-bottom:4px;">{subtitle}</div>'
-        if subtitle
-        else ""
+        f'<div style="font-size:0.7rem;opacity:0.75;margin-bottom:4px;">{subtitle}</div>' if subtitle else ""
     )
     return f"""
 <div style="flex: 1; min-width: 118px; text-align: center; padding: 14px 10px;
@@ -206,9 +204,7 @@ def _build_moe_swap_payload(amount_out_min: int, *, amount_in: int = 1) -> dict[
 def _build_v3_swap_payload(amount_in: int, amount_out_min: int) -> dict[str, Any]:
     router = "0xeaEE7EE68874218c3558b40063c42B82D3E7232a"
     v3_path = bytes.fromhex(
-        "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-        + "000bb8"
-        + "C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" + "000bb8" + "C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
     )
     data = eth_abi_encode(
         ["bytes", "address", "uint256", "uint256", "uint256", "bytes"],
@@ -342,9 +338,7 @@ st.markdown(
 
 st.subheader("🚀 Quick Test Scenarios")
 if "payload_text" not in st.session_state:
-    st.session_state["payload_text"] = json.dumps(
-        _build_v2_swap_payload(amount_out_min=1), indent=2
-    )
+    st.session_state["payload_text"] = json.dumps(_build_v2_swap_payload(amount_out_min=1), indent=2)
 if "intent_text" not in st.session_state:
     st.session_state["intent_text"] = "swap"
 if "selected_example" not in st.session_state:
@@ -354,17 +348,11 @@ if "selected_example" not in st.session_state:
 def _apply_example(name: str) -> None:
     st.session_state["selected_example"] = name
     if name == "malicious":
-        st.session_state["payload_text"] = json.dumps(
-            _build_moe_swap_payload(amount_out_min=0), indent=2
-        )
+        st.session_state["payload_text"] = json.dumps(_build_moe_swap_payload(amount_out_min=0), indent=2)
     elif name == "safe":
-        st.session_state["payload_text"] = json.dumps(
-            _build_v2_swap_payload(amount_out_min=1), indent=2
-        )
+        st.session_state["payload_text"] = json.dumps(_build_v2_swap_payload(amount_out_min=1), indent=2)
     else:
-        st.session_state["payload_text"] = json.dumps(
-            _build_v3_swap_payload(amount_in=1, amount_out_min=1), indent=2
-        )
+        st.session_state["payload_text"] = json.dumps(_build_v3_swap_payload(amount_in=1, amount_out_min=1), indent=2)
     st.session_state["intent_text"] = "swap"
     st.session_state["example_loaded"] = name
 
@@ -493,12 +481,8 @@ if run_validate:
                     "The payload was prevented from reaching Mantle."
                 )
                 pipeline_state.append(("L1-L3", "blocked", f"Blocked: {exc}"))
-                pipeline_state.append(
-                    ("L4", "skipped", "Skipped because validation failed before RPC quorum.")
-                )
-                pipeline_state.append(
-                    ("L5", "skipped", "Skipped because validation failed before simulation.")
-                )
+                pipeline_state.append(("L4", "skipped", "Skipped because validation failed before RPC quorum."))
+                pipeline_state.append(("L5", "skipped", "Skipped because validation failed before simulation."))
                 pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
             else:
                 st.error(f"🚫 Lirix runtime issue: {exc.__class__.__name__}")
@@ -559,9 +543,7 @@ if run_validate:
                     pipeline_state.append(("Decision", "blocked", exc.__class__.__name__))
 
         st.subheader("🔄 L1–L5 Security Pipeline")
-        st.caption(
-            "Linear DAG — intent → schema → DeFi → RPC quorum → shadow simulation → final verdict"
-        )
+        st.caption("Linear DAG — intent → schema → DeFi → RPC quorum → shadow simulation → final verdict")
         _render_status_legend()
         _render_pipeline_dag(pipeline_state)
         progress_cols = st.columns(len(pipeline_state))
@@ -611,18 +593,12 @@ if run_validate:
             try:
                 int(tx_hash, 16)
             except ValueError:
-                st.info(
-                    "Mantle Explorer transaction links appear only when a real on-chain "
-                    "tx_hash is supplied."
-                )
+                st.info("Mantle Explorer transaction links appear only when a real on-chain " "tx_hash is supplied.")
             else:
                 explorer_base = "https://explorer.mantle.xyz/tx"
                 st.markdown(f"[Mantle Explorer transaction link]({explorer_base}/{tx_hash})")
         else:
-            st.info(
-                "Mantle Explorer transaction links appear only when a real on-chain "
-                "tx_hash is supplied."
-            )
+            st.info("Mantle Explorer transaction links appear only when a real on-chain " "tx_hash is supplied.")
 
         st.subheader("Raw Result")
         st.json(
@@ -638,10 +614,7 @@ if run_validate:
             final = pipeline_state[-1][1]
             _render_final_decision(final, pipeline_state[-1][2])
             if final != "passed":
-                st.caption(
-                    "Lirix 2.0.4 successfully prevented a potential malicious "
-                    "transaction on Mantle."
-                )
+                st.caption("Lirix 2.0.4 successfully prevented a potential malicious " "transaction on Mantle.")
 
         st.caption("📌 Lirix always returns structured Failure Protocol for AI Agent self-healing.")
 
