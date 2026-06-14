@@ -62,7 +62,7 @@ jobs:
         env:
           MANTLE_MAINNET_RPC: ${{ secrets.MANTLE_MAINNET_RPC }}
         run: |
-          # Default aligns with lirix MANTLE_MAINNET_RPC_URLS[0]; rpc.testnet.mantle.xyz returns 404/301.
+          # Default aligns with lirix MANTLE_MAINNET_RPC_URLS[0]; legacy rpc.testnet.mantle.xyz is deprecated.
           pick_fork_url() {
             if [ -n "${MANTLE_MAINNET_RPC:-}" ]; then
               echo "$MANTLE_MAINNET_RPC"

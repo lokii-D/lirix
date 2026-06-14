@@ -2,6 +2,9 @@
 
 All automation for the Mantle submission bundle lives here. Repository-root `scripts/*` entries are thin delegates only.
 
+> **Naming note:** `validate_bundle.sh` validates the `mantle_TT/` *package tree* only.
+> Root `./scripts/validate_harness.sh` validates the *judge submission bundle* at repo root. Different scopes — both required.
+
 | Script | Responsibility |
 | --- | --- |
 | `validate_bundle.sh` | File presence + `type1/to_me.md` symlink SSOT check → prints `bundle-ok` |

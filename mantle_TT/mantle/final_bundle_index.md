@@ -34,8 +34,8 @@
 - `mantle_TT/tests/README.md`
 - `mantle_TT/tests/mantle/test_mantle_bundle.py`
 
-## Recommended command sequence
-1. `bash mantle_TT/scripts/validate_bundle.sh`
-2. `python mantle_TT/examples/mantle_defi_demo.py`
-3. `./.venv/bin/python -m pytest -q`
-4. `./.venv/bin/python -m coverage run -m pytest -q && ./.venv/bin/python -m coverage report`
+## Recommended command sequence (judges)
+1. Read `mantle_TT/README_submission.md`
+2. `./scripts/full_dry_run.sh` (repo root — canonical judge path)
+3. `bash mantle_TT/scripts/validate_bundle.sh` (mantle_TT package file check only)
+4. `python mantle_TT/examples/mantle_defi_demo.py`

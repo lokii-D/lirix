@@ -1,94 +1,74 @@
-# Mantle DoraHacks Submission Bundle
+# Lirix 2.0.4 — Mantle Submission Package
 
-This directory is the final, reviewer-ready package for the Mantle track submission.
+<div align="center">
 
-## What this bundle demonstrates
+**Mantle AI Agent Security Guardian**
 
-Lirix is a layered security pipeline for AI-generated DeFi intents on Mantle:
+fail-closed · L1–L5 linear DAG · SHA-256 evidence chain · **Mantle Sepolia verified**
 
-- **L1** intent and payload gate
-- **L2** schema and semantic validation
-- **L3** DeFi calldata parsing (swap selectors, route checks, proxy-aware paths)
-- **L4** RPC quorum consistency checks
-- **L5** shadow policy arbitration (fail-closed)
+[![HF Spaces Demo](https://img.shields.io/badge/Demo-Hugging%20Face-yellow?style=flat-square)](https://huggingface.co/spaces/lokiii07/lirix-mantle-harness)
+[![Contract](https://img.shields.io/badge/Contract-Mantle%20Sepolia-blue?style=flat-square)](https://sepolia.mantlescan.xyz/address/0x844cd69eADcc097F759FBf76C2d9735A55A9635c)
 
-The goal is to block unsafe payloads before execution and provide an explainable decision path.
+</div>
 
-## Quick reviewer path
+## 30-second story
 
-Open these files in order:
+Lirix 2.0.4 is a **fail-closed** orchestration layer between untrusted AI agent payloads and Mantle execution. Every intent traverses a **L1–L5 linear DAG** — intent gate, schema validation, DeFi calldata parsing, RPC quorum, and shadow simulation — with a **SHA-256 evidence chain** at each stage. Unsafe payloads earn **BLOCKED (fail-closed protection activated)**; safe payloads earn **SAFE TO EXECUTE ON MANTLE**.
 
-1. `mantle/README.md`
-2. `mantle/submission_one_pager.md`
-3. `mantle/architecture.md`
-4. `mantle/video_script.md`
-5. `mantle/delivery_checklist.md`
-6. `examples/mantle_defi_demo.py` (canonical demo entry)
+**Judges:** [`README_submission.md`](README_submission.md) → `streamlit run mantle_TT/app.py` → [`external_evidence.md`](external_evidence.md).
 
-## Package structure
-
-- `app.py` - Streamlit interface for interactive L1-L5 inspection
-- `Dockerfile`, `docker-compose.yml` - containerized execution
-- `examples/` - canonical demo entrypoint for judges
-- `demo/` - legacy/demo-support materials (non-canonical)
-- `docs/` - supporting notes and checklists
-- `assets/` - architecture and pitch support content
-- `mantle/` - judge-facing canonical packet
-- `scripts/` - validation, demo launch, packaging
-- `tests/` - Mantle bundle verification tests
-
-## Local setup
-
-From repository root:
+## Quick start
 
 ```bash
+# From repository root
 python -m pip install -e .
 python -m pip install streamlit pytest
-```
 
-## Run and validate
-
-Bundle integrity:
-
-```bash
-bash mantle_TT/scripts/validate_bundle.sh
-```
-
-Primary demo (canonical):
-
-```bash
-python mantle_TT/examples/mantle_defi_demo.py
-```
-
-Interactive demo:
-
-```bash
+# Interactive presentation (recommended for judges)
 streamlit run mantle_TT/app.py
+
+# Validate this package
+bash mantle_TT/scripts/validate_harness.sh
 ```
 
-Full test suite:
+**Docker:**
 
 ```bash
-./.venv/bin/python -m pytest -q
+docker compose -f mantle_TT/docker-compose.yml up --build
 ```
 
-Coverage (target: 100% fail-under):
+## What to open first
 
-```bash
-./.venv/bin/python -m coverage erase
-./.venv/bin/python -m coverage run -m pytest -q
-./.venv/bin/python -m coverage report
-```
+| Order | File | Why |
+| --- | --- | --- |
+| 1 | [`README_submission.md`](README_submission.md) | Submit-ready one-pager |
+| 2 | [`app.py`](app.py) | Streamlit L1–L5 interactive demo |
+| 3 | [`external_evidence.md`](external_evidence.md) | Verifiable links & three-layer evidence tracker |
+| 4 | [`mantle/submission_one_pager.md`](mantle/submission_one_pager.md) | Technical depth summary |
+| 5 | [`examples/mantle_defi_demo.py`](examples/mantle_defi_demo.py) | CLI malicious → safe path |
 
-## Docker
+## Package layout
 
-```bash
-docker compose up --build
-```
+- `app.py` — judge-facing Streamlit UI (stories, pipeline DAG, final decision)
+- `contracts/LirixShield.sol` — on-chain shield contract source
+- `mantle/` — canonical judge packet (architecture, checklist, evidence)
+- `scripts/` — validate, demo, pack
+- `tests/` — Mantle bundle verification tests
 
-## Evidence policy (important)
+## Evidence policy
 
-- No fabricated transaction hashes
-- No fabricated explorer links
-- No fabricated deployment or verification claims
-- External links (GitHub, Spaces, on-chain proof) must be real and provided by submitter
+- No fabricated transaction hashes or explorer links
+- No placeholder URLs marked as verified
+- Pending items use explicit `TODO` markers — see [`external_evidence.md`](external_evidence.md)
+
+## Links
+
+| Resource | URL |
+| --- | --- |
+| GitHub | https://github.com/lokii-D/lirix |
+| Harness branch | https://github.com/lokii-D/lirix/tree/mantle-turing-2026-harness |
+| HF Spaces demo | https://huggingface.co/spaces/lokiii07/lirix-mantle-harness |
+| LirixShield (Sepolia) | https://sepolia.mantlescan.xyz/address/0x844cd69eADcc097F759FBf76C2d9735A55A9635c |
+| On-chain proof tx | https://sepolia.mantlescan.xyz/tx/0xa23bb06ad14518ea7418082caef761cf864548a6705e8a2682b08c6cd69b055a |
+| Screenshots | [`../docs/submission_assets/`](../docs/submission_assets/) |
+| Demo video | https://youtu.be/16Oa0ur-NFk |

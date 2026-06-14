@@ -24,7 +24,7 @@ MANTLE_MAINNET_RPC_URLS: tuple[str, ...] = (
     "https://mantle.drpc.org",
     "https://rpc.ankr.com/mantle",
 )
-MANTLE_TESTNET_RPC_URLS: tuple[str, ...] = ("https://rpc.testnet.mantle.xyz",)
+MANTLE_TESTNET_RPC_URLS: tuple[str, ...] = ("https://rpc.sepolia.mantle.xyz",)
 MANTLE_CHAIN_ID: int = 5000
 MANTLE_TESTNET_CHAIN_ID: int = 5001
 MANTLE_ALLOWED_TO_ADDRESSES: frozenset[str] = frozenset(

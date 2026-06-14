@@ -28,22 +28,30 @@ agent payloads that may touch EVM value flows.
 ## What this Space does
 
 This Hugging Face Space runs the Lirix demo application with the
-Docker-based setup defined in this repository.
+smallest practical runtime surface.
 """
+
+# Minimal runtime-only surface for the Space.
+SYNC_FILES = [
+    "mantle_TT/app.py",
+    "requirements_submission.txt",
+]
+
+
+def _copy_file(root: Path, staging: Path, relative_path: str) -> None:
+    src = root / relative_path
+    if not src.exists():
+        return
+    dest = staging / relative_path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest)
 
 
 def build_staging(root: Path) -> Path:
     staging = Path(tempfile.mkdtemp(prefix="lirix-space-"))
-    skip = {".git", ".github", ".cursor", "terminals"}
 
-    for item in root.iterdir():
-        if item.name in skip:
-            continue
-        dest = staging / item.name
-        if item.is_dir():
-            shutil.copytree(item, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, dest)
+    for relative_path in SYNC_FILES:
+        _copy_file(root, staging, relative_path)
 
     (staging / "README.md").write_text(SPACE_README, encoding="utf-8")
     return staging

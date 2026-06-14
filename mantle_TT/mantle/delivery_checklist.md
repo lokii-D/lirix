@@ -12,7 +12,7 @@
 
 ## Validation and quality gates
 
-- [x] Bundle validation script available (`scripts/validate_bundle.sh`)
+- [x] Bundle validation script available (`mantle_TT/scripts/validate_bundle.sh`; judge dry-run: `./scripts/validate_harness.sh`)
 - [x] Automated Mantle bundle tests included
 - [x] Repository-wide tests available
 - [x] Ruff/Black/MyPy strict quality gates available
@@ -29,7 +29,10 @@
 
 ## External evidence to be supplied by submitter
 
-- [ ] Public GitHub URL
-- [ ] Public demo/hosting URL (if applicable)
-- [ ] Public on-chain proof (tx hash/log/screenshot)
-- [ ] Optional contract verification links
+- [x] Public GitHub URL
+- [x] Public demo/hosting URL (HF Spaces)
+- [x] Deployed contract on Mantle Sepolia (explorer link)
+- [x] Demo video (2–3 min) — https://youtu.be/16Oa0ur-NFk
+- [x] Public on-chain proof (deploy / tx hash) — tx `0xa23bb06a…b055a` · [Mantlescan](https://sepolia.mantlescan.xyz/tx/0xa23bb06ad14518ea7418082caef761cf864548a6705e8a2682b08c6cd69b055a)
+- [x] Contract verification (Mantlescan Exact Match) — [LirixShield verified](https://sepolia.mantlescan.xyz/address/0x844cd69eADcc097F759FBf76C2d9735A55A9635c#code)
+- [x] Screenshots under repo-root `docs/submission_assets/` (5 PNG) — [`../../docs/submission_assets/`](../../docs/submission_assets/)

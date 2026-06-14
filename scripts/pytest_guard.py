@@ -88,17 +88,17 @@ def main() -> int:
                     os.killpg(proc.pid, signal.SIGTERM)
                 else:
                     proc.terminate()
-            except Exception:
+            except OSError:
                 pass
             try:
                 proc.wait(timeout=10)
-            except Exception:
+            except subprocess.TimeoutExpired:
                 try:
                     if hasattr(os, "killpg") and proc.pid:
                         os.killpg(proc.pid, signal.SIGKILL)
                     else:
                         proc.kill()
-                except Exception:
+                except OSError:
                     pass
 
     return proc.returncode if proc.returncode is not None else 124

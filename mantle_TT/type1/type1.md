@@ -16,7 +16,7 @@
       "https://rpc.ankr.com/mantle",
   )
   MANTLE_TESTNET_RPC_URLS: tuple = (
-      "https://rpc.testnet.mantle.xyz",
+      "https://rpc.sepolia.mantle.xyz",
   )
   MANTLE_CHAIN_ID = 5000
   MANTLE_TESTNET_CHAIN_ID = 5001

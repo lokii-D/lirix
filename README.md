@@ -11,6 +11,22 @@
 
 **Current version:** **v2.0.4** — edit **`[project].version`** in `pyproject.toml` only; `lirix.__version__` and this README follow that anchor.
 
+> **🏆 Hackathon judges — start here:** [`README_submission.md`](./README_submission.md) · [Live demo](https://huggingface.co/spaces/lokiii07/lirix-mantle-harness) · `./scripts/full_dry_run.sh` · Evidence: [`mantle_TT/external_evidence.md`](./mantle_TT/external_evidence.md)
+
+## Mantle DoraHacks 2026 (harness branch)
+
+**Judges:** [`mantle_TT/README_submission.md`](./mantle_TT/README_submission.md) — 30 sec · 2 min · 3 min landing page → `./scripts/full_dry_run.sh`
+
+| Resource | Link |
+| --- | --- |
+| **HF Spaces demo** | https://huggingface.co/spaces/lokiii07/lirix-mantle-harness |
+| **Contract (Mantle Sepolia)** | [`0x844cd69eADcc097F759FBf76C2d9735A55A9635c`](https://sepolia.mantlescan.xyz/address/0x844cd69eADcc097F759FBf76C2d9735A55A9635c) |
+| **On-chain proof tx** | [`0xa23bb06a…b055a`](https://sepolia.mantlescan.xyz/tx/0xa23bb06ad14518ea7418082caef761cf864548a6705e8a2682b08c6cd69b055a) |
+| **Screenshots** | [`docs/submission_assets/`](docs/submission_assets/) (5 verified PNGs) |
+| **Sepolia RPC** | `https://rpc.sepolia.mantle.xyz` |
+| **Demo video** | https://youtu.be/16Oa0ur-NFk |
+| **Harness branch** | https://github.com/lokii-D/lirix/tree/mantle-turing-2026-harness |
+
 > **Reading order:** value proposition → installation → quickstart → architecture (overview) → security and support. The Chinese section mirrors this order. Contract fields, version, and gate semantics are single-sourced — see **Document layers** below; do not restate them in both languages differently.
 
 # Lirix 2.0 · The EVM-grade execution airlock for AI agents
@@ -318,6 +334,22 @@ A: Start with the value proposition, then installation, then quickstart, then ar
 **一句话定义：** Lirix 是夹在「不可信模型输出」与「私钥 / 广播」之间的 **fail-closed 校验 + 模拟控制平面**。它不是钱包，也不是 Signer；它是 **EVM-grade execution airlock**，要求意图、Payload、RPC 证据与本地 EVM 模拟逐层通过 **L1–L5 单向 DAG**，然后才吐出可交接的广播字段。
 
 **当前版本：v2.0.4** — 仅改 `pyproject.toml` 中 `[project].version`；`lirix.__version__` 与上文英文版本行与之对齐。
+
+> **🏆 评委入口：** [`README_submission.md`](./README_submission.md) · [在线演示](https://huggingface.co/spaces/lokiii07/lirix-mantle-harness) · `./scripts/full_dry_run.sh` · 证据链：[`mantle_TT/external_evidence.md`](./mantle_TT/external_evidence.md)
+
+## Mantle DoraHacks 2026（harness 分支）
+
+评委入口：[`mantle_TT/README_submission.md`](./mantle_TT/README_submission.md)（30 秒 · 2 分钟 · 3 分钟路径）→ `./scripts/full_dry_run.sh`
+
+| 资源 | 链接 |
+| --- | --- |
+| **HF Spaces 演示** | https://huggingface.co/spaces/lokiii07/lirix-mantle-harness |
+| **合约（Mantle Sepolia）** | [`0x844cd69eADcc097F759FBf76C2d9735A55A9635c`](https://sepolia.mantlescan.xyz/address/0x844cd69eADcc097F759FBf76C2d9735A55A9635c) |
+| **链上证明 tx** | [`0xa23bb06a…b055a`](https://sepolia.mantlescan.xyz/tx/0xa23bb06ad14518ea7418082caef761cf864548a6705e8a2682b08c6cd69b055a) |
+| **提交截图** | [`docs/submission_assets/`](docs/submission_assets/)（5 张已验证 PNG） |
+| **Sepolia RPC** | `https://rpc.sepolia.mantle.xyz` |
+| **演示视频** | https://youtu.be/16Oa0ur-NFk |
+| **Harness 分支** | https://github.com/lokii-D/lirix/tree/mantle-turing-2026-harness |
 
 ## 📚 文档分层（本文件非契约 SSOT）
 

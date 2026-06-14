@@ -89,6 +89,7 @@ mantle-harness.tar.gz
 *~
 
 # Root Mantle harness duplicates (SSOT: mantle_TT/) — prevents mainline lint/pytest pollution
+/README_submission.md
 /app.py
 /tests/mantle/
 /Dockerfile.submission

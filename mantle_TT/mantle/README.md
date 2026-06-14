@@ -20,10 +20,16 @@ This folder is the official, judge-facing packet for the Mantle submission.
 
 ## Minimal command path (from repository root)
 
-Bundle integrity:
+Judge dry-run (canonical):
 
 ```bash
-bash mantle_TT/scripts/validate_bundle.sh
+./scripts/full_dry_run.sh
+```
+
+CI-equivalent mantle slice:
+
+```bash
+bash mantle_TT/scripts/validate_harness.sh
 ```
 
 Primary demo:
@@ -38,7 +44,7 @@ The `mantle_TT/demo/` directory is supplementary and not the judge default path.
 Core regression suite:
 
 ```bash
-./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pytest tests/mantle -q -o addopts=
 ```
 
 ## Evidence policy

@@ -12,16 +12,16 @@
 
 ## Recommended attachments for submission
 
-- [ ] Architecture diagram
-- [ ] Demo screenshots
-- [ ] 2-3 minute demo video
-- [ ] Pitch deck PDF
-- [ ] Live deployment URL / Hugging Face Space
-- [ ] Public on-chain proof (tx hash/log/screenshot)
+- [x] Architecture diagram — see mermaid in root `README.md` § Architecture & security trace
+- [x] Demo screenshots — 5 PNG in repo-root `docs/submission_assets/`
+- [x] 2-3 minute demo video — https://youtu.be/16Oa0ur-NFk
+- [ ] Pitch deck PDF — not required for AI DevTools track (outline: `mantle_TT/assets/pitch_outline.md`)
+- [x] Live deployment URL / Hugging Face Space — https://huggingface.co/spaces/lokiii07/lirix-mantle-harness
+- [x] Public on-chain proof — tx `0xa23bb06a…b055a` · contract verified on Mantlescan
 
 ## Final verification steps
 
-1. Run the Mantle demo script.
-2. Run the repository tests.
-3. Run quality gates (Ruff, Black, strict MyPy).
-4. Confirm the bundle is self-contained.
+1. `streamlit run mantle_TT/app.py` (or root `app.py` after sync)
+2. `./scripts/full_dry_run.sh` from repository root
+3. `bash mantle_TT/scripts/validate_harness.sh` (CI-equivalent mantle slice)
+4. Confirm `dist/mantle-turing-2026-harness.tar.gz` contains 5 screenshots
