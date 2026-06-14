@@ -5,6 +5,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+PYTHON="python3"
+if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
+  PYTHON="${ROOT_DIR}/.venv/bin/python"
+fi
+
 on_fail() {
   local code=$?
   echo ""
@@ -48,22 +53,25 @@ print("       bundle inputs OK")
 PY
 
 echo "[2/5] pytest (tests/mantle only — overrides project addopts)"
-python3 -m pytest "${ROOT_DIR}/tests/mantle" -q --tb=line \
+"${PYTHON}" -m pytest "${ROOT_DIR}/tests/mantle" -q --tb=line \
   -o addopts="-q --strict-markers --import-mode=importlib"
 
 echo "[3/5] ruff"
-python3 -m ruff check \
+"${PYTHON}" -m ruff check \
   "${ROOT_DIR}/README_submission.md" \
-  "${ROOT_DIR}/app.py" \
   "${ROOT_DIR}/contracts" \
   "${ROOT_DIR}/docs/2.0.4_orchestrator.md" \
   "${ROOT_DIR}/scripts" \
   "${ROOT_DIR}/tests/mantle" \
   --config "${ROOT_DIR}/pyproject.toml"
+"${PYTHON}" -m ruff check \
+  "${ROOT_DIR}/app.py" \
+  --config "${ROOT_DIR}/mantle_TT/pyproject.toml"
 
 echo "[4/5] black"
-python3 -m black --check --quiet --config "${ROOT_DIR}/pyproject.toml" \
-  "${ROOT_DIR}/app.py" \
+"${PYTHON}" -m black --check --quiet --config "${ROOT_DIR}/mantle_TT/pyproject.toml" \
+  "${ROOT_DIR}/app.py"
+"${PYTHON}" -m black --check --quiet --config "${ROOT_DIR}/pyproject.toml" \
   "${ROOT_DIR}/contracts" \
   "${ROOT_DIR}/scripts" \
   "${ROOT_DIR}/tests/mantle"
