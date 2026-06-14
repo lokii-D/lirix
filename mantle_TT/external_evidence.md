@@ -32,7 +32,7 @@ Verifier **clones the repo** and reproduces these locally. Paths and commands �
 
 | Item | How to verify |
 | --- | --- |
-| Submission screenshots (5 PNG) | [`../../docs/submission_assets/`](../../docs/submission_assets/) (repo root — canonical) |
+| Submission screenshots (5 PNG) | [`../docs/submission_assets/`](../docs/submission_assets/) (repo root — canonical) |
 | Streamlit judge UI | `streamlit run mantle_TT/app.py` (or root `app.py`) |
 | CLI demo path | `python mantle_TT/examples/mantle_defi_demo.py` |
 | Full harness dry-run | `./scripts/full_dry_run.sh` from repository root |
@@ -62,4 +62,4 @@ None at this time — all submission artifacts are published.
 
 - Mantle packet mirror: [`mantle/external_evidence.md`](mantle/external_evidence.md)
 - Root landing page: [`../README_submission.md`](../README_submission.md)
-- Screenshot index: [`../../docs/submission_assets/README.md`](../../docs/submission_assets/README.md)
+- Screenshot index: [`../docs/submission_assets/README.md`](../docs/submission_assets/README.md)
