@@ -11,7 +11,7 @@
 
 **Current version:** **v2.0.4** — edit **`[project].version`** in `pyproject.toml` only; `lirix.__version__` and this README follow that anchor.
 
-> **🏆 Hackathon judges — start here:** [`README_submission.md`](./README_submission.md) · [Live demo](https://huggingface.co/spaces/lokiii07/lirix-mantle-harness) · `./scripts/full_dry_run.sh` · Evidence: [`mantle_TT/external_evidence.md`](./mantle_TT/external_evidence.md)
+> **🏆 Hackathon judges — start here:** [`README_submission.md`](./mantle_TT/README_submission.md) · [Live demo](https://huggingface.co/spaces/lokiii07/lirix-mantle-harness) · `./scripts/full_dry_run.sh` · Evidence: [`mantle_TT/external_evidence.md`](./mantle_TT/external_evidence.md)
 
 ## Mantle DoraHacks 2026 (harness branch)
 
