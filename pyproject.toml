@@ -55,7 +55,7 @@ dev = [
 # LangChain integration (`lirix.integrations.langchain`); users: `pip install lirix[langchain]`
 langchain = [
     "langchain>=0.1.0,<1.0.0",
-    "langchain-core>=0.1.0,<1.0.0",
+    "langchain-core>=0.1.0,<2.0.0",
 ]
 simulation = [
     "web3>=6.0.0,<8.0.0",
