@@ -36,12 +36,12 @@ lirix = "lirix.cli:main"
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0,<10.0.0",
-    "pytest-asyncio>=0.21.0,<1.0.0",
+    "pytest-asyncio>=0.21.0,<2.0.0",
     "pytest-cov>=4.1.0,<7.0.0",
 ]
 dev = [
     "pytest>=7.0.0,<10.0.0",
-    "pytest-asyncio>=0.21.0,<1.0.0",
+    "pytest-asyncio>=0.21.0,<2.0.0",
     "pytest-cov>=4.1.0,<7.0.0",
     "pyyaml>=6.0.0,<7.0.0",
     "pre-commit>=4.0.0,<5.0.0",
